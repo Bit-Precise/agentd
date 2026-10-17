@@ -1,0 +1,35 @@
+{
+  "log": {"loglevel": "warning"},
+  "inbounds": [
+    {
+      "tag": "socks-in",
+      "listen": "127.0.0.1",
+      "port": 19187,
+      "protocol": "socks",
+      "settings": {"auth": "noauth", "udp": false}
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "proxy",
+      "protocol": "vless",
+      "settings": {
+        "address": "127.0.0.1",
+        "port": 19186,
+        "id": "84c6f6b0-743f-4c0a-93c3-9d526a6b0b21",
+        "encryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "xhttpSettings": {"path": "/external", "mode": "stream-one"}
+      }
+    },
+    {"tag": "block", "protocol": "blackhole"}
+  ],
+  "routing": {
+    "rules": [
+      {"inboundTag": ["socks-in"], "outboundTag": "proxy"},
+      {"port": "0-65535", "outboundTag": "block"}
+    ]
+  }
+}

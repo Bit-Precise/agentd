@@ -1,0 +1,35 @@
+{
+  "log": {"loglevel": "warning"},
+  "api": {"tag": "api", "services": ["HandlerService"]},
+  "reverse": {"portals": [{"tag": "portal", "domain": "reverse.proxy"}]},
+  "inbounds": [
+    {
+      "tag": "api", "listen": "127.0.0.1", "port": 19299, "protocol": "dokodemo-door",
+      "settings": {"address": "127.0.0.1"}
+    },
+    {
+      "tag": "interconn", "listen": "127.0.0.1", "port": 19285, "protocol": "vless",
+      "settings": {"clients": [{"id": "bd3ea2d6-afd3-47cb-82a3-e102663b510c", "email": "bridge-wss"}], "decryption": "none"},
+      "streamSettings": {
+        "network": "ws", "security": "tls",
+        "tlsSettings": {"certificates": [{"certificateFile": "certs/server.crt", "keyFile": "certs/server.key"}]},
+        "wsSettings": {"path": "/interconn"}
+      }
+    },
+    {
+      "tag": "external", "listen": "127.0.0.1", "port": 19286, "protocol": "vless",
+      "settings": {"clients": [{"id": "84c6f6b0-743f-4c0a-93c3-9d526a6b0b21", "email": "access-client-wss"}], "decryption": "none"},
+      "streamSettings": {
+        "network": "ws", "security": "tls",
+        "tlsSettings": {"certificates": [{"certificateFile": "certs/server.crt", "keyFile": "certs/server.key"}]},
+        "wsSettings": {"path": "/external"}
+      }
+    }
+  ],
+  "outbounds": [{"tag": "api", "protocol": "freedom"}, {"tag": "direct", "protocol": "freedom"}, {"tag": "block", "protocol": "blackhole"}],
+  "routing": {"rules": [
+    {"inboundTag": ["api"], "outboundTag": "api"},
+    {"inboundTag": ["interconn", "external"], "outboundTag": "portal"},
+    {"port": "0-65535", "outboundTag": "block"}
+  ]}
+}

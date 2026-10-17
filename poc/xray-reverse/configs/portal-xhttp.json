@@ -1,0 +1,46 @@
+{
+  "log": {"loglevel": "warning"},
+  "reverse": {
+    "portals": [{"tag": "portal", "domain": "reverse.proxy"}]
+  },
+  "inbounds": [
+    {
+      "tag": "interconn",
+      "listen": "127.0.0.1",
+      "port": 19185,
+      "protocol": "vless",
+      "settings": {
+        "clients": [{"id": "bd3ea2d6-afd3-47cb-82a3-e102663b510c", "email": "bridge-xhttp"}],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "xhttpSettings": {"path": "/interconn", "mode": "stream-one"}
+      }
+    },
+    {
+      "tag": "external",
+      "listen": "127.0.0.1",
+      "port": 19186,
+      "protocol": "vless",
+      "settings": {
+        "clients": [{"id": "84c6f6b0-743f-4c0a-93c3-9d526a6b0b21", "email": "access-client-xhttp"}],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "xhttpSettings": {"path": "/external", "mode": "stream-one"}
+      }
+    }
+  ],
+  "outbounds": [
+    {"tag": "direct", "protocol": "freedom"},
+    {"tag": "block", "protocol": "blackhole"}
+  ],
+  "routing": {
+    "rules": [
+      {"inboundTag": ["interconn", "external"], "outboundTag": "portal"},
+      {"port": "0-65535", "outboundTag": "block"}
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+agents modified XHTTP packet-up transport
+
+Protocol/design reference:
+  XTLS/Xray-core, transport/internet/splithttp
+  https://github.com/XTLS/Xray-core/tree/0f127f934c6d7c10e4bb6acbe98033db9e5fd922/transport/internet/splithttp
+  Upstream license: Mozilla Public License 2.0 (see LICENSE in this directory).
+
+This directory implements a rewritten, modified packet-up transport in Go's
+standard library. It follows the upstream split HTTP idea (long GET download,
+sequenced bounded POST upload and bounded reordering), with a different wire
+format, mandatory per-request authorization and explicit connection lifecycle.
+It does not import or embed Xray, VLESS, Reverse, or Xray Mux. It is not a claim
+of wire compatibility with native Xray XHTTP configurations or all XHTTP modes.
+
+Files in this directory are provided under MPL-2.0. The complete license is
+included in LICENSE. Keep this provenance and the license with redistributed
+source; when distributing covered executable code, provide recipients the
+corresponding covered source as required by MPL-2.0.

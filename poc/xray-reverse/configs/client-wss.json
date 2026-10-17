@@ -1,0 +1,20 @@
+{
+  "log": {"loglevel": "warning"},
+  "inbounds": [{"tag": "socks-in", "listen": "127.0.0.1", "port": 19287, "protocol": "socks", "settings": {"auth": "noauth", "udp": false}}],
+  "outbounds": [
+    {
+      "tag": "proxy", "protocol": "vless",
+      "settings": {"address": "127.0.0.1", "port": 19286, "id": "84c6f6b0-743f-4c0a-93c3-9d526a6b0b21", "encryption": "none"},
+      "streamSettings": {
+        "network": "ws", "security": "tls",
+        "tlsSettings": {"serverName": "localhost", "pinnedPeerCertSha256": "GENERATE_WITH_PREPARE_PY"},
+        "wsSettings": {"path": "/external"}
+      }
+    },
+    {"tag": "block", "protocol": "blackhole"}
+  ],
+  "routing": {"rules": [
+    {"inboundTag": ["socks-in"], "outboundTag": "proxy"},
+    {"port": "0-65535", "outboundTag": "block"}
+  ]}
+}

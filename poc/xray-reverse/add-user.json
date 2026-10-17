@@ -1,0 +1,12 @@
+{
+  "inbounds": [{
+    "tag": "external",
+    "listen": "127.0.0.1",
+    "port": 19286,
+    "protocol": "vless",
+    "settings": {
+      "clients": [{"id": "84c6f6b0-743f-4c0a-93c3-9d526a6b0b21", "email": "access-client-wss"}],
+      "decryption": "none"
+    }
+  }]
+}

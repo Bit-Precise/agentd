@@ -1,0 +1,13 @@
+/bin/
+/dist/
+/coverage.out
+/state/
+/examples/**/state/
+/poc/xray-reverse/certs/
+/poc/xray-reverse/.generated/
+credentials.json
+.lock
+*.test
+.DS_Store
+__pycache__/
+*.pyc

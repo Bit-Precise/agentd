@@ -1,0 +1,63 @@
+# 初版 agentd 配置；运行还需 stateDir/credentials.json 的凭据和批准快照。
+# 说明：../../docs/agentd-config.md
+apiVersion: agents/v1alpha1
+kind: AgentConfig
+
+instance: https://instance1.example.com
+workspace: workspace1
+agent:
+  name: agentd1
+  stateDir: ./state
+
+# XHTTP/WSS 只负责承载；认证、连接及业务流由 agents 协议管理。
+transport:
+  type: xhttp
+  mode: packet-up
+  endpoint: https://connect.instance1.example.com/agent
+
+# 本机应用 → agentd → agents-edge → 已授权远端出口。
+ingress:
+  enabled: true
+  http:
+    enabled: true
+    listen: 127.0.0.1:8088
+  socks:
+    enabled: true
+    listen: 127.0.0.1:1080
+  tun:
+    enabled: false
+    name: agentd0
+    dns:
+      mode: fake-ip
+  routes:
+    - domain:
+        exact: cs101.edu.cn
+      ports: [443]
+      protocol: tls
+    - domain:
+        exact: oa.com
+      ports: [443]
+      protocol: tls
+  onUnmatched: reject
+
+# 远端访客 → gateway → agents-edge → agentd → 本地 HTTP 服务。
+serve:
+  enabled: true
+  services:
+    - name: demo1
+      origin: http://127.0.0.1:8080
+    - name: api1
+      origin: http://127.0.0.1:3000
+
+# 已授权访问端 → agents-edge → 此 agentd → 允许的目标域名。
+egress:
+  enabled: true
+  allow:
+    - domain:
+        exact: oa.com
+      ports: [443]
+      protocol: tls
+  deny:
+    - domain:
+        suffix: git.com
+      protocol: tls

@@ -1,0 +1,12 @@
+{
+  "inbounds": [{
+    "tag": "interconn",
+    "listen": "127.0.0.1",
+    "port": 19285,
+    "protocol": "vless",
+    "settings": {
+      "clients": [{"id": "bd3ea2d6-afd3-47cb-82a3-e102663b510c", "email": "bridge-wss"}],
+      "decryption": "none"
+    }
+  }]
+}

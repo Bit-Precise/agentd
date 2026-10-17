@@ -1,0 +1,21 @@
+{
+  "log": {"loglevel": "warning"},
+  "reverse": {"bridges": [{"tag": "bridge", "domain": "reverse.proxy"}]},
+  "outbounds": [
+    {
+      "tag": "interconn", "protocol": "vless",
+      "settings": {"address": "127.0.0.1", "port": 19285, "id": "bd3ea2d6-afd3-47cb-82a3-e102663b510c", "encryption": "none"},
+      "streamSettings": {
+        "network": "ws", "security": "tls",
+        "tlsSettings": {"serverName": "localhost", "pinnedPeerCertSha256": "GENERATE_WITH_PREPARE_PY"},
+        "wsSettings": {"path": "/interconn"}
+      }
+    },
+    {"tag": "direct", "protocol": "freedom"}, {"tag": "block", "protocol": "blackhole"}
+  ],
+  "routing": {"rules": [
+    {"domain": ["full:reverse.proxy"], "outboundTag": "interconn"},
+    {"inboundTag": ["bridge"], "outboundTag": "direct"},
+    {"port": "0-65535", "outboundTag": "block"}
+  ]}
+}
