@@ -13,8 +13,11 @@ import (
 )
 
 type controlMessage struct {
-	Type   string `json:"type"`
-	FlowID string `json:"flow_id,omitempty"`
+	Type           string    `json:"type"`
+	FlowID         string    `json:"flow_id,omitempty"`
+	Sequence       uint64    `json:"sequence,omitempty"`
+	LeaseExpiresAt time.Time `json:"lease_expires_at,omitempty"`
+	Error          string    `json:"error,omitempty"`
 }
 
 type openReply struct {
@@ -40,6 +43,7 @@ type Session struct {
 	mu        sync.Mutex
 	streams   map[string]*Stream
 	used      map[string]struct{}
+	renewals  map[string]*pendingRenewal
 }
 
 func newSession(ctx context.Context, conn net.Conn, principal Principal, cfg Config, server bool) (*Session, error) {
@@ -65,7 +69,7 @@ func newSession(ctx context.Context, conn net.Conn, principal Principal, cfg Con
 	s := &Session{mux: mux, principal: principal, config: cfg, server: server,
 		ctx: sctx, cancel: cancel, done: make(chan struct{}), controls: make(chan controlMessage, cfg.MaxStreams),
 		ready: make(chan *Stream, cfg.MaxStreams), slots: make(chan struct{}, cfg.MaxStreams),
-		streams: make(map[string]*Stream), used: make(map[string]struct{})}
+		streams: make(map[string]*Stream), used: make(map[string]struct{}), renewals: make(map[string]*pendingRenewal)}
 	// Only the dialer creates this reserved stream, before either API returns.
 	if server {
 		s.control, err = mux.AcceptStreamWithContext(sctx)
@@ -155,7 +159,32 @@ func (s *Session) readControls() {
 		if err := readFrame(s.control, &msg, s.config.MaxMetadataBytes); err != nil {
 			return
 		}
-		if msg.Type != "cancel" || !boundedName(msg.FlowID) {
+		if !boundedName(msg.FlowID) {
+			return
+		}
+		if msg.Type == "renew" {
+			if s.server || msg.Sequence == 0 || msg.LeaseExpiresAt.IsZero() || msg.Error != "" {
+				return
+			}
+			s.receiveRenewal(msg)
+			continue
+		}
+		if msg.Type == "renew_ack" {
+			if !s.server || msg.Sequence == 0 {
+				return
+			}
+			s.mu.Lock()
+			pending := s.renewals[msg.FlowID]
+			s.mu.Unlock()
+			if pending != nil && pending.sequence == msg.Sequence {
+				select {
+				case pending.reply <- msg:
+				default:
+				}
+			}
+			continue
+		}
+		if msg.Type != "cancel" || msg.Sequence != 0 || !msg.LeaseExpiresAt.IsZero() || msg.Error != "" {
 			return
 		}
 		s.mu.Lock()
@@ -290,6 +319,9 @@ func (s *Session) Open(ctx context.Context, request OpenRequest) (*Stream, error
 	if err := validateOpen(request); err != nil {
 		return nil, err
 	}
+	if !validLease(request.LeaseExpiresAt, request.Deadline, s.config.MaxLeaseDuration) {
+		return nil, ErrExpired
+	}
 	if err := s.takeSlot(); err != nil {
 		return nil, err
 	}
@@ -361,6 +393,10 @@ func (s *Session) Open(ctx context.Context, request OpenRequest) (*Stream, error
 		_ = stream.Close()
 		return nil, err
 	}
+	if !validLease(reply.Claims.LeaseExpiresAt, reply.Claims.Deadline, s.config.MaxLeaseDuration) {
+		_ = stream.Close()
+		return nil, ErrExpired
+	}
 	if err := stream.activate(*reply.Claims); err != nil {
 		_ = stream.Close()
 		return nil, err
@@ -420,7 +456,7 @@ func (s *Session) admit(raw *yamux.Stream) {
 		<-s.slots
 		return
 	}
-	if err := validateOpen(request); err != nil || !s.allowedPurpose(request.Purpose, false) || s.config.AuthorizeOpen == nil {
+	if err := validateOpen(request); err != nil || !validLease(request.LeaseExpiresAt, request.Deadline, s.config.MaxLeaseDuration) || !s.allowedPurpose(request.Purpose, false) || s.config.AuthorizeOpen == nil {
 		_ = writeFrame(raw, openReply{Error: "denied"}, s.config.MaxMetadataBytes)
 		_ = raw.Close()
 		<-s.slots
@@ -441,17 +477,30 @@ func (s *Session) admit(raw *yamux.Stream) {
 	if claims.Deadline.IsZero() {
 		claims.Deadline = request.Deadline
 	}
+	if claims.LeaseExpiresAt.IsZero() {
+		claims.LeaseExpiresAt = request.LeaseExpiresAt
+	}
 	claims.Deadline = earlier(claims.Deadline, s.principal.ExpiresAt)
-	if err != nil || ctx.Err() != nil || validateClaims(request, claims, s.principal.ExpiresAt) != nil {
+	if err != nil || ctx.Err() != nil || validateClaims(request, claims, s.principal.ExpiresAt) != nil || !validLease(claims.LeaseExpiresAt, claims.Deadline, s.config.MaxLeaseDuration) {
 		_ = writeFrame(raw, openReply{Error: "denied"}, s.config.MaxMetadataBytes)
 		_ = stream.close(false)
+		return
+	}
+	// The admitted lease must exist before a peer observes OPEN_OK and sends a
+	// renewal. Keep acknowledgement IO bounded independently of the flow lease.
+	if err = stream.activate(claims); err != nil {
+		_ = stream.Close()
+		return
+	}
+	if err = stream.SetWriteDeadline(time.Now().Add(s.config.OpenTimeout)); err != nil {
+		_ = stream.Close()
 		return
 	}
 	if err = writeFrame(raw, openReply{Claims: &claims}, s.config.MaxMetadataBytes); err != nil {
 		_ = stream.Close()
 		return
 	}
-	if err = stream.activate(claims); err != nil {
+	if err = stream.SetWriteDeadline(time.Time{}); err != nil {
 		_ = stream.Close()
 		return
 	}
@@ -465,6 +514,9 @@ func (s *Session) admit(raw *yamux.Stream) {
 func validateOpen(r OpenRequest) error {
 	if !boundedName(r.FlowID) || r.Deadline.IsZero() {
 		return ErrProtocol
+	}
+	if !r.LeaseExpiresAt.IsZero() && (r.LeaseExpiresAt.After(r.Deadline) || !r.LeaseExpiresAt.After(time.Now())) {
+		return ErrExpired
 	}
 	if !r.Deadline.After(time.Now()) {
 		return ErrExpired
@@ -496,6 +548,12 @@ func validateClaims(r OpenRequest, c OpenClaims, sessionExpiry time.Time) error 
 	}
 	if !c.Deadline.After(time.Now()) {
 		return ErrExpired
+	}
+	if !c.LeaseExpiresAt.IsZero() && (c.LeaseExpiresAt.After(c.Deadline) || !c.LeaseExpiresAt.After(time.Now())) {
+		return ErrExpired
+	}
+	if !r.LeaseExpiresAt.IsZero() && (c.LeaseExpiresAt.IsZero() || c.LeaseExpiresAt.After(r.LeaseExpiresAt)) {
+		return ErrUnauthorized
 	}
 	if r.Purpose != PurposeAccess && (c.Resource != r.Resource || c.Revision != r.Revision) {
 		return ErrUnauthorized

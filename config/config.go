@@ -40,10 +40,11 @@ type AgentConfig struct {
 }
 
 type TransportConfig struct {
-	Type     string `yaml:"type" json:"type"`
-	Endpoint string `yaml:"endpoint" json:"endpoint"`
-	Mode     string `yaml:"mode" json:"mode"`
-	CAFile   string `yaml:"caFile" json:"caFile,omitempty"`
+	Type      string `yaml:"type" json:"type"`
+	Endpoint  string `yaml:"endpoint" json:"endpoint"`
+	Mode      string `yaml:"mode" json:"mode"`
+	CAFile    string `yaml:"caFile" json:"caFile,omitempty"`
+	AllowHTTP bool   `yaml:"allowHTTP" json:"allowHTTP,omitempty"`
 }
 
 type ListenerConfig struct {
@@ -229,7 +230,7 @@ func (c *Config) validate(baseDir string) error {
 	if c.APIVersion != "agents/v1alpha1" || c.Kind != "AgentConfig" {
 		return errors.New("apiVersion must be agents/v1alpha1 and kind must be AgentConfig")
 	}
-	u, err := validateURL(c.Instance, "instance", true)
+	u, err := validateURL(c.Instance, "instance", true, c.Transport.AllowHTTP)
 	if err != nil {
 		return err
 	}
@@ -255,7 +256,7 @@ func (c *Config) validate(baseDir string) error {
 	if c.Transport.Mode != "packet-up" {
 		return fmt.Errorf("transport.mode %q unsupported: only packet-up is implemented", c.Transport.Mode)
 	}
-	u, err = validateURL(c.Transport.Endpoint, "transport.endpoint", false)
+	u, err = validateURL(c.Transport.Endpoint, "transport.endpoint", false, c.Transport.AllowHTTP)
 	if err != nil {
 		return err
 	}
@@ -392,13 +393,14 @@ func strictPort(s string) (int, error) {
 	return port, nil
 }
 
-func validateURL(raw, field string, rootOnly bool) (*url.URL, error) {
+func validateURL(raw, field string, rootOnly bool, allowHTTP ...bool) (*url.URL, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return nil, fmt.Errorf("%s: invalid URL: %w", field, err)
 	}
 	isOrigin := strings.HasPrefix(field, "serve.services[")
-	if u.Scheme != "https" && !(isOrigin && u.Scheme == "http") {
+	localHTTP := len(allowHTTP) > 0 && allowHTTP[0] && u.Scheme == "http" && (u.Hostname() == "localhost" || net.ParseIP(u.Hostname()).IsLoopback())
+	if u.Scheme != "https" && !(isOrigin && u.Scheme == "http") && !localHTTP {
 		return nil, fmt.Errorf("%s: HTTPS required (serve origins also support HTTP)", field)
 	}
 	if u.Host == "" || u.Opaque != "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || strings.Contains(raw, "#") {

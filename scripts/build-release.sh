@@ -11,7 +11,8 @@ Supported targets:
   darwin: amd64, arm64
   windows: amd64, 386
 
-Builds with CGO_ENABLED=0, -mod=readonly and -trimpath. Produces a tar.gz
+Builds both agents (server/console) and agentd (client) with CGO_ENABLED=0,
+-mod=readonly and -trimpath. SQLite uses the pure-Go modernc driver. Produces a tar.gz
 (Linux/macOS) or zip (Windows), plus a verified SHA256SUMS file. Use a separate
 output directory for each concurrent invocation. Sequential builds may share it.
 EOF
@@ -77,13 +78,16 @@ trap 'rm -rf -- "$scratch_dir"' EXIT
 cd "$repo_dir"
 
 binary_name=agentd
-if [[ "$target_os" == windows ]]; then binary_name=agentd.exe; fi
+server_name=agents
+if [[ "$target_os" == windows ]]; then binary_name=agentd.exe; server_name=agents.exe; fi
 export CGO_ENABLED=0 GOOS="$target_os" GOARCH="$target_arch" GOARM="$target_arm"
 # Never inherit an ambient FIPS experiment into ordinary release artifacts.
 export GOFIPS140=off
 go build -mod=readonly -trimpath -ldflags "-s -w -X main.Version=$release_version" \
   -o "$scratch_dir/$binary_name" ./cmd/agentd
-go list -mod=readonly -deps -json=Module ./cmd/agentd > "$scratch_dir/packages.json"
+go build -mod=readonly -trimpath -ldflags "-s -w -X main.Version=$release_version" \
+  -o "$scratch_dir/$server_name" ./cmd/agents
+go list -mod=readonly -deps -json=Module ./cmd/agentd ./cmd/agents > "$scratch_dir/packages.json"
 go env -json GOROOT GOVERSION > "$scratch_dir/toolchain.json"
 
 source_commit=$(git rev-parse --verify HEAD 2>/dev/null || true)
@@ -105,6 +109,7 @@ import zipfile
 
 repo, scratch, output = map(Path, sys.argv[1:4])
 target_os, arch, version, binary, commit, epoch_text = sys.argv[4:]
+server_binary = 'agents.exe' if target_os == 'windows' else 'agents'
 try:
     epoch = int(epoch_text)
     if epoch < 0:
@@ -123,11 +128,23 @@ if go_license is None:
     raise SystemExit(f'Missing installed Go toolchain LICENSE: {goroot}')
 files = {
     binary: (scratch / binary, 0o755),
+    server_binary: (scratch / server_binary, 0o755),
     'README.md': (repo / 'README.md', 0o644),
     'THIRD_PARTY_NOTICES.md': (repo / 'THIRD_PARTY_NOTICES.md', 0o644),
     'go.mod': (repo / 'go.mod', 0o644),
     'go.sum': (repo / 'go.sum', 0o644),
     'config.example.yaml': (repo / 'examples/agentd/config.yaml', 0o644),
+    'agents.example.yaml': (repo / 'examples/agents/config.yaml', 0o644),
+    'examples/agentd/config.yaml': (repo / 'examples/agentd/config.yaml', 0o644),
+    'examples/agentd/local.yaml': (repo / 'examples/agentd/local.yaml', 0o644),
+    'examples/agents/config.yaml': (repo / 'examples/agents/config.yaml', 0o644),
+    'docs/local-development.md': (repo / 'docs/local-development.md', 0o644),
+    'docs/build-and-release.md': (repo / 'docs/build-and-release.md', 0o644),
+    'docs/agentd-config.md': (repo / 'docs/agentd-config.md', 0o644),
+    'docs/backend-implementation.md': (repo / 'docs/backend-implementation.md', 0o644),
+    'edge/README.md': (repo / 'edge/README.md', 0o644),
+    'connection/README.md': (repo / 'connection/README.md', 0o644),
+    'transport/xhttp/README.md': (repo / 'transport/xhttp/README.md', 0o644),
     'licenses/xhttp/LICENSE': (repo / 'transport/xhttp/LICENSE', 0o644),
     'licenses/xhttp/NOTICE': (repo / 'transport/xhttp/NOTICE', 0o644),
     'licenses/go/LICENSE': (go_license, 0o644),
@@ -164,7 +181,7 @@ while remaining:
 payloads = {name: (path.read_bytes(), mode) for name, (path, mode) in files.items()}
 source = f'https://github.com/bit-precise/agentd/tree/{commit}' if commit else 'https://github.com/bit-precise/agentd'
 payloads['BUILDINFO'] = (
-    f'version={version}\nplatform={target_os}/{arch}\ncommit={commit or "unknown"}\nsource={source}\ngo_version={toolchain["GOVERSION"]}\n'.encode(),
+    f'version={version}\nplatform={target_os}/{arch}\ncommit={commit or "unknown"}\nsource={source}\ngo_version={toolchain["GOVERSION"]}\nbinaries=agentd,agents\n'.encode(),
     0o644,
 )
 
@@ -185,6 +202,7 @@ try:
             if z.testzip() is not None:
                 raise SystemExit('zip integrity check failed')
             assert z.read(f'{base}/{binary}') == payloads[binary][0]
+            assert z.read(f'{base}/{server_binary}') == payloads[server_binary][0]
     else:
         with temporary.open('wb') as raw:
             with gzip.GzipFile(filename='', fileobj=raw, mode='wb', mtime=epoch) as gz:
@@ -197,6 +215,7 @@ try:
                         tar.addfile(info, io.BytesIO(data))
         with tarfile.open(temporary, 'r:gz') as tar:
             assert tar.extractfile(f'{base}/{binary}').read() == payloads[binary][0]
+            assert tar.extractfile(f'{base}/{server_binary}').read() == payloads[server_binary][0]
     os.replace(temporary, archive)
 finally:
     temporary.unlink(missing_ok=True)

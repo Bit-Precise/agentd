@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const ProtocolVersion = 1
+const ProtocolVersion = 2
 
 type Role string
 
@@ -38,6 +38,7 @@ type Hello struct {
 	Token         string   `json:"token"`
 	Services      []string `json:"services,omitempty"`
 	EgressEnabled bool     `json:"egress_enabled,omitempty"`
+	Revision      uint64   `json:"revision,omitempty"`
 }
 
 // Principal is the authoritative identity returned by Authenticate, never a
@@ -53,6 +54,7 @@ type Principal struct {
 	ExpiresAt     time.Time `json:"expires_at"`
 	Services      []string  `json:"services,omitempty"`
 	EgressEnabled bool      `json:"egress_enabled,omitempty"`
+	Revision      uint64    `json:"revision,omitempty"`
 }
 
 type Welcome struct {
@@ -76,19 +78,23 @@ type OpenRequest struct {
 	Protocol    string      `json:"protocol,omitempty"`
 	Revision    uint64      `json:"revision"`
 	Deadline    time.Time   `json:"deadline"`
-	Capability  string      `json:"capability,omitempty"`
+	// LeaseExpiresAt is a short renewable authorization lease. Deadline remains
+	// the immutable maximum lifetime; zero retains legacy fixed-deadline mode.
+	LeaseExpiresAt time.Time `json:"lease_expires_at,omitempty"`
+	Capability     string    `json:"capability,omitempty"`
 }
 
 // OpenClaims is the receiver's authorized view. Only an AuthorizeOpen callback
 // may produce these claims. They do not assert a cryptographic capability exists.
 type OpenClaims struct {
-	FlowID      string      `json:"flow_id"`
-	Purpose     Purpose     `json:"purpose"`
-	Resource    string      `json:"resource,omitempty"`
-	Destination Destination `json:"destination,omitempty"`
-	Protocol    string      `json:"protocol,omitempty"`
-	Revision    uint64      `json:"revision"`
-	Deadline    time.Time   `json:"deadline"`
+	FlowID         string      `json:"flow_id"`
+	Purpose        Purpose     `json:"purpose"`
+	Resource       string      `json:"resource,omitempty"`
+	Destination    Destination `json:"destination,omitempty"`
+	Protocol       string      `json:"protocol,omitempty"`
+	Revision       uint64      `json:"revision"`
+	Deadline       time.Time   `json:"deadline"`
+	LeaseExpiresAt time.Time   `json:"lease_expires_at,omitempty"`
 }
 
 type AuthenticateFunc func(context.Context, Hello) (Principal, error)
@@ -103,6 +109,9 @@ type Config struct {
 	OpenTimeout      time.Duration
 	MaxStreams       int
 	MaxMetadataBytes int
+	// MaxLeaseDuration caps each renewable lease, including updates from Edge.
+	// Only the server side may renew; the default ceiling is one minute.
+	MaxLeaseDuration time.Duration
 	// MaxFlows bounds replay tombstones, including closed streams. Reconnect
 	// after exhaustion; closed flow IDs may never be reused in this session.
 	MaxFlows      int

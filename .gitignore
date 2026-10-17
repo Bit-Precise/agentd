@@ -2,6 +2,7 @@
 /dist/
 /coverage.out
 /state/
+/.run/
 /examples/**/state/
 /poc/xray-reverse/certs/
 /poc/xray-reverse/.generated/
@@ -11,3 +12,13 @@ credentials.json
 .DS_Store
 __pycache__/
 *.pyc
+/agents.yaml
+/config.local.yaml
+admin.token
+*.enrollment.key
+agentd-enrollment-key.txt
+agentd-user-token.txt
+*.db
+*.db-wal
+*.db-shm
+*.db-journal

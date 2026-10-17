@@ -61,7 +61,7 @@ func TestNoMultiplexedStreamBeforeAuthentication(t *testing.T) {
 			_ = readFrame(c, &r, 16384)
 		}},
 		{"role", func(c net.Conn) {
-			_ = writeFrame(c, Hello{Version: 1, Role: "admin", Workspace: "w", AgentID: "a", Token: "t"}, 16384)
+			_ = writeFrame(c, Hello{Version: ProtocolVersion, Role: "admin", Workspace: "w", AgentID: "a", Token: "t"}, 16384)
 			var r handshakeReply
 			_ = readFrame(c, &r, 16384)
 		}},
@@ -100,7 +100,7 @@ func TestHandshakeTimeoutAndContextCancel(t *testing.T) {
 	defer func() { _ = c.Close(); _ = d.Close() }()
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err = Client(ctx, c, Hello{Version: 1, Role: RoleAccess, Workspace: "w", AgentID: "a", Token: "t"}, Config{})
+	_, err = Client(ctx, c, Hello{Version: ProtocolVersion, Role: RoleAccess, Workspace: "w", AgentID: "a", Token: "t"}, Config{})
 	if err == nil {
 		t.Fatal("cancelled handshake succeeded")
 	}
@@ -115,9 +115,9 @@ func TestClientRejectsWelcomeIdentityConfusion(t *testing.T) {
 		if err := readFrame(b, &h, 16384); err != nil {
 			return
 		}
-		_ = writeFrame(b, handshakeReply{Welcome: &Welcome{Version: 1, Principal: Principal{Role: RoleProvider, Workspace: "w", AgentID: "a", ConnectorID: "c", Generation: 1, SessionID: "s", ExpiresAt: time.Now().Add(time.Minute)}}}, 16384)
+		_ = writeFrame(b, handshakeReply{Welcome: &Welcome{Version: ProtocolVersion, Principal: Principal{Role: RoleProvider, Workspace: "w", AgentID: "a", ConnectorID: "c", Generation: 1, SessionID: "s", ExpiresAt: time.Now().Add(time.Minute)}}}, 16384)
 	}()
-	_, err := Client(t.Context(), a, Hello{Version: 1, Role: RoleAccess, Workspace: "w", AgentID: "a", Token: "t"}, Config{})
+	_, err := Client(t.Context(), a, Hello{Version: ProtocolVersion, Role: RoleAccess, Workspace: "w", AgentID: "a", Token: "t"}, Config{})
 	if !errors.Is(err, ErrAuthentication) {
 		t.Fatalf("welcome identity confusion: %v", err)
 	}

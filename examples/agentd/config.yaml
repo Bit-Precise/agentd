@@ -1,4 +1,4 @@
-# 初版 agentd 配置；运行还需 stateDir/credentials.json 的凭据和批准快照。
+# agentd 配置；先 enroll 保存凭据，控制台批准后 run。
 # 说明：../../docs/agentd-config.md
 apiVersion: agents/v1alpha1
 kind: AgentConfig

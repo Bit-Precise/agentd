@@ -1,0 +1,37 @@
+# 配合 agents init 的默认 localhost:8080；仅用于本机联调。
+apiVersion: agents/v1alpha1
+kind: AgentConfig
+instance: http://localhost:8080
+workspace: demo
+agent:
+  name: local-agent
+  stateDir: ./state/agentd
+transport:
+  type: xhttp
+  mode: packet-up
+  endpoint: http://localhost:8080/agent
+  allowHTTP: true
+ingress:
+  enabled: true
+  http:
+    enabled: true
+    listen: 127.0.0.1:8088
+  socks:
+    enabled: true
+    listen: 127.0.0.1:1080
+  routes:
+    - domain: {exact: example.com}
+      ports: [443]
+      protocol: tls
+  onUnmatched: reject
+serve:
+  enabled: true
+  services:
+    - name: hello
+      origin: http://127.0.0.1:8090
+egress:
+  enabled: true
+  allow:
+    - domain: {exact: example.com}
+      ports: [443]
+      protocol: tls

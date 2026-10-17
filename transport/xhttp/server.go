@@ -200,6 +200,7 @@ func (h *Handler) serveDown(w http.ResponseWriter, r *http.Request, id, principa
 	}
 	rc := http.NewResponseController(w)
 	c := newConn(r.Context(), h.cfg.MaxQueuedPackets, h.cfg.MaxPacketBytes)
+	c.principal = principal
 	// A response write deadline also runs while an HTTP/2 stream is idle. Keep
 	// it scoped to Write/Flush and serialize resets against Close's forced
 	// deadline, otherwise a successful write can accidentally undo cancellation.

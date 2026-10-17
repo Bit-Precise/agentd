@@ -39,7 +39,7 @@ class BuildReleaseTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "scripts").mkdir()
         shutil.copyfile(SCRIPT, self.root / "scripts/build-release.sh")
-        for name in ["README.md", "THIRD_PARTY_NOTICES.md", "go.mod", "go.sum", "examples/agentd/config.yaml", "transport/xhttp/LICENSE", "transport/xhttp/NOTICE"]:
+        for name in ["README.md", "THIRD_PARTY_NOTICES.md", "go.mod", "go.sum", "examples/agentd/config.yaml", "examples/agentd/local.yaml", "examples/agents/config.yaml", "docs/local-development.md", "docs/build-and-release.md", "docs/agentd-config.md", "docs/backend-implementation.md", "edge/README.md", "connection/README.md", "transport/xhttp/README.md", "transport/xhttp/LICENSE", "transport/xhttp/NOTICE"]:
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(name + "\n")
@@ -63,10 +63,13 @@ class BuildReleaseTest(unittest.TestCase):
                 raise SystemExit(0)
             if sys.argv[1] == 'list':
                 assert '-deps' in sys.argv and '-json=Module' in sys.argv
+                assert './cmd/agents' in sys.argv and './cmd/agentd' in sys.argv
                 print(json.dumps({'Module': {'Path':'github.com/bit-precise/agentd', 'Main':True}}))
                 print(json.dumps({'Module': {'Path':'fixture.example/dependency', 'Version':'v1.0.0', 'Dir':str(pathlib.Path.cwd() / 'fixture-module')}}))
                 raise SystemExit(0)
             assert sys.argv[1] == 'build'
+            if os.environ.get('FAIL_AGENTS') and sys.argv[-1] == './cmd/agents':
+                raise SystemExit(8)
             assert '-mod=readonly' in sys.argv and '-trimpath' in sys.argv
             assert os.environ['CGO_ENABLED'] == '0'
             assert os.environ['GOFIPS140'] == 'off'
@@ -74,6 +77,7 @@ class BuildReleaseTest(unittest.TestCase):
             output.write_text(json.dumps({
                 'os': os.environ['GOOS'], 'arch': os.environ['GOARCH'],
                 'arm': os.environ['GOARM'],
+                'command': sys.argv[-1],
                 'ldflags': sys.argv[sys.argv.index('-ldflags') + 1],
             }))
             """))
@@ -106,10 +110,13 @@ class BuildReleaseTest(unittest.TestCase):
                 archive = self.build(goos, arch, arm)
                 base = archive.name.removesuffix(".tar.gz").removesuffix(".zip")
                 binary = "agentd.exe" if goos == "windows" else "agentd"
+                server_binary = "agents.exe" if goos == "windows" else "agents"
                 if goos == "windows":
                     with zipfile.ZipFile(archive) as package:
                         read = package.read
                         data = json.loads(read(f"{base}/{binary}"))
+                        server_data = json.loads(read(f"{base}/{server_binary}"))
+                        self.assertTrue(read(f"{base}/agents.example.yaml"))
                         self.assertEqual(package.testzip(), None)
                         buildinfo = read(f"{base}/BUILDINFO").decode()
                         self.assertTrue(read(f"{base}/licenses/xhttp/LICENSE"))
@@ -120,6 +127,9 @@ class BuildReleaseTest(unittest.TestCase):
                 else:
                     with tarfile.open(archive) as package:
                         data = json.load(package.extractfile(f"{base}/{binary}"))
+                        server_data = json.load(package.extractfile(f"{base}/{server_binary}"))
+                        self.assertEqual(package.getmember(f"{base}/{server_binary}").mode, 0o755)
+                        self.assertTrue(package.extractfile(f"{base}/docs/local-development.md").read())
                         self.assertEqual(package.getmember(f"{base}/{binary}").mode, 0o755)
                         buildinfo = package.extractfile(f"{base}/BUILDINFO").read().decode()
                         self.assertTrue(package.extractfile(f"{base}/licenses/xhttp/LICENSE").read())
@@ -129,7 +139,11 @@ class BuildReleaseTest(unittest.TestCase):
                         self.assertFalse(any(name.endswith('/secret.txt') for name in package.getnames()))
                 self.assertEqual((data["os"], data["arch"], data["arm"]), (goos, arch, arm))
                 self.assertIn("-X main.Version=v0.1.0", data["ldflags"])
-                self.assertEqual(len(buildinfo.splitlines()), 5)
+                self.assertEqual(data["command"], "./cmd/agentd")
+                self.assertEqual(server_data["command"], "./cmd/agents")
+                self.assertEqual((server_data["os"], server_data["arch"], server_data["arm"]), (goos, arch, arm))
+                self.assertEqual(len(buildinfo.splitlines()), 6)
+                self.assertIn("binaries=agentd,agents", buildinfo.splitlines())
                 self.assertIn("go_version=go1.27.2", buildinfo.splitlines())
                 self.assertNotIn(r"\n", buildinfo)
         lines = (self.output / "SHA256SUMS").read_text().splitlines()
@@ -152,6 +166,12 @@ class BuildReleaseTest(unittest.TestCase):
         env = dict(self.env, FAIL_GO="1")
         result = self.invoke("--os", "linux", "--arch", "amd64", "--version", "v1", "--out", str(self.output), env=env)
         self.assertEqual(result.returncode, 7)
+        self.assertFalse(self.output.exists())
+
+    def test_server_build_failure_does_not_publish_client_only_package(self):
+        env = dict(self.env, FAIL_AGENTS="1")
+        result = self.invoke("--os", "linux", "--arch", "amd64", "--version", "v1", "--out", str(self.output), env=env)
+        self.assertEqual(result.returncode, 8)
         self.assertFalse(self.output.exists())
 
     def test_packaging_reproducible(self):

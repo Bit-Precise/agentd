@@ -13,22 +13,31 @@ import (
 // Stream is an admitted flow. Close cancels both peers; CloseWrite only sends FIN
 // and leaves the read half available for the peer's final response.
 type Stream struct {
-	raw         *yamux.Stream
-	session     *Session
-	request     OpenRequest
-	claims      OpenClaims
-	ctx         context.Context
-	cancel      context.CancelFunc
-	mu          sync.Mutex
-	closed      bool
-	writeClosed bool
-	readEOF     bool
-	timer       *time.Timer
+	raw            *yamux.Stream
+	session        *Session
+	request        OpenRequest
+	claims         OpenClaims
+	ctx            context.Context
+	cancel         context.CancelFunc
+	mu             sync.Mutex
+	closed         bool
+	writeClosed    bool
+	readEOF        bool
+	timer          *time.Timer
+	leaseEpoch     uint64
+	leaseExpired   bool
+	leaseSequence  uint64
+	remoteRenewing bool
+	renewGate      chan struct{}
+	readDeadline   time.Time
+	writeDeadline  time.Time
 }
 
 func newStream(session *Session, raw *yamux.Stream, request OpenRequest) *Stream {
 	ctx, cancel := context.WithCancel(session.ctx)
-	return &Stream{raw: raw, session: session, request: request, ctx: ctx, cancel: cancel}
+	s := &Stream{raw: raw, session: session, request: request, ctx: ctx, cancel: cancel, renewGate: make(chan struct{}, 1)}
+	s.renewGate <- struct{}{}
+	return s
 }
 
 func (s *Stream) Request() OpenRequest     { return s.request }
@@ -44,10 +53,38 @@ func (s *Stream) activate(claims OpenClaims) error {
 		return ErrClosed
 	}
 	s.claims = claims
-	if err := s.raw.SetDeadline(claims.Deadline); err != nil {
+	if err := s.resetLeaseLocked(); err != nil {
 		return err
 	}
-	s.timer = time.AfterFunc(time.Until(claims.Deadline), func() { _ = s.Close() })
+	return nil
+}
+
+func (s *Stream) resetLeaseLocked() error {
+	deadline := s.leaseDeadline()
+	if !deadline.After(time.Now()) {
+		return ErrExpired
+	}
+	if err := s.raw.SetReadDeadline(earlier(s.readDeadline, deadline)); err != nil {
+		return err
+	}
+	if err := s.raw.SetWriteDeadline(earlier(s.writeDeadline, deadline)); err != nil {
+		return err
+	}
+	s.leaseEpoch++
+	epoch := s.leaseEpoch
+	if s.timer != nil {
+		s.timer.Stop()
+	}
+	s.timer = time.AfterFunc(time.Until(deadline), func() {
+		s.mu.Lock()
+		if s.closed || epoch != s.leaseEpoch || time.Now().Before(s.leaseDeadline()) {
+			s.mu.Unlock()
+			return
+		}
+		s.leaseExpired = true
+		s.mu.Unlock()
+		_ = s.Close()
+	})
 	return nil
 }
 
@@ -132,6 +169,8 @@ func (s *Stream) SetDeadline(t time.Time) error {
 	if s.closed {
 		return net.ErrClosed
 	}
+	s.readDeadline = t
+	s.writeDeadline = t
 	return s.raw.SetDeadline(earlier(t, s.leaseDeadline()))
 }
 
@@ -141,6 +180,7 @@ func (s *Stream) SetReadDeadline(t time.Time) error {
 	if s.closed {
 		return net.ErrClosed
 	}
+	s.readDeadline = t
 	return s.raw.SetReadDeadline(earlier(t, s.leaseDeadline()))
 }
 
@@ -150,11 +190,12 @@ func (s *Stream) SetWriteDeadline(t time.Time) error {
 	if s.closed {
 		return net.ErrClosed
 	}
+	s.writeDeadline = t
 	return s.raw.SetWriteDeadline(earlier(t, s.leaseDeadline()))
 }
 
 func (s *Stream) leaseDeadline() time.Time {
-	return earlier(s.request.Deadline, s.claims.Deadline)
+	return earlier(earlier(s.request.Deadline, s.claims.Deadline), s.claims.LeaseExpiresAt)
 }
 
 var _ net.Conn = (*Stream)(nil)

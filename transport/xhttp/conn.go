@@ -68,6 +68,18 @@ type conn struct {
 	packetSize    int
 	writePacket   func([]byte) error
 	local, remote net.Addr
+	principal     string // immutable server-authorized metadata; never a raw token
+}
+
+// AuthenticatedPrincipal returns the opaque identity bound by the server's
+// Authorize callback to this accepted GET/POST session. Client connections and
+// unrelated net.Conn values have no authenticated transport metadata.
+func AuthenticatedPrincipal(c net.Conn) (string, bool) {
+	accepted, ok := c.(*conn)
+	if !ok || accepted.principal == "" {
+		return "", false
+	}
+	return accepted.principal, true
 }
 
 func newConn(ctx context.Context, packets, packetSize int) *conn {

@@ -1,0 +1,21 @@
+# 生产配置示例；用 agents init 生成私有状态目录和 admin.token。
+# 所有文件路径相对于此配置文件。不要提交真实凭据、数据库密码或私钥。
+serverURL: https://agents.example.com
+edgeURL: https://connect.agents.example.com/agent
+listenAddress: 0.0.0.0:8443
+# 本例假定公开 443 入口以 HTTPS 回源到 8443；直接暴露 8443 时，两个 URL 也加 :8443。
+stateDir: ./state/agents
+adminTokenFile: ./state/agents/admin.token
+database:
+  type: sqlite
+  dsn: ./state/agents/agents.db
+tls:
+  certFile: ./certs/server.crt
+  keyFile: ./certs/server.key
+developmentHTTP: false
+
+# PostgreSQL 可替换上述 database；不是多控制节点开关：
+# database:
+#   type: postgres
+#   dsn: postgres://agents@127.0.0.1:5432/agents?sslmode=require
+# YAML 不做环境变量插值，认证配置必须保存在受保护位置。

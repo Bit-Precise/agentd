@@ -1,6 +1,8 @@
 # agentd 本地配置与三角色模型
 
-状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS 接入及 Serve/Egress 初版运行时已实现；其余内容保留为目标规范。当前实现支持的范围和限制以 [运行说明](../README.md) 为准，特别是 TUN、控制面和在线续期尚未交付。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
+状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前范围以 [运行说明](../README.md) 和 [本地联调](local-development.md) 为准，TUN、WSS、OIDC 与多节点仍未交付。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
+
+实际接入为 `agentd enroll --config FILE --key-file PRIVATE_KEY_FILE`，批准后 `agentd run --config FILE`。本机 HTTP 联调显式设置 `transport.allowHTTP: true` 且 instance/endpoint 都用 loopback；生产使用 HTTPS 与可选 `caFile`。见 [local.yaml](../examples/agentd/local.yaml)。凭据与轮询状态不放入 YAML。
 
 **1. 同一进程可以同时担任三种角色**
 

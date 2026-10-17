@@ -85,7 +85,7 @@ func (e *edgeFixture) accept(c net.Conn) {
 		if h.Workspace != "workspace1" || h.AgentID != "agent-1" {
 			return connection.Principal{}, errors.New("wrong identity")
 		}
-		p := connection.Principal{Role: h.Role, Workspace: h.Workspace, AgentID: h.AgentID, ConnectorID: h.ConnectorID, Generation: 1, ExpiresAt: time.Now().Add(time.Minute)}
+		p := connection.Principal{Role: h.Role, Workspace: h.Workspace, AgentID: h.AgentID, ConnectorID: h.ConnectorID, Generation: 1, Revision: h.Revision, ExpiresAt: time.Now().Add(time.Minute)}
 		switch h.Role {
 		case connection.RoleProvider:
 			if h.Token != "provider-secret" {

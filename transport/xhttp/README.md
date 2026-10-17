@@ -32,6 +32,11 @@ in-flight response writes and POST body reads. The caller owns the surrounding
 connection/request limits. A wrapper must preserve `http.ResponseController`
 support (`Unwrap` when wrapping ResponseWriter).
 
+`AuthenticatedPrincipal(acceptedConn)` returns the immutable opaque principal
+bound by the server authorizer, so a higher-level handshake can enforce identity
+consistency. It returns no identity for client-side or unrelated connections;
+the returned value is a verified identifier, never the original bearer token.
+
 HTTPS is the default on both ends. `AllowHTTP: true` permits **loopback only** for
 tests/local reverse-proxy deployment, not public plaintext endpoints. The
 transport rejects redirects even if an injected `HTTPClient` would follow them.

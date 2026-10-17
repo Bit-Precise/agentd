@@ -1,95 +1,83 @@
 # agents / agentd
 
-agentd 的首个可运行开发版本。agents 管理认证、连接与业务流；修改版 XHTTP 只负责 HTTP 承载。本阶段优先实现 XHTTP `packet-up`，WSS 延后。
+一个可自托管的服务发布与 TLS 域名出口系统。`agents` 提供控制 API、浏览器控制台、服务入口和单节点 Edge；`agentd` 在设备上组合运行 ingress、serve、egress。设备主动连接服务端，无需开放公网入站端口。
 
-目录和职责参考本机 cloudflared 的固定版本 `8e090e5bfa7a53e824fb2d7eb276f8ab08337b80`：命令入口、配置、连接、运行编排和 supervisor 分开。没有引入 cloudflared 的云端 API、QUIC 或 Xray Reverse。
+当前可以完成创建 Workspace/用户、设备注册与批准、服务访问、指定 Agent 出口、限时授权和撤销。这仍是开发版本：登录使用本产品用户 Token，尚未接入 OIDC，也不兼容 Cloudflare Tunnel、Headscale/Tailscale 或原生 Xray 的线协议。
 
 ```text
-cmd/agentd/          CLI：run、config validate、version
-config/             三角色 YAML 严格解析与校验
-credentials/        预置注册凭据、批准快照、文件权限及进程锁
-connection/         agents 握手、权威身份、yamux 流与取消
-transport/xhttp/    修改版 packet-up；纯 net/http，无 Xray 运行时依赖
-policy/             IDNA、域名/端口匹配、allow/deny
-policygate/         有界 TLS ClientHello 检查与原字节重放
-ingress/            本地 HTTP CONNECT、SOCKS5
-orchestration/      本地配置与批准范围交集、Serve/Egress、局部撤销
-supervisor/         角色运行、断线退避重连、退出
-stream/             双向复制、半关闭和错误取消
-integration/        本机 Edge fixture 与三角色端到端测试
+浏览器 ── 服务鉴权 / gateway ──┐
+                               ├─ agents Edge ── provider 会话 ── agentd ── 本地源站
+应用 ── agentd ingress ─────────┘                                    └─ TLS 目标
+                控制台 / control API ── state ── SQLite 或 PostgreSQL
 ```
 
-**构建与验证**
+## 快速开始
 
-需要 Go 1.27，与参考的 cloudflared 工具链保持一致；CI 固定 Go 1.27.2。模块路径为 `github.com/bit-precise/agentd`。
+需要 Go 1.27（CI 固定 1.27.2）、Python 3（打包与本地示例）。SQLite 使用 pure-Go `modernc.org/sqlite`，两个二进制均可 `CGO_ENABLED=0` 构建。
 
 ```sh
 go mod download
-make agentd
-bin/agentd config validate --config examples/agentd/config.yaml
-make test lint
-make race
-go test -mod=readonly -v ./integration -run TestAgentdThreeRolesOverModifiedXHTTP
+make all
+bin/agents init --config .run/agents.yaml
+bin/agents serve --config .run/agents.yaml
 ```
 
-GitHub Actions 按 cloudflared 的 9 个常规目标构建 Linux、macOS、Windows 产物，普通提交提供 artifact，`v*` tag 提供 GitHub Release 和 SHA256SUMS。矩阵、本地交叉构建命令及平台边界见 [构建与发布](docs/build-and-release.md)。
+默认入口为 `http://localhost:8080/console/`，仅监听 loopback。`init` 在私有状态目录生成管理员 Token 文件，只输出文件位置；使用该 Token 登录控制台。完整的注册、批准、Serve 与 Egress 联调步骤见 [本地运行手册](docs/local-development.md)。不要提交管理员 Token、注册密钥或生成的状态目录。
 
-集成测试自动创建 loopback TLS Edge、HTTP 源站、HTTPS 目标和临时状态目录；同时运行三角色，验证 Serve、HTTP CONNECT、SOCKS5、目标证书保持不变、未匹配拒绝与服务撤回。测试完成后关闭监听与进程内任务，不需要外部账号或 CDN。
-
-**运行 agentd**
-
-配置格式见 [规范](docs/agentd-config.md) 和 [示例](examples/agentd/config.yaml)。当前 transport 使用：
-
-```yaml
-transport:
-  type: xhttp
-  mode: packet-up
-  endpoint: https://connect.instance1.example.com/agent
-  # caFile: ./development-ca.pem  # 可选私有 CA，不提供跳过证书校验开关
-```
-
-运行前，控制端或操作者需在 `agent.stateDir/credentials.json` 预置凭据和批准快照。Linux/macOS 目录权限为 0700、凭据文件为 0600；Windows 校验私有 DACL，不能仅依赖 chmod。一个本地 profile 只能由一个进程占用。以下展示字段，不是可以投入使用的凭据：
-
-```json
-{
-  "version": 1,
-  "workspace": "workspace1",
-  "agentId": "CONTROL_ASSIGNED_AGENT_ID",
-  "providerToken": "PROVISIONED_PROVIDER_TOKEN",
-  "accessToken": "PROVISIONED_ACCESS_TOKEN",
-  "approval": {
-    "revision": 1,
-    "expiresAt": "REPLACE_WITH_AN_ABSOLUTE_RFC3339_EXPIRY",
-    "services": {"demo1": "http://127.0.0.1:8080"},
-    "egress": [{"domain": {"exact": "oa.com"}, "ports": [443], "protocol": "tls"}],
-    "deny": []
-  }
-}
-```
-
-ingress 需要 accessToken，serve/egress 需要 providerToken。Edge 必须实现 [agents 会话协议](connection/README.md)，验证 Token 并根据其可信注册表生成 Principal；不能直接把客户端 Hello 当作身份。批准快照和本地配置必须同时允许对应服务/目标，不能仅修改 YAML 扩权。
+控制台创建 Workspace、成员与注册密钥后，设备执行：
 
 ```sh
-bin/agentd run --config /path/to/config.yaml
+bin/agentd config validate --config /path/to/agentd.yaml
+bin/agentd enroll --config /path/to/agentd.yaml --key-file /private/path/enrollment.key
+# 管理员在控制台核对并批准该设备的期望配置。
+bin/agentd run --config /path/to/agentd.yaml
 ```
 
-Linux/macOS 的 SIGINT/SIGTERM、Windows 的 Ctrl+C 关闭监听、连接和流。Linux/macOS 的 SIGHUP 重新读取配置，当前支持已启动 provider 的 Serve 映射及 Egress 限制更新；Windows 修改配置需重启。本地收紧会取消正在拨号和已连接的相关流。身份、监听、ingress 和 transport 变化，以及初次启用原本未启动的 provider，需重启。新增能力仍必须匹配既有批准快照，不会因重载获得授权或续期。注册凭据不写入日志。
+注册保存独立的控制/访问/提供方凭据。已注册 profile 不会被 enroll 覆盖；用户身份、设备身份和获准能力分别检查。一个设备可以同时发布本地服务、提供出口，并作为客户端访问其他获准出口。
 
-**本阶段已经实现的边界**
+## 工程结构
 
-- XHTTP 使用长 GET 下行、带序号的短 POST 上行。逐请求认证、会话绑定、重排/去重、缓冲与并发上限、deadline、取消、关闭都由本包实现。它是修改版线协议，**不兼容全部原生 Xray XHTTP 配置**，未实现 stream-one/stream-up。见 [承载说明](transport/xhttp/README.md)。
-- 会话认证之后使用成熟的 yamux 多路复用；access 候选流与已授权 provider 流分开。每流有期限、并发上限、独立取消与半关闭，不能用访问角色发起提供方流。
-- Serve 每个流只承载一个 HTTP 请求，支持流式响应和升级；它只连接批准的固定源站，校验服务 Host，剥离平台保留身份/Cookie，过滤源站的保留 Cookie 和 Domain Cookie。
-- Egress 只接受批准范围与本地范围的交集，DNS 查询结果固定后再拨号；默认拒绝 loopback、link-local/metadata、multicast 和未指定地址，允许已批准域名解析到企业私网。测试通过可信注入拨号器使用 loopback 目标。
-- HTTP/SOCKS 仅监听 loopback、未匹配目标拒绝，不自动直连。本阶段本机代理信任可访问该端口的本机进程，尚无按本机用户隔离的代理认证；部署范围是可信单用户开发环境。
-- 外层 TLS + HTTPS 回源采用既定的受信 CDN 模型，没有额外的内层加密。
+客户端参考 cloudflared 的 supervisor、连接与运行编排分层；后端参考 Headscale 的命令入口、持久注册、状态管理、策略与数据库职责拆分，使用本项目自己的实体和 API。没有复制其网络协议或整个服务端。[来源说明](THIRD_PARTY_NOTICES.md)
 
-**尚未交付的功能**
+| 目录 | 当前职责 |
+|---|---|
+| `cmd/agents`、`control` | init/serve、HTTP API、Token/浏览器会话、CSRF、服务登录兑换 |
+| `control/types`、`control/state` | Workspace、成员、设备、批准、路由、授权、决策与变更通知 |
+| `control/db` | SQLite/PostgreSQL、显式 schema、组合约束、事务与 revision 条件更新 |
+| `control/assets` | Go embed 中文控制台；无外部脚本或 npm 构建依赖 |
+| `edge` | 权威身份绑定、连接目录、精确提供方选择、流与撤销 |
+| `cmd/agentd`、`controlclient` | enroll/run、批准配置轮询与期望配置提交 |
+| `config`、`credentials` | 三角色 YAML、受保护凭据、profile 进程锁 |
+| `connection`、`transport/xhttp` | agents 会话/流协议、yamux、修改版 packet-up 承载 |
+| `policy`、`policygate` | 域名/端口策略、有界 ClientHello 解析与原字节重放 |
+| `ingress`、`orchestration`、`supervisor` | HTTP/SOCKS、源站/出口拨号、局部收紧、重连与控制面监督 |
+| `control/servertest`、`integration` | 真实 HTTP API/Edge/agentd 联调及底层回归 |
 
-本阶段不是完整生产版本。仓库中的 Edge 是集成测试 fixture，不是可部署的多租户 agents-control/gateway/edge 产品。OIDC 注册、审批 API、签名快照分发、生产路由目录、服务端单活仲裁、跨节点、浏览器登录和生产指标尚未实现。
+## 配置、部署与验证
 
-批准文件目前由受信操作者预置；它不是已经实现的签名控制面。FlowCapability 签名验证留给会话授权回调，本机 fixture 通过可信策略验证。会话/流有绝对截止时间，尚无在线租约续期；到期主动关闭并按既有有效凭据重连，批准快照到期需重新取得批准。
+- [服务端配置](examples/agents/config.yaml)：HTTPS 入口、数据库与私有状态。
+- [客户端配置](examples/agentd/config.yaml) / [本机配置](examples/agentd/local.yaml)：三角色独立启用。
+- [配置说明](docs/agentd-config.md)、[运行手册](docs/local-development.md)、[构建发布](docs/build-and-release.md)。
+- [后端实现说明](docs/backend-implementation.md)：当前代码的 Headscale 职责映射、实体、状态机、API 与请求路由。
+- [架构设计](docs/agents-agentd-architecture.md) 与历史审查包含长期目标；当前实现以 README、运行手册和代码为准。旧 Reverse PoC 不替代当前架构的验收。
 
-TUN 配置可校验，但 `run` 明确拒绝启用 TUN；内核接入、DNS/FakeDNS 接管与退出恢复后续实现。WSS 延后。真实 CDN 的缓存、流式响应、超时、限额、回源身份和 session 粘性尚未验收，不能由本机 HTTP/1.1 与 HTTP/2 测试推导。
+```sh
+make test lint
+make race
+go test -mod=readonly -race ./control/servertest ./edge ./integration
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
+```
 
-代码来源及许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+常规测试使用临时 SQLite、loopback HTTP/TLS 目标和临时凭据，无需外部账号/CDN。CI 单独启动 PostgreSQL 验证迁移、持久化、revision 冲突和租户约束。发布保留 Linux/macOS/Windows 的 9 个目标，每个包同时包含 `agents` 和 `agentd`；交叉编译不等于对应设备已完成真机验证。
+
+## 认证与当前边界
+
+- 控制台 Token 换取 HttpOnly 会话；Cookie mutation 校验 CSRF/Origin。服务使用独立 host-only 会话与一次性兑换，仍逐次检查授权。Token 仅创建时展示，数据库保存其哈希。
+- 一个 `agents` 进程维护 SQL 状态与内存连接/流目录。SQLite/PostgreSQL 可切换，当前全量事务快照不是多控制节点架构；不提供多 Edge 迁移。
+- 服务访问连接批准的固定源站；Egress 精确选择 Agent，检查域名/SNI和拨号地址，不回落到 Edge、其他 Workspace 或客户端直连。
+- 修改版 XHTTP 为长 GET 下行与有序短 POST 上行；有认证、去重、背压、取消与预算。未实现 WSS、stream-one/stream-up，未宣称原生 Xray 全协议兼容或通过真实 CDN 验收。
+- 采用受信 CDN + HTTPS 回源，不额外套内层 TLS。生产需实际 DNS、证书、回源身份与缓存配置；不自动申请 ACME。
+- 本地 HTTP/SOCKS 仅监听 loopback，信任可访问端口的本机进程，尚无按本机用户隔离的代理认证。TUN 配置可解析，但运行时明确拒绝；内核/DNS 接管未实现。
+- 批准配置在线轮询；本地收紧、撤销、失联与流到期关闭相关资源。长流续期重新授权，并有硬期限；重连不重放业务。详见 [Edge](edge/README.md) 和 [connection](connection/README.md)。
+- 在线 Agent 的控制/访问/提供方 Token 临近到期时自动延长期限，保持原 TokenID/hash；这是续期，不是秘密轮换。离线超过 Token 有效期（30 天）仍需新注册密钥与新 profile，原身份恢复尚未实现。用户可在控制台为自己重签 Token，管理员可为其他用户重签；旧 Bearer 失效，已有浏览器会话仍按原期限有效。
+- 尚无 OIDC、完整公钥签名快照/FlowCapability、自动秘密轮换、生产指标告警、平台安装器与生产容量承诺。可运行联调不等于生产加固完成。

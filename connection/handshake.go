@@ -34,7 +34,11 @@ func normalizedConfig(cfg Config) (Config, error) {
 	if cfg.MaxFlows == 0 {
 		cfg.MaxFlows = 65536
 	}
+	if cfg.MaxLeaseDuration == 0 {
+		cfg.MaxLeaseDuration = time.Minute
+	}
 	if cfg.SessionTTL < 0 || cfg.HandshakeTimeout < 0 || cfg.OpenTimeout < 0 ||
+		cfg.MaxLeaseDuration <= 0 || cfg.MaxLeaseDuration > time.Minute ||
 		cfg.MaxStreams < 1 || cfg.MaxStreams > 4096 || cfg.MaxMetadataBytes < 256 ||
 		cfg.MaxMetadataBytes > 1024*1024 || cfg.MaxFlows < cfg.MaxStreams || cfg.MaxFlows > 1048576 {
 		return Config{}, fmt.Errorf("invalid connection configuration")

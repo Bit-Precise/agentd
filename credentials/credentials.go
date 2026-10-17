@@ -44,6 +44,8 @@ type Credentials struct {
 	AgentID       string   `json:"agentId"`
 	ProviderToken string   `json:"providerToken,omitempty"`
 	AccessToken   string   `json:"accessToken,omitempty"`
+	ControlToken  string   `json:"controlToken,omitempty"`
+	ControlURL    string   `json:"controlUrl,omitempty"`
 	Approval      Approval `json:"approval"`
 }
 
@@ -94,10 +96,10 @@ func Load(stateDir string) (*Credentials, error) {
 	if c.Version != 1 || c.Workspace == "" || c.AgentID == "" {
 		return nil, errors.New("credentials require version 1, workspace and agentId")
 	}
-	if c.ProviderToken == "" && c.AccessToken == "" {
+	if c.ProviderToken == "" && c.AccessToken == "" && c.ControlToken == "" {
 		return nil, errors.New("credentials contain no session token")
 	}
-	if c.Approval.Revision == 0 || !c.Approval.ExpiresAt.After(time.Now()) {
+	if c.Approval.Revision == 0 || (!c.Approval.ExpiresAt.After(time.Now()) && (c.ControlToken == "" || c.ControlURL == "")) {
 		return nil, errors.New("approval snapshot is missing or expired")
 	}
 	for i := range c.Approval.Egress {

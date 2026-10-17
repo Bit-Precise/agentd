@@ -608,3 +608,15 @@ func TestConcurrentReadPreservesFinalPacketBeforeEOF(t *testing.T) {
 		}
 	}
 }
+
+func TestAcceptedPrincipalMetadata(t *testing.T) {
+	h, ts, cfg := setup(t, true, ServerConfig{})
+	client := mustDial(t, ts.URL, cfg)
+	accepted := mustAccept(t, h)
+	if principal, ok := AuthenticatedPrincipal(accepted); !ok || principal != "alice" {
+		t.Fatalf("missing accepted identity: %q %v", principal, ok)
+	}
+	if _, ok := AuthenticatedPrincipal(client); ok {
+		t.Fatal("client-side connection claimed server-authorized identity")
+	}
+}

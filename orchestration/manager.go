@@ -179,6 +179,32 @@ func (m *Manager) Services() []string {
 
 func (m *Manager) ActiveFlows() int { m.mu.Lock(); defer m.mu.Unlock(); return len(m.flows) }
 
+// UpdateApproval replaces a control-approved snapshot without changing local
+// intent. Equal revisions may still narrow capabilities after local withdrawal.
+func (m *Manager) UpdateApproval(next credentials.Approval) error {
+	m.mu.Lock()
+	if next.Revision < m.approval.Revision || !next.ExpiresAt.After(time.Now()) {
+		m.mu.Unlock()
+		return errors.New("stale or expired approval")
+	}
+	next.Services = maps.Clone(next.Services)
+	next.Egress = cloneRules(next.Egress)
+	next.Deny = cloneRules(next.Deny)
+	m.approval = next
+	var revoked []activeFlow
+	for _, f := range m.flows {
+		if m.check(f.request) != nil {
+			revoked = append(revoked, f)
+		}
+	}
+	m.mu.Unlock()
+	for _, f := range revoked {
+		f.cancel()
+		_ = f.close()
+	}
+	return nil
+}
+
 func (m *Manager) EgressEnabled() bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
