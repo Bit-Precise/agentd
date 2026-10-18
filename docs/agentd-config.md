@@ -1,8 +1,12 @@
 # agentd 本地配置与三角色模型
 
-状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前范围以 [运行说明](../README.md) 和 [本地联调](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md) 为准，TUN、WSS、OIDC 与多节点仍未交付。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
+状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前范围以 [运行说明](../README.md) 和 [本地联调](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md) 为准，TUN、WSS、agentd Device Flow 与多节点仍未交付。agents Console 的上游 OIDC 已实现。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
 
 实际接入为 `agentd enroll --config FILE --key-file PRIVATE_KEY_FILE`，批准后 `agentd run --config FILE`。本机 HTTP 联调显式设置 `transport.allowHTTP: true` 且 instance/endpoint 都用 loopback；生产使用 HTTPS 与可选 `caFile`。见 [local.yaml](../examples/agentd/local.yaml)。凭据与轮询状态不放入 YAML。
+
+2026-10-18 目标身份修订见 [User/SA 与 Hydra Device Flow](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md)：一个 profile 固定一个 Workspace 和一个 User/SA 主体，三种运行角色共享该主体。拟议 `agentd login --config FILE` 使用标准 Device Flow，在浏览器选择 Workspace/本人或 SA，取得限定用途的 AT 后换取独立设备凭据；`enroll --key-file` 保留为 SA 无人值守路径。SA 固定属于一个 Workspace，选择与管理要求 maintainer+。这些命令/模型增量尚未实现。
+
+本地 YAML 不保存 OAuth device_code、AT 或共享 client secret；配置中的 Workspace 只是与授权结果核对的提示，不能通过编辑 YAML 更换主体。选中 Workspace 后，CLI 应保存/核对当前 profile 的 Workspace 和私有身份；与已有 profile 不符时要求显式新建隔离 profile，不能覆盖其凭据。
 
 **1. 同一进程可以同时担任三种角色**
 
@@ -10,7 +14,7 @@
 
 | 角色 | 流量方向 | 本地配置 | 控制端职责 |
 |---|---|---|---|
-| ingress | 本机应用 → agentd → Edge → 远端出口 | HTTP CONNECT、SOCKS5、TUN 入口及送往 Edge 的域名范围 | 访问会话认证、EgressRoute 选择、用户授权 |
+| ingress | 本机应用 → agentd → Edge → 远端出口 | HTTP CONNECT、SOCKS5、TUN 入口及送往 Edge 的域名范围 | 访问会话认证、EgressRoute 选择、User/SA 主体授权 |
 | serve | 浏览器 → gateway → Edge → agentd → 本地服务 | 服务名与本地 HTTP/HTTPS 源站的映射 | PublishedRoute、名称分配、访问授权与发布批准 |
 | egress | 访问端 → Edge → 此 agentd → 目标网站 | 此 Agent 愿意提供的域名、端口、协议范围 | 能力审批、指定出口路由及使用授权 |
 
@@ -173,19 +177,21 @@ ingress.routes 与 egress.allow 均是匹配并集，不使用 first-match 或 p
 
 ```text
 AgentRegistration / 控制会话
-├─ ingress：ClientSession（绑定当前 User、Workspace）
+├─ ingress：ClientSession（绑定当前 User/SA 主体、Workspace）
 └─ provider：Connector（绑定 AgentRegistration、Tunnel）
    ├─ serve flows
    └─ egress flows
 ```
 
-首版 ingress 使用独立的访问会话/承载连接；serve 与 egress 可复用 provider 连接。它们同属一个 agentd supervisor，物理连接数量不由角色数量决定。后续若复用更多承载，仍须有独立认证上下文，不能让 provider 设备身份自动成为某个访问用户。
+ingress 使用独立的访问会话/承载连接；serve 与 egress 可复用 provider 连接。它们同属一个 agentd supervisor 和一个固定 User/SA 主体，物理连接数量不由角色数量决定。access 与 provider 的凭据用途和业务授权仍独立，不能让 provider Token 自动成为浏览器用户或复用人类批准者的 Grant。
 
-每个角色分别记录 `disabled / pending_auth / pending_approval / syncing / ready / degraded / failed` 等状态，并附原因；服务项还应区分名称冲突、源站不可用等。某一角色等待批准或访问用户退出，不应使另两个仍有效角色停机。进程健康、控制连接健康和每个角色业务健康分别暴露。
+每个角色分别记录 `disabled / pending_auth / pending_approval / syncing / ready / degraded / failed` 等状态，并附原因；服务项还应区分名称冲突、源站不可用等。某一角色等待批准不应使其他有效角色停机；profile 的实际 User/SA 主体失效则使其所有角色失效。浏览器退出不是 SA 或设备主体撤销。进程健康、控制连接健康和每个角色业务健康分别暴露。
 
 | 变更/事件 | 预期行为 |
 |---|---|
-| ingress 关闭或用户会话失效 | 停止本机接入、关闭对应访问流；有效 provider 流继续 |
+| ingress 关闭或 access 凭据失效 | 停止本机接入、关闭对应访问流；有效 provider 流继续 |
+| profile 的 User/SA 主体失效 | 该 profile 的全部角色停止准入与续期，撤销对应会话及业务流 |
+| SA 的人类创建者/批准者离职 | 不影响已绑定 SA 的 profile；审计关联保留 |
 | serve 删除一项 | 停止本 Agent 为该项接新流并关闭其流；其他服务和 egress 继续 |
 | egress 收紧或关闭 | 本机立即执行新限制；serve 和仍获准目标不受影响 |
 | 新增服务/出口范围 | 提交 desired，批准并应用后 ready；不影响其他已就绪项 |
@@ -215,4 +221,4 @@ AgentRegistration / 控制会话
 - 控制面失联期间本地拒绝立即执行；重新连接后旧审批不能恢复已关闭能力。
 - 重载不改变授权截止时间，不抢占名称，不删除其他副本/管理员资源，不把待批准扩权提前上线。
 
-这些是完整设计的验收条件；已实现子集及本机自动化测试见 [运行说明](../README.md)。当前重载仅支持 provider 的服务及出口限制，其他运行参数需重启；TUN、控制面与在线续期仍按后续功能处理。
+这些是完整设计的验收条件；已实现子集及本机自动化测试见 [运行说明](../README.md)。当前重载仅支持 provider 的服务及出口限制，其他运行参数需重启；TUN、WSS、Service Account 与 Hydra Device Flow 仍待交付，当前注册/控制轮询及临近到期续期已实现。

@@ -20,6 +20,7 @@ bin/agentd run --config /path/to/config.yaml
 
 - [生产配置示例](examples/agentd/config.yaml) / [本机配置示例](examples/agentd/local.yaml)
 - [客户端配置](docs/agentd-config.md)
+- [User / Service Account 与 Hydra Device Flow 目标设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md)（待实现）
 - [完整服务端及本机联调手册](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md)
 - [构建与发布](docs/build-and-release.md)
 
@@ -50,6 +51,8 @@ python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
 协议 v2 支持有界短租约续期，不能与旧 v1 服务端混用。详见 [connection](connection/README.md) 与 [XHTTP](transport/xhttp/README.md)。
 
-当前实现 HTTP CONNECT/SOCKS 与 TLS 域名出口；TUN 运行时明确拒绝，WSS 尚未实现。用户认证目前由 agents 提供 Token/浏览器会话，未接入外部 OIDC。真实 CDN 部署仍需验证长响应、缓存、请求预算和回源配置。
+当前实现 HTTP CONNECT/SOCKS 与 TLS 域名出口；TUN 运行时明确拒绝，WSS 尚未实现。agents Console 已支持上游 OIDC；agentd 二进制目前仍通过注册密钥接入，尚未实现 `agentd login` 的 OAuth Device Flow。
+
+目标设计在同一二进制增加 Hydra Device Flow：用户在浏览器完成 OIDC 后选择有权限的 Workspace，再选择本人或该空间的 Service Account；SA 仅 maintainer 及以上可选择/管理，不能登录控制台。限定 Workspace 和主体的 OAuth access token 只用于一次设备注册兑换，运行时使用各 Agent 独立凭据。SA 固定属于一个 Workspace，可以对应多个 Agent；无人值守注册密钥将只绑定 SA。该设计尚未改变上述现有命令或凭据格式。真实 CDN 部署仍需验证长响应、缓存、请求预算和回源配置。
 
 发布矩阵与 GitHub CLI 对齐：Linux 四种架构的 tar.gz/DEB/RPM、macOS 两种架构的 ZIP 和 universal PKG，以及 Windows 三种架构的 ZIP/MSI；共 21 个产品，加校验和文件共 22 个公开资产。签名、安装验证及本地 FIPS 构建说明见[发布说明](docs/build-and-release.md)。

@@ -1,8 +1,8 @@
 # agents / agentd 架构设计草案
 
-日期：2026-10-17。状态：已开始实现 agentd 与修改版 XHTTP packet-up，并建立本机集成测试；完整控制面、网关及生产运行语义仍为设计目标。当前实际支持范围以 [README](../README.md) 为准；文中未交付的 API、在线续期和时限不表示已验证的产品承诺。WSS 延后，XHTTP 优先。
+日期：2026-10-18 修订。本文保留长期目标架构；独立 agents 仓库已交付 Control/Edge/Console、管理 REST、浏览器 OIDC 和 agentd/XHTTP v2 基础链路，Service Account 与 Hydra Device Flow 尚未实现。当前实际支持范围以两仓 README 为准，未来 Tunnel 分层、多节点及未验收时限不表示已交付承诺。身份模型与注册流程以 [User/SA 与 Hydra Device Flow 设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md) 为权威，优先于旧审查记录。
 
-本方案保留 cloudflared 的 Tunnel、Connector、Connection、Route 与源站规则分层，借鉴 Headscale 的持久注册身份、身份分离、注册审批和策略分发。agents 自管认证、连接目录、业务流与授权；XHTTP/WSS 只提供面向 HTTP/CDN 的承载，具体 CDN 兼容性需要验收，不要求 VLESS、Xray Reverse/Mux 或 core.Instance。具体 agents 会话与流协议尚未实现。完整证据与源码版本见 [调研记录](agents-agentd-research.md)，逐项对齐与有意差异见 [对齐审查](agents-agentd-alignment.md)。
+本方案保留 cloudflared 的 Tunnel、Connector、Connection、Route 与源站规则分层，借鉴 Headscale 的持久注册身份、身份分离、注册审批和策略分发。agents 自管认证、连接目录、业务流与授权；XHTTP/WSS 只提供面向 HTTP/CDN 的承载，具体 CDN 兼容性需要验收，不要求 VLESS、Xray Reverse/Mux 或 core.Instance。当前 agents 会话与流协议已实现 v2，WSS 仍延后。完整证据与源码版本见 [调研记录](agents-agentd-research.md)，逐项对齐与有意差异见 [对齐审查](agents-agentd-alignment.md)。
 
 “对齐”指资源语义和架构原则，不表示 Cloudflare Tunnel、Tailscale/Headscale 的线协议、API 或配置文件兼容。Cloudflare 服务端未开源，本方案对其服务端行为的依据是官方公开文档和客户端可见的交互；agents 服务端是我们自己的实现。
 
@@ -10,13 +10,16 @@
 
 - 一个 agents 部署是一个 Instance，有固定域名，例如 `instance1.example.com`。
 - Instance 下有多个 Workspace。User 是实例级身份，可通过 Membership 同时加入多个 Workspace。
+- Service Account 固定且只能属于一个 Workspace，可以对应多个 Agent；不作为人类 User、不能登录 Console，只能由 maintainer 及以上管理/选用。
+- 每个 Agent 固定一个 Workspace 和一个 User/SA 运行主体；`createdBy`、人类批准者与运行身份分开。个人设备可使用本人 User，服务器 profile 必须使用 SA。
+- agentd 同一二进制支持 Hydra OAuth Device Flow：人类 OIDC 登录后选择 Workspace 与本人/SA，再以限定用途的 AT 换每设备独立凭据；无人值守注册密钥绑定 SA。
 - Workspace 角色为 owner、maintainer、developer、guest；另有实例级 instance admin，内部标识为 `instance_admin`。
 - Workspace 域名为 `workspace1.instance1.example.com`。
 - agentd 接入后获得稳定名称，例如 `agentd1.workspace1.instance1.example.com`。
 - agentd 发布本地 Web 服务后获得独立子域名，例如 `demo1.workspace1.instance1.example.com`。
 - Web 服务默认仅当前 Workspace 的有效成员可访问；可显式批准匿名公开。
 - Web 服务可改为仅指定用户访问，或共享给同一 Instance 内多个 Workspace 的成员。资源归属不随分享变化，分享不授予 Workspace 成员或管理身份。
-- 访问统一使用有期限的 AccessGrant：资源为已发布 Web 服务或 TLS 出口规则，主体为单个 User 或 Workspace 成员组；Web 服务还允许匿名主体。每条授权独立起止、撤销并可与其他授权同时存在。
+- 访问统一使用有期限的 AccessGrant：主体为 User、明确的 SA 或 Workspace 人类成员组；Web 服务的浏览器入口还允许匿名主体。SA 必须由支持机器主体的消费路径使用，不把设备凭据当浏览器凭据。每条授权独立起止、撤销并可与其他授权同时存在。
 - 客户端 agentd 可提供 HTTP CONNECT、SOCKS5 或 TUN 接入，将 TLS 流量交给 agents-edge 按域名规则选择远端 agentd 出口。
 - 出口模式保持目标业务 TLS 端到端加密。第一版支持 TCP 上的 TLS；SSH 是后续协议插件。
 - 不提供私网地址分配、子网宣告、任意 IP 可达性、WireGuard、P2P 打洞或三层转发。
@@ -27,7 +30,7 @@
 
 **2. 两种模式必须独立建模**
 
-这里区分两种被提供的业务能力；访问角色 ingress 是它们之外的本机接入职责。serve 与 egress 可以共享一个 provider Connector 的双向承载会话，通过 agents 的 flow_id、purpose、FlowLease、FlowCapability 和业务 handler 隔离；ingress 使用绑定用户的独立 access 会话。一个进程可以同时承担三种角色，但设备身份、访问授权与提供能力不能互相替代。承载层可建立一条或多条连接，不强制所有控制流和业务流共用唯一物理连接。
+这里区分两种被提供的业务能力；访问角色 ingress 是它们之外的本机接入职责。serve 与 egress 可以共享一个 provider Connector 的双向承载会话，通过 agents 的 flow_id、purpose、FlowLease、FlowCapability 和业务 handler 隔离；ingress 使用绑定同一 User/SA 主体的独立 access 会话。一个进程可以同时承担三种角色，但凭据用途、访问授权与提供能力不能互相替代。承载层可建立一条或多条连接，不强制所有控制流和业务流共用唯一物理连接。
 
 | 维度 | Web 发布：Serve | 域名出口：TLS Egress |
 |---|---|---|
@@ -35,7 +38,7 @@
 | 目标示例 | `demo1.workspace1.instance1.example.com` | `cs101.edu.cn:443` |
 | 客户端是否必须有 agentd | 否 | 是 |
 | 目标业务 TLS 终止位置 | gateway 接收浏览器 HTTPS；启用受信 CDN 时按该入口链路终止 | 原始应用与远端目标服务之间；中间全程不终止 |
-| 用户认证 | OIDC 登录，由 oauth2-proxy/认证适配器接入 | 登录后的代理客户端凭据绑定用户及 Workspace |
+| 消费者认证 | 浏览器 OIDC/User 或明确匿名策略，与 provider 主体分离 | 代理客户端凭据绑定 User/SA、Agent 及 Workspace |
 | 授权对象 | PublishedRoute / AccessPolicy | EgressRoute / AccessPolicy / 批准的出口能力 |
 | agentd 末端行为 | 根据 Serve 源站规则转发到本地源站 | 在出口所在网络解析域名并连接目标 |
 
@@ -45,15 +48,16 @@
 
 | 组件 | 职责 | 权限与状态边界 |
 |---|---|---|
-| agents-control | User/Workspace/Membership、隧道注册、名称分配、路由、能力审批、策略编译、凭据生命周期、审计 | 持久化业务事实；不承载业务正文 |
+| agents-control | User/ServiceAccount/Workspace/Membership、Hydra login/consent、注册兑换、名称分配、路由、能力审批、凭据生命周期、审计 | 持久化业务事实；不承载业务正文 |
+| agents-hydra | 标准 OAuth Device Authorization、轮询与 AT 签发/introspection | 独立 OAuth issuer；Admin API 仅供受信 Control，设备 public client 无共享秘密 |
 | agents-gateway | 公网 Web/L7 FrontDoor、浏览器身份认证、PublishedRoute 与 AccessGrant 决策、Serve 请求流和 ServeAdmission 签发 | 不持有 agentd 反向连接；只能通过受信内部接口调用 Edge |
 | agents-edge | agents 会话认证与准入、XHTTP/WSS 承载、Connector/Connection 目录、反向业务流与出口调度 | 数据面；持有有限期策略与会话租约、连接和活动流状态 |
 | agents-console | Instance 与 Workspace 管理页面 | 调用 control API；没有独立授权判定权 |
-| identity adapter | 对接 OIDC/oauth2-proxy、浏览器登录及短期应用会话 | 确认用户身份；Workspace 和资源权限由 agents 决定 |
+| identity adapter | Control 对接上游 OIDC、维护人类浏览器会话并实现 Hydra login/consent app | 认证真实批准人；Workspace/SA 选择、权限与设备主体由 agents 决定 |
 | certificate worker | DNS、域名所有权和 ACME 证书申请/续期 | 独立保存 DNS API 凭据，gateway/Edge 只拿所需证书 |
 | agentd | supervisor/orchestration、ingress 本机接入、serve 源站代理、egress 出口、agents 会话与承载适配 | 每个 Workspace profile 独立配置、凭据和运行状态 |
 
-首版交付 `agents` 和 `agentd` 两个二进制。`agents run` 可在同一部署单元内包含 control、gateway、edge、console，但四者仍按独立的逻辑安全边界实现；oauth2-proxy 可作为部署依赖。后续可拆成 `agents control`、`agents gateway`、`agents edge` 独立进程。公网 Serve 请求必须经过 gateway，不能通过 Edge 的内部入口绕过认证和资源授权。
+当前交付 `agents` 和 `agentd` 两个二进制，服务端已有 `agents control`、`agents edge`、`agents console` 三个进程和 `agents serve` 单进程开发模式。gateway 是独立逻辑安全边界，当前不要求单列进程。下一版增加独立 Hydra 依赖，不能用它替代 Control 的业务授权。公网 Serve 请求必须经过 gateway，不能通过 Edge 的内部入口绕过认证和资源授权。
 
 ```mermaid
 flowchart TB
@@ -167,7 +171,8 @@ Edge 不实现以下能力：任意端口代理、按网络地址选择路由、
 | InstanceRole | user_id、role=instance_admin | 实例管理授权，界面称 instance admin |
 | Workspace | id、instance_id、slug、状态、配额 | 持久化租户 |
 | Membership | workspace_id、user_id、role、status | 多对多关系；同一用户在不同 Workspace 角色独立 |
-| AgentRegistration | id、workspace_id、name、ownership、credential_hash/version、approved_capabilities、状态 | agentd 安装/profile 的持久注册身份与名称；包括纯访问客户端 |
+| ServiceAccount | id、固定 workspace_id、name、status、created_by | 一个 SA 可对应多个设备；只有 maintainer+ 管理/选用，不能建立 Console 会话 |
+| AgentRegistration | id、workspace_id、name、principal_type/id、created_by、credential_hash/version、approved_capabilities、状态 | 固定资源归属与唯一 User/SA 主体；包括纯访问客户端，不能静默改绑 |
 | Tunnel | id、workspace_id、name、ownership、capabilities、状态 | cfd 风格的稳定逻辑隧道 |
 | AgentTunnelBinding | workspace_id、agent_registration_id、tunnel_id、approved_capabilities | 注册身份可运行哪些 Tunnel 的批准关系 |
 | Connector | id、workspace_id、agent_registration_id、tunnel_id、runtime_generation、版本、心跳、状态 | 一次提供方运行；重启产生新 ID |
@@ -178,9 +183,10 @@ Edge 不实现以下能力：任意端口代理、按网络地址选择路由、
 | AccessPolicy | id、workspace_id、条件、效果、revision | 资源访问约束与决策版本；主体授权由 AccessGrant 集合表达 |
 | AccessGrant | id、resource_type/id、resource_workspace_id、permission、subject_type/id、starts_at、expires_at、revoked_at、created_by | 限定 PublishedRoute 的 service.access 或 EgressRoute 的 egress.use；匿名仅适用于 Web 服务 |
 | ShareInvitation | resource_id、resource_workspace_id、已请求邮箱、邀请期限、拟授予起止时间、状态、redeemed_user_id | 邮箱验证后绑定用户并创建指定时间窗的授权，不授予 Workspace Membership |
-| EnrollmentKey | workspace_id、限定 Tunnel/能力、使用次数、过期时间、token_hash | 注册引导凭据 |
+| EnrollmentKey | workspace_id、service_account_id、角色/能力上限、使用次数、过期时间、token_hash、created_by | SA 无人值守注册引导凭据；旧 User key 只按迁移规则兼容 |
+| EnrollmentAuthorization | Hydra issuer/client/challenge 关联、workspace_id、principal、human_actor_user_id、role ceiling、消费状态 | 一次 Device Flow 的受信选择与一次兑换记录，不能用同一 AT 批量注册 |
 | TunnelCredential | tunnel_id、credential_id、类型、状态 | 属于 Tunnel 的长期运行授权凭据；不充当设备身份 |
-| ClientSession | user_id、workspace_id、agent_registration_id、凭据版本、期限 | 用户作为访问方的代理会话；不等于持久设备注册 |
+| ClientSession | principal_type/id、workspace_id、agent_registration_id、凭据版本、期限 | User/SA 作为访问方的代理会话；不等于人类 Console 会话 |
 | DeviceKey（可选） | agent_registration_id、key_id、public_key、状态、轮换版本 | 后续持钥认证强化的公开部分；不是首版接入前提 |
 | DataPlaneLease | workspace_id、principal、connection_role、capabilities、connector/client_session_id、edge_id、generation、期限 | agents access/provider 会话的有限期准入租约，不等于业务流授权 |
 | ServeAdmission | resource_workspace_id、principal、route/rule、canonical_host/path、revision、audience、期限 | gateway 对一个 Serve 请求的授权凭证；尚未选择 Connector |
@@ -196,7 +202,11 @@ erDiagram
     INSTANCE ||--o{ USER : knows
     USER ||--o{ MEMBERSHIP : joins
     WORKSPACE ||--o{ MEMBERSHIP : grants
+    WORKSPACE ||--o{ SERVICE_ACCOUNT : owns
     WORKSPACE ||--o{ AGENT_REGISTRATION : registers
+    USER o|--o{ AGENT_REGISTRATION : user_principal
+    SERVICE_ACCOUNT o|--o{ AGENT_REGISTRATION : service_account_principal
+    SERVICE_ACCOUNT ||--o{ ENROLLMENT_KEY : enrolls_with
     WORKSPACE ||--o{ TUNNEL : owns
     AGENT_REGISTRATION ||--o{ DEVICE_KEY : optionally_strengthens
     AGENT_REGISTRATION ||--o{ AGENT_TUNNEL_BINDING : authorized_for
@@ -214,7 +224,7 @@ erDiagram
     EGRESS_ROUTE ||--o{ ACCESS_GRANT : grants_use
 ```
 
-按“每个 agentd 接入后都有稳定名字”的要求，所有安装/profile 先创建 AgentRegistration，`agentd1.workspace1.instance1.example.com` 绑定这个注册身份。纯访问客户端也有注册名称、control 会话和登录后的 ClientSession，不需要为了访问别人而创建服务 Tunnel。
+图中的 User/SA 主体关系是 XOR，Agent 必须且只能绑定其中一个；SA 与 Agent 必须同 Workspace，User 则必须具有有效 Membership。`createdBy` 不能充当这两个关系之一。按“每个 agentd 接入后都有稳定名字”的要求，所有安装/profile 先创建 AgentRegistration，`agentd1.workspace1.instance1.example.com` 绑定这个注册身份。纯访问客户端也有注册名称、control 会话和绑定主体的 ClientSession，不需要为了访问别人而创建服务 Tunnel。
 
 提供 serve/egress 能力时，默认再创建一个专属 Tunnel 并建立 AgentTunnelBinding；也可以经授权加入已有 Tunnel。这个默认一对一是本产品的使用约定，不是 cfd 的强制要求。提供方每次启动产生新的 Connector，关联注册身份与 Tunnel；保持本地注册凭据与状态重启后名称不变。Connector 生命周期仍遵循 cfd：[client/config.go](https://github.com/cloudflare/cloudflared/blob/8e090e5bfa7a53e824fb2d7eb276f8ab08337b80/client/config.go#L23)。卸载并丢失注册凭据且无法通过受控恢复流程恢复时属于重新注册，不依赖主机名自动冒认原身份。
 
@@ -236,6 +246,8 @@ Workspace 的资源与成员边界更接近 Cloudflare Account，而非 Zone 或
 | 访问默认 member-only Web 服务 | 是 | 是 | 是 | 是 |
 | 使用 TLS 出口 | 必须命中访问策略 | 必须命中访问策略 | 必须命中访问策略 | 必须命中访问策略 |
 | 注册个人 agentd 作为访问客户端 | 是 | 是 | 是 | 是，仅 access 能力 |
+| 创建/管理本 Workspace SA 与 SA 注册密钥 | 是 | 是 | 否 | 否 |
+| Device Flow 中选择 SA 注册服务器设备 | 是 | 是 | 否 | 否 |
 | 创建个人 Tunnel、发布自己的私有服务 | 是 | 是 | 是 | 否 |
 | 管理全部 Tunnel / ingress / 服务路由 | 是 | 是 | 仅自己的资源 | 否 |
 | 修改自己的源站地址 | 是 | 是 | 在允许的源站策略内 | 否 |
@@ -252,7 +264,7 @@ Workspace 的资源与成员边界更接近 Cloudflare Account，而非 Zone 或
 
 instance admin（`instance_admin`）管理实例域名、身份提供方、用户启停、Workspace 创建/暂停/删除、配额和灾难恢复。默认不隐式成为所有 Workspace 的业务访问主体；需要通过明确的成员授权或受审计的紧急访问操作进入。实例操作者实际控制数据库和 Edge，因此这不是对实例管理员的密码学隔离承诺。
 
-个人 AgentRegistration 和个人 Tunnel 由创建者管理，成员离开后默认暂停并由 maintainer 转移或删除。团队注册身份和团队 Tunnel 由 Workspace 持有，通过限定能力的非交互凭据维护，不绑定某一员工的长期登录会话。个人访问会话始终要求当前用户具有有效 Membership。借鉴的是 Headscale 区分个人节点与服务节点的思路，不复用其特殊 tagged-devices 用户实现。[注册身份模型](https://headscale.net/stable/ref/registration/)
+个人 AgentRegistration 的自管权限来自 `principal.type=user && principal.id=当前用户` 及有效 Membership，不来自 createdBy。成员离开时撤销该空间内的 User 设备及凭据，重新加入不自动复活。团队设备的主体是同 Workspace 的 SA，仅 maintainer+ 管理/选用；SA 可对应多个 Agent，创建者离职不影响已绑定 SA 的设备。同 SA 设备共享该 SA 的业务 Grant，但每个 Agent 仍有独立凭据、批准和撤销边界。借鉴的是 Headscale 区分个人节点与服务节点的思路，不复用其特殊 tagged-devices 用户实现。[注册身份模型](https://headscale.net/stable/ref/registration/)
 
 **6. 域名、DNS 与证书**
 
@@ -277,25 +289,25 @@ certificate worker 使用 DNS-01 申请证书。Workspace 创建经历 `pending_
 
 **7. 注册与接入认证**
 
-设备/profile、控制、访问和提供方身份分层。AgentRegistration 及其独立注册凭据表示持久逻辑身份；验证注册凭据后可建立 control 会话读取其获准配置。TunnelCredential 或绑定授权仅证明允许运行某个 Tunnel，不是设备身份。Connector 是一次提供方运行的元数据，也不是凭据。ingress 访问另外需要有效用户登录及 ClientSession；serve/egress provider 会话则要求批准的 AgentTunnelBinding 和能力。
+设备/profile、控制、访问和提供方身份分层。AgentRegistration 固定绑定 Workspace 和 User/SA 主体，其独立凭据表示这个 profile 的使用授权。Connector 是一次运行的元数据，不是凭据；ingress 的 access 会话与 provider 会话使用不同用途 Token，但同属当前 profile 的主体。对话框中的真实批准人是另一个审计维度，不能用其 User 权限替代选定 SA 的业务权限。
 
-注册可由已登录用户通过控制台或 OAuth Device Authorization 批准，也可使用有期限、限定 Workspace、Tunnel、能力与使用次数的 EnrollmentKey。EnrollmentKey 只是引导凭据；不能因为完成 OIDC 登录就自动加入 Workspace。首版应用层 Token 证明逻辑 profile 的使用授权，不承诺不可复制的物理设备身份；设备公钥、证书或持钥挑战可作为后续强化。
+注册采用独立 agents-hydra 提供的标准 OAuth Device Flow；保留 SA EnrollmentKey 供无人值守部署。Hydra 管 OAuth 协议，Control 实现上游 OIDC 人类认证、Workspace/主体选择及 login/consent app。agentd 是 public client，不携带 Connect 或 Hydra 的共享 client secret。具体状态、AT 用途、重试及迁移以 [身份设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md) 为准。
 
 拟定流程：
 
-1. agentd 向 control 提交期望名称和经过认证的注册申请；本地配置引用受保护的凭据存储，不内嵌长期秘密。
-2. control 验证 Membership/EnrollmentKey 与资源权限，事务性创建 AgentRegistration、名称及独立注册凭据；凭据只返回一次并保存可验证哈希。提供方另需创建或校验 Tunnel 与 AgentTunnelBinding。
-3. agentd 以注册凭据通过 HTTPS 建立 control 会话并换取有限期应用会话凭据；版本绑定、过期、撤销、轮换与恢复协议需要独立实现和测试，不另造密码算法。
-4. 提供方每次启动产生新的 Connector，绑定注册身份和 Tunnel。ingress 由用户登录建立 `(user_id, workspace_id, agent_registration_id)` 的 ClientSession，不创建伪装成提供方的 Connector。
-5. control 签发绑定 role、注册身份、Connector 或 ClientSession、Edge、generation、批准能力与期限的 DataPlaneLease。Edge 确认其策略和准入状态后，agentd 才可建立对应 agents 会话。
-6. agentd 在 XHTTP/WSS 承载内执行 agents 握手；Edge 验证应用会话凭据、租约、Workspace 与 connection role，将真实会话绑定到目录。传输路径、Host、客户端自报 ID 和 header 只作候选信息。
-7. 配置 ACK 和实际业务探测通过后将 provider 标为 ready；控制心跳或 HTTP 已连接本身不代表可承接流量。
+1. agentd 从可信 issuer discovery 获取 Device Authorization / Token endpoint，显示验证 URL 与 user_code，按协议串行轮询并处理 slow_down。
+2. 浏览器先完成上游 OIDC 人类登录，选择有权限的 Workspace，再选择本人或有效的同 Workspace SA；只有 maintainer+ 可选 SA，服务器 profile 必须选 SA。
+3. Control 在批准 Hydra login 前固定 typed subject、Workspace 和人类批准者；consent 不能再替换 subject。每次设备授权都明确确认选择，不复用其他设备的 remembered Workspace/SA。
+4. Hydra 向 agentd 返回仅用于本 Instance 设备注册兑换的短期 AT。AT 不能登录 Console 或直接接入 XHTTP，也不代表 serve/egress 已批准。
+5. agentd 使用 AT 提交本地 Desired；Control introspect 并重新检查当前 Membership/SA/批准者权限，在同一事务中一次消费授权、创建 AgentRegistration 和每设备独立凭据。客户端不能在请求体改写已选主体。
+6. control/access/provider 凭据分别绑定 Agent、Workspace、User/SA 主体、用途和期限。新增 provider 能力按 expectedDesired 审批，ingress 的访问权单独检查主体 Grant。
+7. 提供方每次运行产生 Connector；Edge 对 XHTTP/HELLO 验证同一受信身份、当前角色和批准，业务探测通过才标为 ready。客户端自报的 User、SA、Workspace、Host 和 header 都不作为身份来源。
 
-DataPlaneLease 管理 access/provider 会话准入与失联上界；FlowLease/FlowCapability 管理每条业务流。续期不得扩大批准能力，generation 切换必须防止旧关闭事件移除新会话。provider 可共享承载 serve/egress；access 会话始终独立绑定用户权限，即使三角色位于同一进程。设备注册、提供能力批准与用户业务授权是三件独立的事。
+DataPlaneLease 管理 access/provider 会话准入与失联上界；FlowLease/FlowCapability 管理每条业务流。续期不得扩大批准能力，generation 切换必须防止旧关闭事件移除新会话。provider 可共享承载 serve/egress；access 会话始终独立检查已绑定 User/SA 的 Grant，即使三角色位于同一进程。设备注册、提供能力批准与主体业务授权是三件独立的事。SA 不能建立 Console session；它的创建者离职不影响 SA 设备，SA 自身撤销则使其全部设备和流失效。
 
 采用受信 CDN 的 HTTPS 入口和 HTTPS 回源即可作为本版传输信任边界，不要求设备 mTLS，也不强制在 XHTTP 内再套 TLS。CDN 位于信任边界内；默认由 agents 在应用层验证设备与会话身份，不能把未经验证的转发身份 header 当作证明。可选的 CDN 客户端证书认证必须验证证书结果、清除伪造头并认证回源来源，具体约定见 [本地配置规范](agentd-config.md)。gateway→Edge 亦不强制 mTLS，但必须验证服务身份。目标网站的 Egress TLS 始终端到端透传。
 
-同一用户在多个 Workspace 的设备/profile、ClientSession、监听端口、凭据和策略缓存分开；不能根据目标 SNI 自动跨 Workspace 选择权限。一个 TUN 实例首版只激活一个 Workspace。
+同一用户在多个 Workspace 的设备/profile、ClientSession、监听端口、凭据和策略缓存分开；一个 SA 只能属于一个 Workspace，跨空间必须另建 SA/profile。不能根据目标 SNI 自动跨 Workspace 选择权限。一个 TUN 实例首版只激活一个 Workspace。
 
 **8. Serve：浏览器访问本地 Web 服务**
 
@@ -330,7 +342,8 @@ oauth2-proxy 负责 OIDC 登录和身份确认；其 `/auth` 或等效接口返�
 |---|---|---|
 | `anonymous` | 空 | 任何人，无需登录，也包含已经登录的访客 |
 | `user` | 实例 User ID | 该用户 |
-| `workspace` | Workspace ID | 该 Workspace 当前的有效成员 |
+| `service_account` | SA ID | 明确支持机器消费身份的路径上的该 SA；不将设备 Token 当浏览器 Cookie/Bearer |
+| `workspace` | Workspace ID | 该 Workspace 当前的有效人类成员；不自动包含 SA |
 
 本节 Web 服务授权仅包含 `service.access` 权限；第 10 节的出口规则授权使用同一个 AccessGrant 模型，但绑定不同资源和 `egress.use` 权限，二者不能互换。每条授权有独立时间窗：`starts_at` 默认创建时刻，`expires_at` 必填，必须满足 `starts_at < expires_at`，可提前设置 `revoked_at`。时间按 UTC 存储，界面展示时包含时区。第一版不将空期限解释为永久授权；CLI 显式传期限，或采用 Workspace 配置的有限默认期限，并明确显示实际截止时间。
 
@@ -387,7 +400,7 @@ sequenceDiagram
     participant T as cs101.edu.cn
     D->>E: 主动建立 agents provider 会话
     U->>C: CONNECT 或 SOCKS5，目标 cs101.edu.cn:443
-    C->>E: 已绑定用户与 Workspace 的 agents access 会话
+    C->>E: 已绑定 User/SA 主体与 Workspace 的 agents access 会话
     U->>E: 原始 TLS ClientHello 经客户端透传
     E->>E: 校验 ClientSession、解析域名、匹配路由与访问策略
     E->>D: OPEN + FlowCapability，经选定会话传送原始 TLS 字节
@@ -399,7 +412,7 @@ sequenceDiagram
 
 身份从代理连接认证得到，不能从 SNI、HTTP Host 或来源 IP 推断。原始 TLS 会话内不能插入 OAuth 登录跳转、代理认证页面、用户请求头或 agents JWT。
 
-每条 EgressRoute 使用限时 AccessGrant（`resource_type=egress_route`、`permission=egress.use`）。主体为当前 Workspace 的单个 User 或成员组；访问端必须有有效 ClientSession。第一版不支持匿名出口，也不把 Web 服务的跨 Workspace 分享自动扩展到出口。注册设备、启用出口、存在路由、用户拥有权限是四件独立的事。
+每条 EgressRoute 使用限时 AccessGrant（`resource_type=egress_route`、`permission=egress.use`）。主体为当前 Workspace 的 User、有效人类成员组或明确的 SA；访问端必须有绑定同一 User/SA 的有效 ClientSession。SA 不继承人类创建者/批准者或全部 Workspace 成员的授权。第一版不支持匿名出口，也不把 Web 服务的跨 Workspace 分享自动扩展到出口。注册设备、启用出口、存在路由、主体拥有权限是四件独立的事。
 
 每个出口另有目的地约束，作为 AgentRegistration/AgentTunnelBinding 已批准能力的配置：允许的协议、规范化域名、端口和显式拒绝项。有效允许范围为实例/Workspace 约束、控制端批准的域名范围与 agentd 本地域名限制的交集；本地可以进一步收紧，不能扩大控制端批准范围。任何适用的显式拒绝优先，AccessGrant 或新增路由不能覆盖它。域名解析和拨号由出口 agentd 在本地完成，解析结果是连接实现细节，不是用户可配置的路由主键。
 
@@ -467,9 +480,9 @@ TLS 元数据读取有明确的字节上限、超时、内存和并发预算，�
 
 | 角色 | 本地职责 | 服务端对应关系 |
 |---|---|---|
-| ingress | 监听本机 HTTP CONNECT / SOCKS5 / TUN，将匹配域名流量送到 Edge | 用户 ClientSession 与独立 access 会话；本地匹配不产生 AccessGrant 或 EgressRoute |
+| ingress | 监听本机 HTTP CONNECT / SOCKS5 / TUN，将匹配域名流量送到 Edge | User/SA ClientSession 与独立 access 会话；本地匹配不产生 AccessGrant 或 EgressRoute |
 | serve | 声明服务名、批准的本地 HTTP/HTTPS 源站及来源限制 | PublishedRoute 与 ServeOriginRule；服务名不等于 AgentRegistration 名称 |
-| egress | 声明本机愿意提供的目标域名、端口、协议及本地限制 | AgentTunnelBinding 的出口能力；Edge 的 EgressRoute 决定 domain→Agent，仍需独立批准和用户授权 |
+| egress | 声明本机愿意提供的目标域名、端口、协议及本地限制 | AgentTunnelBinding 的出口能力；Edge 的 EgressRoute 决定 domain→Agent，仍需独立批准和 User/SA 主体授权 |
 
 本地 ingress 规则只决定哪些连接进入 agents；Edge 始终重新决定身份、EgressRoute、AccessGrant 和实际出口。客户端不能用本地 `via` 提示、匹配列表或设备身份扩大权限。egress 声明只表示本机同意，不自动成为全局已批准出口。serve 与 egress 可共享 provider Connector/承载会话；启用 ingress 不复用 provider 身份访问他人资源，也不要求它们共用唯一物理连接。
 
@@ -501,7 +514,7 @@ CDN 前后是不同 HTTP 连接，客户端 h2 不保证回源 h2；h2 支持也
 
 - 所有 Workspace 资源都有不可为空的 `workspace_id`；子资源使用组合外键或等效事务约束，防止把 A 的规则引用到 B 的 Tunnel。
 - 唯一明确的分享例外是 Web AccessGrant 的主体引用：可指向同一 Instance 的全局 User ID 或其他 Workspace 的成员集合。它不改变资源外键归属，也不允许跨 Workspace 选择 Tunnel/出口。
-- API 从认证上下文确认 User，再检查请求 Workspace 的 Membership；不能信任 URL/Host 单独宣称的租户。
+- 人类管理 API 从认证上下文确认 User，再检查 Membership/实例管理权限；设备控制与数据面从凭据确认 User/SA、Agent 和 Workspace。SA 必须同空间，不能伪造为 User；不能信任 URL/Host 单独宣称的租户。
 - 存储查询、缓存 key、连接目录、策略快照、凭据映射、流量统计均包含 Workspace ID。
 - 每个租户配置最大 Connector、连接、活跃流、ClientHello 缓冲、带宽和速率配额。
 - Host 规范化后精确查 PublishedRoute；服务名中包含合法 Workspace slug 不代表有权访问。
@@ -531,7 +544,7 @@ ACK 必须标识资源、配置 generation、policy revision 和应用结果；�
 
 拟定时限预算：控制心跳 15 秒；DataPlaneLease 5 分钟并提前续期；授权策略快照最长陈旧 60 秒；授权缓存不超过 15 秒。每条 FlowLease 的失效上界取授权期限、当前策略快照、会话租约与流自身期限中最早者；已知 AccessGrant 截止时间不能被缓存或离线窗口延长。gateway、Edge、agentd 均需本地到期执行，不能等待后台清理或对端主动断开。长流续期必须重新评估当前有效授权与策略，不能因为承载心跳或会话续租而自动延长业务授权。这些数值是待验证配置，不是承载协议默认保证。
 
-User 禁用、Membership 删除、Workspace 暂停、AgentRegistration/DeviceKey 停用、Tunnel/Binding 撤销、服务分享撤销或出口能力收回都触发同一失效流程：先禁止失去授权的新会话/流，再重算并关闭受影响的活动流，更新目录与策略，记录审计。多个有效授权按并集计算；某一来源失效但仍存在另一有效授权时保留相应业务。跨 Workspace 成员变化需传播到引用该成员组的资源策略。
+User 禁用、Membership 删除、SA 撤销、Workspace 暂停、AgentRegistration/DeviceKey 停用、Tunnel/Binding 撤销、服务分享撤销或出口能力收回都触发同一失效流程：先禁止失去授权的新会话/流，再重算并关闭受影响的活动流，更新目录与策略，记录审计。User 事件影响 User 主体设备，SA 事件影响 SA 设备；SA 的创建者/批准者离职不自动撤销已经绑定 SA 的设备。单 Agent 撤销不撤同 SA 其他设备。多个有效授权按并集计算，不能因 Cookie/注册 AT 续期延长 Grant。跨 Workspace 人类成员变化只传播到相应成员组策略，不将其扩大成 SA 的身份关系。
 
 控制面正常时主动撤销目标为秒级；失联时只能保证上述租约计算的最大暴露时间，不能声称即时得知未知撤销。收紧策略和替换受众必须原子生效，不能出现短暂公开或恢复全员访问窗口。Edge 禁止新流与 FlowLease 登记使用同一版本栅栏，防止并发撤销漏掉刚建立的流。
 
@@ -555,33 +568,34 @@ Serve 请求落到非归属节点时，通过带节点认证的内部 HTTPS 转�
 
 **17. 存储、API 与代码组织**
 
-建议 API 范围：
+管理 API 已按 `/v1/admin/*` 与 Workspace 子资源分层；已实现精确契约以 agents 仓库的 OpenAPI 为准。下表中的 Service Account、Hydra 相关注册兑换为本轮新增目标，尚未实现：
 
 ```text
-/v1/instance/users
-/v1/instance/workspaces
-/v1/workspaces/{workspace}/memberships
-/v1/workspaces/{workspace}/agents
-/v1/workspaces/{workspace}/tunnels
-/v1/workspaces/{workspace}/tunnels/{tunnel}/connectors
-/v1/workspaces/{workspace}/tunnels/{tunnel}/configuration
-/v1/workspaces/{workspace}/published-routes
-/v1/workspaces/{workspace}/published-routes/{route}/grants
-/v1/workspaces/{workspace}/egress-routes
-/v1/workspaces/{workspace}/egress-routes/{route}/grants
-/v1/workspaces/{workspace}/access-policies
-/v1/workspaces/{workspace}/share-invitations
-/v1/workspaces/{workspace}/enrollment-keys
-/v1/workspaces/{workspace}/audit-events
+/v1/admin/users
+/v1/admin/workspaces
+/v1/admin/agents
+/v1/admin/service-accounts                                      # 待实现
+/v1/workspaces/{workspaceId}/memberships
+/v1/workspaces/{workspaceId}/agents
+/v1/workspaces/{workspaceId}/ingresses
+/v1/workspaces/{workspaceId}/servers
+/v1/workspaces/{workspaceId}/egresses
+/v1/workspaces/{workspaceId}/routes
+/v1/workspaces/{workspaceId}/grants
+/v1/workspaces/{workspaceId}/enrollment-keys
+/v1/workspaces/{workspaceId}/service-accounts                    # 待实现
+/v1/workspaces/{workspaceId}/service-accounts/{id}/enrollment-keys # 待实现
+/v1/agent-enrollments                                           # 待实现，Device Flow AT 兑换
+/v1/admin/audit-events
 ```
 
-`instance_admin` API 与 Workspace API 分开。每个 mutation 使用条件版本和幂等 key，防止重试重复创建名称、凭据或路由。命令行和控制台调用同一服务层。
+`instance_admin` API 与 Workspace API 分开。所有集合使用 `items + pagination`，支持服务端筛选排序；主体类型和 ID 是查询字段，createdBy 只作审计维度。审批使用 expectedDesired 等条件防止审核过时配置；Device Flow AT 兑换以唯一授权记录和事务防止重试重复创建设备。命令行和控制台调用同一服务层，API 客户端仍由 OpenAPI 生成。Hydra 标准 Device Authorization / Token URL 从 discovery 获取，不改写成自制的 agents OAuth grant。
 
 ```text
 cmd/agentd/
 cmd/agents/
 internal/
-  identity/          # User、OIDC、浏览器及客户端会话
+  identity/          # User/SA、上游OIDC、Hydra login/consent、浏览器及typed设备身份
   tenancy/           # Workspace、Membership、实例角色
   registrations/     # AgentRegistration、名称和 AgentTunnelBinding
   tunnels/           # Tunnel、Connector、Connection 生命周期
