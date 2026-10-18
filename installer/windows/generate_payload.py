@@ -67,8 +67,10 @@ def generate(payload, arch, output):
         )
         # Do not put arbitrary source paths through the WiX preprocessor.
         # BindPath is expanded by the binder after preprocessing has finished.
+        # WiX trims only a leading backslash; a forward slash becomes a rooted
+        # Windows path and discards the named bind directory (WIX0103).
         element(component, "File", Id=identifier("F", name),
-                Source="!(bindpath.Payload)/" + name, Name=path.name, KeyPath="yes")
+                Source="!(bindpath.Payload)\\" + name.replace("/", "\\"), Name=path.name, KeyPath="yes")
         element(group, "ComponentRef", Id=component_id)
     ET.indent(root, space="  ")
     ET.ElementTree(root).write(output, encoding="utf-8", xml_declaration=True)

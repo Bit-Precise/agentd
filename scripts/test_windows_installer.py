@@ -57,7 +57,7 @@ class WindowsPayloadTest(unittest.TestCase):
         expected = {p.relative_to(self.payload).as_posix() for p in self.payload.rglob("*") if p.is_file()}
         self.assertEqual(set(actual), expected)
         for path, source in actual.items():
-            self.assertEqual(source, "!(bindpath.Payload)/" + path)
+            self.assertEqual(source, "!(bindpath.Payload)\\" + path.replace("/", "\\"))
 
     def test_component_identity_survives_rebuild_and_addition_but_not_architecture_change(self):
         first = {c.attrib["Id"]: c.attrib["Guid"] for c in self.generate().findall(".//w:Component", NS)}
