@@ -42,11 +42,11 @@ agentd-windows-amd64.msi
 ## 工具与 CI
 
 - Go 固定 **1.27.2**，构建使用 CGO=0、`-mod=readonly`、`-trimpath`。普通包显式 `GOFIPS140=off`。
-- Linux 使用 **nfpm 2.48.0** 的官方发布二进制，并核验仓库固定的 SHA256；不是改扩展名的 tar 包。DEB/RPM 的架构元数据分别使用 i386/amd64/armel/armhf/arm64 和 i386/x86_64/armv5tel/armv7hl/aarch64，文件名保持上表。
+- 发布构建使用 **GoReleaser OSS 2.18.3**：编译各平台 Go 程序，调用内置 nFPM 创建 Linux DEB/RPM，并在最终签名完成后生成校验和、发布 GitHub Release。DEB/RPM 的架构元数据分别使用 i386/amd64/armel/armhf/arm64 和 i386/x86_64/armv5tel/armv7hl/aarch64，文件名保持上表。
 - macOS 在原生 `macos-15-intel` 和 `macos-15`（ARM64）runner 使用 Apple `pkgbuild` 创建真实 PKG，展开检查，再实际安装并执行 version，随后清理安装及 receipt。
 - Windows 在原生 runner 使用 **WiX 5.0.2** .NET tool 创建 MSI。脚本核对工具版本，实际静默安装、执行 version、比较已安装 EXE 的 SHA256、卸载并检查清理。需要 runner 提供管理员权限与 .NET 运行时。
 - 原有 Ubuntu/macOS/Windows 原生测试与 vet 保留；Ubuntu/macOS 保留 race，手动工作流可再启用 Linux ARM64 原生测试。Linux amd64 的普通与 FIPS DEB 均实际安装/卸载，所有 RPM 核验包结构与 SHA256 文件摘要算法。
-- 官方 Actions 固定 commit：checkout v7.0.1、setup-go v7.0.0、upload-artifact v7.0.2、download-artifact v8.0.2。工具版本和 runner 标签已向对应官方仓库核对，不使用浮动 latest 工具版本。
+- Actions 固定 commit（包括 goreleaser/goreleaser-action v7）：checkout v7.0.1、setup-go v7.0.0、upload-artifact v7.0.2、download-artifact v8.0.2。工具版本和 runner 标签已向对应官方仓库核对，不使用浮动 latest 工具版本。
 
 [工作流](../.github/workflows/build.yml) 在 main/PR/手动运行执行测试和完整构建。仅 push `v*` tag 发布 GitHub Release；PR 使用只读默认权限，只有 tag 发布 job 获得 contents:write。普通构建同样产生可下载的完整 artifact。
 
@@ -58,11 +58,11 @@ make test lint
 make race
 python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
-# 安装固定 nfpm 到指定工具目录，不改 go.mod。
-python3 scripts/install-nfpm.py --destination /tmp/agentd-tools
-NFPM=/tmp/agentd-tools/nfpm TARGET_OS=linux TARGET_ARCH=amd64 VERSION=v0.1.0 make release
-NFPM=/tmp/agentd-tools/nfpm TARGET_OS=linux TARGET_ARCH=arm TARGET_ARM=5 VERSION=v0.1.0 make release
-NFPM=/tmp/agentd-tools/nfpm TARGET_OS=linux TARGET_ARCH=arm TARGET_ARM=7 VERSION=v0.1.0 make release
+# 先安装 GoReleaser OSS 2.18.3，并确保 goreleaser 位于 PATH。
+goreleaser --version
+TARGET_OS=linux TARGET_ARCH=amd64 VERSION=v0.1.0 make release
+TARGET_OS=linux TARGET_ARCH=arm TARGET_ARM=5 VERSION=v0.1.0 make release
+TARGET_OS=linux TARGET_ARCH=arm TARGET_ARM=7 VERSION=v0.1.0 make release
 
 # 在 macOS 主机生成指定架构的 TGZ 和 PKG。
 TARGET_OS=darwin TARGET_ARCH=arm64 VERSION=v0.1.0 make release
@@ -91,7 +91,7 @@ Git 版本写进 `agentd version`，不从包文件名推断。安装器要求�
 
 tag 发布强制 Windows Authenticode 签名和 Apple Developer ID 签名/公证。缺少配置、签名失败、timestamp 无效或 Apple 未返回 Accepted 都停止发布，不能自动降级为 unsigned。普通 main/PR 构建明确生成 unsigned 测试产物；Go ARM64 ad-hoc 签名不代表 Developer ID。
 
-配置与验证步骤见 [release-signing.md](release-signing.md)。GitHub `release-signing` environment 只划分 OIDC subject 和配置范围，不要求新增人工审批。`workflow_dispatch` 的 `signing_validation` 只允许在 main 上运行，完整签名/公证和安装测试后上传 artifact，不发布 GitHub Release。正式 `v*` tag 才发布。
+配置项见 [release-signing.md](release-signing.md)。凭据保存在 GitHub 组织级 Variables/Secrets；本仓库直接运行签名任务，不调用独立共享 workflow。`release-signing` environment 限制签名仅从 main 分支或 v* tag 运行，不新增人工审批。`workflow_dispatch` 的 `signing_validation` 只允许在 main 上运行，完整签名/公证和安装测试后上传 artifact，不发布 GitHub Release。正式 `v*` tag 才发布。
 
 Windows 使用官方 Azure Artifact Signing v2.0.0 + Azure login v3.1.0，两者固定 commit，OIDC 只在 Windows 签名 job 授予 `id-token: write`。签名顺序是 EXE → 验证签名和 timestamp → 用该 EXE 构建 MSI → 签 MSI → 再验证两者并安装测试 → SHA256SUMS。保留本地 `-SignThumbprint` 签名方式，不读取未指定的证书。
 
@@ -112,7 +112,7 @@ bash scripts/build-release.sh --os darwin --arch arm64 --version v0.1.0 --out di
 FIPS 产物固定 `GOFIPS140=v1.0.0-c2097c7c`，这是 Go 1.27.2 自带 `lib/fips140/certified.txt` 对应的精确模块版本，不随 `latest` 漂移。构建检查 `go version -m` 中的模块值和 `DefaultGODEBUG=fips140=on`；Linux CI 还实际运行 FIPS 探针与客户端测试。证据覆盖所用 Go 模块和默认运行模式，**不是 agentd 整体产品获得 NIST 认证，也不继承 Cloudflare 的证书**。生产合规仍取决于模块安全策略和实际部署环境。
 
 ```sh
-NFPM=/tmp/agentd-tools/nfpm TARGET_OS=linux TARGET_ARCH=amd64 FIPS=true VERSION=v0.1.0 make release
+TARGET_OS=linux TARGET_ARCH=amd64 FIPS=true VERSION=v0.1.0 make release
 python3 scripts/release.py verify-fips --binary dist/agentd-fips-linux-amd64
 ```
 

@@ -1,13 +1,11 @@
 # Release signing configuration
 
-The production pipeline now calls the organization reusable workflows
-`Bit-Precise/actions/.github/workflows/sign-windows.yml@v1` and
-`Bit-Precise/actions/.github/workflows/sign-macos.yml@v1`. Configure Azure
-Variables and Apple Variables/Secrets at organization scope. The GitHub subject
-template uses `repository_owner_id` and `job_workflow_ref`. The per-repository
-environment setup below and `configure-azure-signing.py` are retained only for
-standalone compatibility; that script intentionally rejects organization-custom
-subject templates and must not configure the shared workflow identity.
+GoReleaser builds/publishes releases inside `Bit-Precise/agentd`. Native Windows
+and macOS jobs perform signing directly; no reusable workflow in
+`Bit-Precise/actions` is used. Azure Variables and Apple Variables/Secrets remain
+at GitHub **organization scope**, with access granted to `agentd`. Signing jobs
+use the repository's `release-signing` environment to constrain allowed refs;
+the environment does not hold duplicate signing credentials.
 
 Both architectures of Windows EXE/MSI and macOS TGZ/PKG are signed in the
 `release-signing` GitHub environment. Tagged builds fail if any required setting
@@ -32,66 +30,64 @@ The federated credential must have:
 | Field | Exact value |
 |---|---|
 | issuer | `https://token.actions.githubusercontent.com` |
-| subject | `repo:Bit-Precise@295183371/agentd@1423467115:environment:release-signing` |
+| subject | `repository_owner_id:295183371:repository_id:1423467115:environment:release-signing` |
 | audience | `api://AzureADTokenExchange` |
 
-This repository uses GitHub's immutable default subject: both owner and
-repository names include their IDs. The subject is case-sensitive; use the
-actual `sub_claim_prefix` returned by GitHub, not a name-only guess. The helper
-rejects custom subject templates and revalidates live settings before any IAM
-write. Older repositories may still use a name-only default prefix.
-The environment should allow branch `main` for validation and tag pattern `v*`
-for releases. No required reviewer or manual approval is needed by this workflow.
-Configure repository tag/ruleset permissions so only trusted maintainers can
-publish release tags.
+The repository overrides the organization template with:
 
-Set these environment **Variables**, not private signing keys:
+```json
+{"use_default": false, "include_claim_keys": ["repository_owner_id", "repository_id", "context"]}
+```
+
+GitHub's `context` becomes `environment:release-signing` for a job using that
+environment. This binds Azure access to the immutable organization ID, this
+repository ID, and the signing environment, independently of branch/tag names.
+It does not require `job_workflow_ref`, which ordinary jobs do not provide.
+The organization's existing template is not changed, so other repositories are
+unaffected. A new repository needs its own explicitly added federated credential.
+
+The environment allows only branch `main` and tag pattern `v*`. No required
+reviewer/manual approval is added. Protect release tags through the repository's
+normal maintainer permissions/rulesets.
+
+Use these **organization Variables**, not environment-level duplicates:
 
 | Variable | Value |
 |---|---|
-| `AZURE_CLIENT_ID` | Dedicated Entra application client ID |
-| `AZURE_TENANT_ID` | Tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Subscription containing the signing account |
-| `AZURE_SIGNING_ENDPOINT` | Account's regional HTTPS endpoint, e.g. `https://wus2.codesigning.azure.net/` |
-| `AZURE_SIGNING_ACCOUNT` | Existing Artifact Signing account name |
-| `AZURE_SIGNING_PROFILE` | Active PublicTrust certificate profile name |
+| `AZURE_CLIENT_ID` | Existing application: `b8d78a6f-09be-4622-9b1e-31d5f937f7e4` |
+| `AZURE_TENANT_ID` | `434591f5-2f86-4991-8784-d800512dd8fb` |
+| `AZURE_SUBSCRIPTION_ID` | `e4a93474-db18-4218-b22d-356788c3d84d` |
+| `AZURE_SIGNING_ENDPOINT` | `https://wus2.codesigning.azure.net/` |
+| `AZURE_SIGNING_ACCOUNT` | `bitprecisellc` |
+| `AZURE_SIGNING_PROFILE` | `bitprecisellc` |
 
-`scripts/configure-azure-signing.py` prepares the exact IAM/GitHub plan. Its
-default is **dry run**: `--discover-subject` reads GitHub OIDC configuration and
-repository IDs; `--subject-prefix` supplies an explicit prefix for an offline
-plan without network access. Neither mode writes anything. After reviewing the plan,
-`--apply` creates a dedicated application/service principal, a profile-scoped role
-assignment, the federated credential, and the environment variables. It never
-creates a paid signing account/profile or client secret. Existing environment
-settings are preserved; a new environment allows main/v* with no reviewers.
-If an application name already exists, inspect it and explicitly pass its client
-ID with `--application-id` to resume; no unrelated application is silently reused.
+These IDs identify resources and are not secrets. The existing PublicTrust
+profile must remain Active. Its Signer role is scoped only to that profile.
 
-```sh
-python3 scripts/configure-azure-signing.py \
-  --tenant-id YOUR_TENANT_ID --subscription-id YOUR_SUBSCRIPTION_ID \
-  --resource-group YOUR_GROUP --account YOUR_SIGNING_ACCOUNT \
-  --profile YOUR_PROFILE --endpoint https://wus2.codesigning.azure.net/ --discover-subject
-# Add --apply only after reviewing the displayed plan.
-```
-
-For the existing account discovered during read-only inspection, the concrete
-dry-run command is:
+`scripts/configure-azure-signing.py` defaults to a **read-only plan** using the
+actual repository IDs. `--apply` configures the repository template, main/v*
+environment policy, the named FIC in the existing application, and the profile
+Signer assignment if missing. It does not create applications, service
+principals, client secrets, paid resources, organization variables or secrets,
+and does not modify the organization OIDC template.
 
 ```sh
 python3 scripts/configure-azure-signing.py \
   --tenant-id 434591f5-2f86-4991-8784-d800512dd8fb \
   --subscription-id e4a93474-db18-4218-b22d-356788c3d84d \
+  --application-id b8d78a6f-09be-4622-9b1e-31d5f937f7e4 \
   --resource-group artifactsigning --account bitprecisellc --profile bitprecisellc \
-  --endpoint https://wus2.codesigning.azure.net/ --discover-subject
+  --endpoint https://wus2.codesigning.azure.net/
 ```
 
-The profile was Active/PublicTrust. These are resource identifiers, not signing
-credentials. Running the script without `--apply` performs no external writes.
-
-The applying operator needs Entra application/SP creation rights, role-assignment
-rights on this profile, and GitHub environment/variable administration rights.
-This does not grant those administrative rights to the signing workload.
+The existing `credential-github` was migrated from the former shared-workflow
+subject to the exact repository/environment subject above. The helper refuses
+to overwrite a different named credential unless its current subject exactly
+matches an explicitly supplied `--replace-subject`. For another repository,
+choose a different `--credential-name` to add trust without replacing agentd's
+credential. The applying operator needs permission to manage this application's
+FIC, the repository environment/OIDC settings and the profile role assignment;
+the signing workload receives none of those administrative permissions.
 
 The workflow uses [Azure login v3.1.0](https://github.com/Azure/login/releases/tag/v3.1.0)
 and [Artifact Signing v2.0.0](https://github.com/Azure/artifact-signing-action/releases/tag/v2.0.0),
@@ -136,12 +132,12 @@ To prepare these on macOS:
    Download the `.p8` key once and store it securely. The team must enable API
    access if the section is not available. Do not create an Individual key for
    this workflow, which explicitly uses an issuer ID.
-5. Open [agentd environment settings](https://github.com/Bit-Precise/agentd/settings/environments),
-   select `release-signing`, and add the Variables and Secrets below. If Azure
-   bootstrap has not created the environment, create it first, allow branch
-   `main` and tags `v*`, and leave required reviewers unset.
+5. Open [organization Actions secrets](https://github.com/organizations/Bit-Precise/settings/secrets/actions)
+   and the adjacent Variables tab. Add the credentials below with access for
+   `agentd`; keep them at organization scope. The `release-signing` environment
+   only restricts deployments to branch `main` and tags `v*`.
 
-Set these environment **Variables**:
+Set these **organization Variables**:
 
 | Variable | Value |
 |---|---|
@@ -151,7 +147,7 @@ Set these environment **Variables**:
 | `APPLE_NOTARY_KEY_ID` | App Store Connect API key ID |
 | `APPLE_NOTARY_ISSUER_ID` | App Store Connect API issuer UUID |
 
-Set these environment **Secrets** using GitHub's Secrets UI or local `gh secret
+Set these **organization Secrets** using GitHub's Secrets UI or local `gh secret
 set` with stdin. Never paste `.p12`, `.p8` contents or passwords into chat, shell
 arguments, committed files, logs or artifacts:
 
@@ -168,7 +164,7 @@ GitHub without displaying them:
 
 ```sh
 base64 < /secure/path/application.p12 | tr -d '\n' |
-  gh secret set APPLE_APPLICATION_P12_BASE64 --repo Bit-Precise/agentd --env release-signing
+  gh secret set APPLE_APPLICATION_P12_BASE64 --org Bit-Precise --visibility selected --repos agentd
 # Use the Secrets UI or gh secret set's interactive prompt for passwords.
 ```
 
@@ -192,6 +188,8 @@ main → signing_validation=true**, or:
 
 ```sh
 gh workflow run build.yml --repo Bit-Precise/agentd --ref main -f signing_validation=true
+# Validate only Windows while Apple credentials are pending:
+gh workflow run build.yml --repo Bit-Precise/agentd --ref main -f signing_validation=true -f signing_platform=windows
 ```
 
 This performs signing, notarization, native installation, and checksums but does
@@ -202,6 +200,7 @@ If a private credential/certificate is missing, signed validation is expected to
 fail. Portable tests and unsigned CI validate tooling and installers; they do
 not constitute evidence of a successful cloud signature or Apple notarization.
 
-References: [Azure OIDC](https://github.com/Azure/artifact-signing-action/blob/v2.0.0/docs/OIDC.md),
+References: [GitHub OIDC claims](https://docs.github.com/en/actions/reference/security/oidc),
+[Azure OIDC](https://github.com/Azure/artifact-signing-action/blob/v2.0.0/docs/OIDC.md),
 [Apple notarization](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution),
 [Apple custom notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).

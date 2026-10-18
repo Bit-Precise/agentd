@@ -17,7 +17,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 GO_VERSION = 'go1.27.2'
 FIPS_VERSION = 'v1.0.0-c2097c7c'
-NFPM_VERSION = '2.48.0'
+GORELEASER_VERSION = '2.18.3'
 LINUX = {'386': ('386', '', '386'), 'amd64': ('amd64', '', 'x86_64'),
          'arm': ('arm', '5', 'arm'), 'armhf': ('arm', '7', 'armhf'),
          'arm64': ('arm64', '', 'aarch64')}
@@ -152,7 +152,71 @@ def check_fips(binary, env):
     return info
 
 
-def build(args):
+def goreleaser_command():
+    executable = os.environ.get('GORELEASER', 'goreleaser')
+    output = subprocess.check_output([executable, '--version'], text=True)
+    if not re.search(r'^GitVersion:\s+' + re.escape(GORELEASER_VERSION) + r'\s*$', output, re.MULTILINE):
+        raise ValueError('GoReleaser OSS ' + GORELEASER_VERSION + ' is required')
+    return executable
+
+
+def goreleaser_config(t, v, out, payload, packages=False):
+    """Select one target from the checked-in OSS config; never import prebuilt binaries."""
+    config = json.loads((ROOT / '.goreleaser.json').read_text())
+    config['dist'] = str(payload.parent / 'goreleaser-dist')
+    build = config['builds'][0]
+    build.update(id='agentd-fips' if t['fips'] else 'agentd', goos=[t['os']], goarch=[t['goarch']])
+    build.pop('ignore', None)
+    build['goarm'] = [t['goarm']] if t['goarm'] else ['5']
+    config['archives'] = [{'ids': [build['id']], 'formats': ['binary'], 'name_template': names(t)[0]}]
+    if packages:
+        package = config['nfpms'][0]
+        package_name = 'agentd-fips' if t['fips'] else 'agentd'
+        package.update(id=build['id'], ids=[build['id']], package_name=package_name,
+                       conflicts=['agentd' if t['fips'] else 'agentd-fips'])
+        package['overrides'] = {
+            packager: {'file_name_template': filename.rsplit('.', 1)[0]}
+            for packager, filename in zip(('deb', 'rpm'), names(t)[1:])}
+        package['contents'] = [
+            {'src': str(path), 'dst': '/usr/share/doc/' + package_name + '/' + path.relative_to(payload).as_posix(),
+             'file_info': {'mode': 0o644}}
+            for path in sorted(payload.rglob('*')) if path.is_file() and path != payload / 'agentd']
+    else:
+        config['nfpms'] = []
+    return config
+
+
+def compile_target(t, v, out, payload, env, packages=False):
+    config = goreleaser_config(t, v, out, payload, packages)
+    config_path = payload.parent / 'goreleaser.json'
+    config_path.write_text(json.dumps(config, indent=2) + '\n')
+    executable = goreleaser_command()
+    env = dict(env, AGENTD_SOURCE_VERSION=v['version'], AGENTD_PACKAGE_VERSION=v['packageVersion'],
+               AGENTD_GOFIPS140=FIPS_VERSION if t['fips'] else 'off')
+    binary = payload / ('agentd.exe' if t['os'] == 'windows' else 'agentd')
+    if packages:
+        # Snapshot only disables tag/publish validation; version_template preserves
+        # the exact package version, including dev-* builds and prereleases.
+        run([executable, 'release', '--clean', '--snapshot', '--skip=publish', '--config', config_path], cwd=ROOT, env=env)
+        generated = Path(config['dist'])
+        artifacts = json.loads((generated / 'artifacts.json').read_text())
+        for filename in names(t):
+            matches = [item for item in artifacts if item['name'] == filename]
+            if len(matches) != 1:
+                raise ValueError('GoReleaser must produce exactly one ' + filename)
+            source = Path(matches[0]['path'])
+            path = source.resolve()
+            if not path.is_relative_to(generated.resolve()) or source.is_symlink() or not path.is_file():
+                raise ValueError('GoReleaser product is outside its build directory: ' + filename)
+            copy_file(path, out / filename)
+        copy_file(out / names(t)[0], binary)
+    else:
+        run([executable, 'build', '--clean', '--snapshot', '--single-target', '--id', config['builds'][0]['id'],
+             '--config', config_path, '--output', binary], cwd=ROOT, env=env)
+    binary.chmod(0o755)
+
+
+def build(args, linux_packages=False):
     t, v = target(args.os, args.arch, args.goarm, args.fips), versions(args.version)
     out = Path(args.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     stage = out / '.staging' / t['key']
@@ -161,10 +225,6 @@ def build(args):
     payload = stage / 'payload'; payload.mkdir(parents=True)
     binary = payload / ('agentd.exe' if t['os'] == 'windows' else 'agentd')
     env = dict(os.environ, GOOS=t['os'], GOARCH=t['goarch'], GOARM=t['goarm'], CGO_ENABLED='0', GOFIPS140=FIPS_VERSION if t['fips'] else 'off')
-    run(['go', 'build', '-mod=readonly', '-trimpath', '-ldflags', '-s -w -X main.Version=' + v['version'], '-o', binary, './cmd/agentd'], cwd=ROOT, env=env)
-    binary.chmod(0o755)
-    if t['fips']:
-        check_fips(binary, env)
     packages = subprocess.check_output(['go', 'list', '-mod=readonly', '-deps', '-json=Module', './cmd/agentd'], cwd=ROOT, env=env, text=True)
     toolchain = json.loads(subprocess.check_output(['go', 'env', '-json', 'GOROOT', 'GOVERSION'], env=env, text=True))
     if t['fips'] and toolchain['GOVERSION'] != GO_VERSION:
@@ -175,7 +235,7 @@ def build(args):
         copy_file(ROOT / 'LICENSE', payload / 'LICENSE')
     collect_licenses(payload, packages, toolchain)
     commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.strip()
-    metadata = {**t, **v, 'goVersion': toolchain['GOVERSION'], 'goFIPS140': env['GOFIPS140'], 'commit': commit, 'signed': False, 'source': 'https://github.com/bit-precise/agentd/tree/' + commit}
+    metadata = {**t, **v, 'sourceVersion': v['version'], 'goVersion': toolchain['GOVERSION'], 'goFIPS140': env['GOFIPS140'], 'goreleaserVersion': GORELEASER_VERSION, 'commit': commit, 'signed': False, 'source': 'https://github.com/bit-precise/agentd/tree/' + commit}
     (payload / 'BUILDINFO.json').write_text(json.dumps(metadata, indent=2, sort_keys=True) + '\n')
     (stage / 'build.json').write_text(json.dumps(metadata, indent=2, sort_keys=True) + '\n')
     copy_file(stage / 'build.json', out / '_metadata' / (t['key'] + '.json'))
@@ -183,29 +243,15 @@ def build(args):
     if license_root.exists():
         shutil.rmtree(license_root)
     shutil.copytree(payload / 'licenses', license_root)
+    compile_target(t, v, out, payload, env, packages=linux_packages)
+    if t['fips']:
+        check_fips(binary, env)
     if t['os'] == 'darwin':
         archive_tree(payload, out / names(t)[0])
     else:
         copy_file(binary, out / names(t)[0]); (out / names(t)[0]).chmod(0o755)
     print(json.dumps({'target': t['key'], 'payload': str(payload), 'assets': names(t)}))
     return t, v, out, payload
-
-
-def package_linux(t, v, out, payload, nfpm):
-    if t['os'] != 'linux':
-        raise ValueError('Linux packager received another OS')
-    nfpm_arch = {'arm': 'arm5', 'armhf': 'arm7'}.get(t['arch'], t['arch'])
-    package_name = 'agentd-fips' if t['fips'] else 'agentd'
-    contents = []
-    for path in sorted(payload.rglob('*')):
-        if not path.is_file():
-            continue
-        relative = path.relative_to(payload).as_posix()
-        contents.append({'src': str(path), 'dst': '/usr/bin/agentd' if relative == 'agentd' else '/usr/share/doc/' + package_name + '/' + relative, 'file_info': {'mode': 0o755 if relative == 'agentd' else 0o644}})
-    config = {'name': package_name, 'arch': nfpm_arch, 'platform': 'linux', 'version': v['packageVersion'], 'release': '1', 'section': 'net', 'priority': 'optional', 'maintainer': 'bit-precise', 'vendor': 'bit-precise', 'homepage': 'https://github.com/bit-precise/agentd', 'description': 'Authenticated service publishing and domain egress agent', 'license': 'LicenseRef-Proprietary AND MPL-2.0', 'disable_globbing': True, 'contents': contents, 'conflicts': ['agentd' if t['fips'] else 'agentd-fips'], 'rpm': {'buildhost': 'build.agentd.invalid', 'compression': 'gzip'}}
-    config_path = payload.parent / 'nfpm.json'; config_path.write_text(json.dumps(config))
-    for packager, filename in zip(('deb', 'rpm'), names(t)[1:]):
-        run([nfpm, 'package', '--config', config_path, '--packager', packager, '--target', out / filename], env=dict(os.environ, GOFIPS140='off'))
 
 
 def package_mac(t, v, out, payload, sign_identity='', app_sign_identity='', sign_keychain='', binary_presigned=False):
@@ -332,6 +378,51 @@ def collect(incoming, out, require_signed=False):
     print(f'verified {len(found)} products + license bundle + BUILDINFO + SHA256SUMS')
 
 
+def publish(out, dry_run=False):
+    """Import only the verified final assets into a fresh OSS release pipeline."""
+    out = Path(out).resolve()
+    expected = set(expected_assets()) | {'agentd-licenses.tgz', 'BUILDINFO.json'}
+    if verify_manifest(out) != expected:
+        raise ValueError('publishing requires exactly 28 checksummed release inputs')
+    visible = {path.name for path in out.iterdir() if not path.name.startswith('.')}
+    if visible != expected | {'SHA256SUMS'}:
+        raise ValueError('publishing requires exactly 29 release files')
+    info = json.loads((out / 'BUILDINFO.json').read_text())
+    targets = info.get('targets', [])
+    if (info.get('products') != expected_assets() or len(targets) != len(all_targets()) or
+            {item['key'] for item in targets} != {item['key'] for item in all_targets()} or
+            len({item['version'] for item in targets}) != 1 or len({item['commit'] for item in targets}) != 1):
+        raise ValueError('release metadata has inconsistent products, targets, version, or commit')
+    v = versions(targets[0]['version'])
+    if not dry_run:
+        validate_release_signing(targets)
+        commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+        tag = subprocess.check_output(['git', 'describe', '--tags', '--exact-match', 'HEAD'], cwd=ROOT, text=True).strip()
+        if targets[0]['commit'] != commit or v['version'] != tag:
+            raise ValueError('release inputs must match the checked-out commit and exact source tag')
+    stage = out / '.staging' / 'publish'
+    stage.mkdir(parents=True, exist_ok=True)
+    config = json.loads((ROOT / '.goreleaser.publish.json').read_text())
+    config['dist'] = str(stage / 'goreleaser-dist')
+    config_path = stage / 'goreleaser.json'
+    config_path.write_text(json.dumps(config, indent=2) + '\n')
+    env = dict(os.environ, AGENTD_RELEASE_DIR=str(out), AGENTD_PACKAGE_VERSION=v['packageVersion'])
+    command = [goreleaser_command(), 'release', '--clean', '--config', config_path]
+    # Always prove the import/checksum path before a real upload. No binary or
+    # package is rebuilt, and the original source-version metadata is untouched.
+    run(command + ['--snapshot', '--skip=publish'], cwd=ROOT, env=env)
+    generated_manifest = Path(config['dist']) / 'SHA256SUMS'
+    if generated_manifest.read_bytes() != (out / 'SHA256SUMS').read_bytes():
+        raise ValueError('GoReleaser checksum set differs from the verified release manifest')
+    copy_file(generated_manifest, out / 'SHA256SUMS')
+    verify_manifest(out)
+    if not dry_run:
+        run(command, cwd=ROOT, env=env)
+        if generated_manifest.read_bytes() != (out / 'SHA256SUMS').read_bytes():
+            raise ValueError('published checksum set differs from the verified release manifest')
+    print('GoReleaser ' + ('verified' if dry_run else 'published') + ' 28 assets + SHA256SUMS')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -344,10 +435,11 @@ def main():
         p.add_argument('--version', required=True); p.add_argument('--out', required=True); p.add_argument('--fips', action='store_true')
         p.add_argument('--no-manifest', action='store_true', help='defer checksums until external signing and verification finish')
         if command == 'package':
-            p.add_argument('--nfpm', default='nfpm'); p.add_argument('--sign-identity', default=''); p.add_argument('--app-sign-identity', default=''); p.add_argument('--sign-keychain', default='')
+            p.add_argument('--sign-identity', default=''); p.add_argument('--app-sign-identity', default=''); p.add_argument('--sign-keychain', default='')
     for command in ('manifest', 'verify'):
         p=commands.add_parser(command); p.add_argument('--out', required=True)
     p=commands.add_parser('collect'); p.add_argument('--incoming', required=True); p.add_argument('--out', required=True); p.add_argument('--require-signed', action='store_true')
+    p=commands.add_parser('publish'); p.add_argument('--out', required=True); p.add_argument('--dry-run', action='store_true', help='verify GoReleaser imports/checksums without publishing')
     args = parser.parse_args()
     try:
         if args.command == 'version': print(json.dumps(versions(args.version)))
@@ -355,15 +447,15 @@ def main():
         elif args.command == 'verify-fips': check_fips(args.binary, os.environ); print('Pinned Go FIPS module and default runtime mode verified')
         elif args.command in ('build', 'package'):
             if args.no_manifest: (Path(args.out) / 'SHA256SUMS').unlink(missing_ok=True)
-            t,v,out,payload=build(args)
+            t,v,out,payload=build(args, linux_packages=args.command == 'package' and args.os == 'linux')
             if args.command == 'package':
-                if t['os']=='linux': package_linux(t,v,out,payload,args.nfpm)
-                elif t['os']=='darwin': package_mac(t,v,out,payload,args.sign_identity,args.app_sign_identity,args.sign_keychain)
-                else: raise ValueError('use scripts/build-windows.ps1 to create native MSI')
+                if t['os']=='darwin': package_mac(t,v,out,payload,args.sign_identity,args.app_sign_identity,args.sign_keychain)
+                elif t['os']!='linux': raise ValueError('use scripts/build-windows.ps1 to create native MSI')
             if not args.no_manifest: manifest(out)
         elif args.command == 'manifest': manifest(args.out)
         elif args.command == 'verify': verify_manifest(args.out)
         elif args.command == 'collect': collect(args.incoming,args.out,args.require_signed)
+        elif args.command == 'publish': publish(args.out,args.dry_run)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'release: {error}\n')
 

@@ -10,7 +10,6 @@ FIPS_VERSION := v1.0.0-c2097c7c
 GO_FIPS_MODE := $(if $(filter true,$(FIPS)),$(FIPS_VERSION),off)
 OUTPUT ?= bin/agentd$(if $(filter true,$(FIPS)),-fips,)$(if $(filter windows,$(TARGET_OS)),.exe,)
 DIST_DIR ?= dist
-NFPM ?= nfpm
 
 all: agentd
 
@@ -27,7 +26,7 @@ release:
 ifeq ($(TARGET_OS),windows)
 	pwsh -NoProfile -File scripts/build-windows.ps1 -Architecture $(TARGET_ARCH) -Version $(VERSION) -OutDir $(DIST_DIR)
 else
-	bash scripts/build-release.sh --os $(TARGET_OS) --arch $(TARGET_ARCH) $(if $(TARGET_ARM),--goarm $(TARGET_ARM)) $(if $(filter true,$(FIPS)),--fips) --version $(VERSION) --out $(DIST_DIR) --nfpm $(NFPM)
+	bash scripts/build-release.sh --os $(TARGET_OS) --arch $(TARGET_ARCH) $(if $(TARGET_ARM),--goarm $(TARGET_ARM)) $(if $(filter true,$(FIPS)),--fips) --version $(VERSION) --out $(DIST_DIR)
 endif
 
 test:

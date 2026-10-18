@@ -96,16 +96,30 @@ class ReleaseContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             out=Path(temp);payload=out/'payload';payload.mkdir();(payload/'agentd').write_text('binary');(payload/'README.md').write_text('docs')
             for arch in R.LINUX:
-                with mock.patch.object(R,'run') as run:
-                    t=R.target('linux',arch);R.package_linux(t,R.versions('v1.2.3'),out,payload,'nfpm')
-                    config=json.loads((out/'nfpm.json').read_text())
-                    self.assertEqual(config['arch'],{'arm':'arm5','armhf':'arm7'}.get(arch,arch))
-                    self.assertEqual(config['conflicts'],['agentd-fips'])
-                    self.assertEqual(config['contents'][1 if config['contents'][0]['src'].endswith('README.md') else 0]['dst'],'/usr/bin/agentd')
-                    self.assertEqual(len(run.call_args_list),2)
-            with mock.patch.object(R,'run'):
-                R.package_linux(R.target('linux','amd64',fips=True),R.versions('v1.2.3'),out,payload,'nfpm')
-            config=json.loads((out/'nfpm.json').read_text());self.assertEqual(config['name'],'agentd-fips');self.assertEqual(config['conflicts'],['agentd'])
+                t=R.target('linux',arch)
+                config=R.goreleaser_config(t,R.versions('v1.2.3'),out,payload,packages=True)
+                build,package=config['builds'][0],config['nfpms'][0]
+                self.assertEqual(build['goos'],['linux']);self.assertEqual(build['goarch'],[t['goarch']])
+                if t['goarm']:self.assertEqual(build['goarm'],[t['goarm']])
+                self.assertEqual(package['conflicts'],['agentd-fips'])
+                self.assertEqual(package['bindir'],'/usr/bin')
+                self.assertEqual(package['contents'][0]['dst'],'/usr/share/doc/agentd/README.md')
+                self.assertEqual(set(package['formats']),{'deb','rpm'})
+                self.assertEqual([package['overrides'][fmt]['file_name_template']+'.'+fmt for fmt in ('deb','rpm')],R.names(t)[1:])
+            config=R.goreleaser_config(R.target('linux','amd64',fips=True),R.versions('v1.2.3'),out,payload,packages=True)
+            package=config['nfpms'][0];self.assertEqual(package['package_name'],'agentd-fips');self.assertEqual(package['conflicts'],['agentd'])
+
+    def test_publish_rejects_extra_files_and_unsigned_release_before_invocation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);incoming=root/'incoming';self.fixture_targets(incoming)
+            R.collect(incoming,root/'release')
+            with mock.patch.object(R,'run') as run:
+                with self.assertRaisesRegex(ValueError,'signed installer'):R.publish(root/'release')
+                run.assert_not_called()
+            (root/'release/private-key.p8').write_text('do not publish')
+            with mock.patch.object(R,'run') as run:
+                with self.assertRaisesRegex(ValueError,'exactly 29'):R.publish(root/'release',dry_run=True)
+                run.assert_not_called()
 
 class BuildPayloadTest(unittest.TestCase):
     def test_client_only_build_and_platform_payload(self):
@@ -113,18 +127,21 @@ class BuildPayloadTest(unittest.TestCase):
             root=Path(temp);payload_sources=['README.md','THIRD_PARTY_NOTICES.md','go.mod','go.sum','examples/agentd/config.yaml','docs/agentd-config.md','docs/build-and-release.md','connection/README.md','transport/xhttp/README.md','transport/xhttp/LICENSE','transport/xhttp/NOTICE']
             for name in payload_sources:
                 p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(name)
+            (root/'.goreleaser.json').write_bytes((R.ROOT/'.goreleaser.json').read_bytes())
             goroot=root/'toolchain';goroot.mkdir();(goroot/'LICENSE').write_text('Go license')
             def fake_run(command,**kwargs):
-                if command[:2]==['go','build']:
-                    self.assertEqual(command[-1],'./cmd/agentd');self.assertEqual(kwargs['env']['CGO_ENABLED'],'0')
-                    Path(command[command.index('-o')+1]).write_text('fake client')
+                if command[:2]==['goreleaser','build']:
+                    config=json.loads(Path(command[command.index('--config')+1]).read_text())
+                    self.assertEqual(config['builds'][0]['main'],'./cmd/agentd');self.assertEqual(kwargs['env']['CGO_ENABLED'],'0')
+                    self.assertEqual(kwargs['env']['AGENTD_SOURCE_VERSION'],'v1.2.3')
+                    Path(command[command.index('--output')+1]).write_text('fake client')
                 return subprocess.CompletedProcess(command,0,stdout='abc')
             def output(command,**kwargs):
                 if command[:2]==['go','list']:return json.dumps({'Module':{'Main':True,'Path':'client'}})
                 return json.dumps({'GOROOT':str(goroot),'GOVERSION':R.GO_VERSION})
             for os_name,arch in [('linux','amd64'),('darwin','arm64'),('windows','386')]:
                 args=argparse.Namespace(os=os_name,arch=arch,goarm='',fips=False,version='v1.2.3',out=str(root/'out'))
-                with mock.patch.object(R,'ROOT',root),mock.patch.object(R,'run',side_effect=fake_run),mock.patch('subprocess.check_output',side_effect=output),mock.patch('subprocess.run',return_value=subprocess.CompletedProcess([],0,stdout='abc')):
+                with mock.patch.object(R,'ROOT',root),mock.patch.object(R,'goreleaser_command',return_value='goreleaser'),mock.patch.object(R,'run',side_effect=fake_run),mock.patch('subprocess.check_output',side_effect=output),mock.patch('subprocess.run',return_value=subprocess.CompletedProcess([],0,stdout='abc')):
                     t,v,out,payload=R.build(args)
                 self.assertFalse((payload/'agents').exists());self.assertFalse((payload/'agents.exe').exists())
                 self.assertFalse((payload/'agents.example.yaml').exists())

@@ -27,6 +27,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
+# Failures can occur before output paths are initialized (including on a
+# non-Windows host). Keep diagnostics safe under StrictMode in those cases.
+$staging = $null
 
 function Invoke-Native {
     param([string] $File, [string[]] $Arguments)
@@ -214,6 +217,22 @@ try {
     Invoke-Native $Python @($release, 'manifest', '--out', $output)
     Write-Host "Built $exe and $msi (MSI version $packageVersion)."
 } catch {
-    Write-Error $_ -ErrorAction Continue
+    $buildError = $_
+    Write-Error $buildError -ErrorAction Continue
+    if ($null -ne $staging) {
+        # Only inspect this build's fixed MSI transaction logs. Application
+        # configuration and credential files are never included in diagnostics.
+        foreach ($logName in @('install.log', 'uninstall.log')) {
+            $logPath = Join-Path $staging $logName
+            if (Test-Path -LiteralPath $logPath -PathType Leaf -ErrorAction SilentlyContinue) {
+                Write-Host "MSI diagnostic: $logName (last 100 lines)"
+                try {
+                    Get-Content -LiteralPath $logPath -Tail 100 -ErrorAction Stop | ForEach-Object { Write-Host $_ }
+                } catch {
+                    Write-Warning "Could not read MSI diagnostic log $logName."
+                }
+            }
+        }
+    }
     exit 1
 }

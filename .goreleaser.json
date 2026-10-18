@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "project_name": "agentd",
+  "builds": [
+    {
+      "id": "agentd",
+      "main": "./cmd/agentd",
+      "binary": "agentd",
+      "flags": ["-mod=readonly", "-trimpath"],
+      "ldflags": ["-s -w -X main.Version={{ .Env.AGENTD_SOURCE_VERSION }}"],
+      "env": ["CGO_ENABLED=0", "GOFIPS140={{ .Env.AGENTD_GOFIPS140 }}"],
+      "goos": ["linux", "darwin", "windows"],
+      "goarch": ["386", "amd64", "arm", "arm64"],
+      "goarm": ["5", "7"],
+      "ignore": [
+        {"goos": "darwin", "goarch": "386"},
+        {"goos": "darwin", "goarch": "arm"},
+        {"goos": "windows", "goarch": "arm"},
+        {"goos": "windows", "goarch": "arm64"}
+      ]
+    }
+  ],
+  "archives": [{"formats": ["binary"]}],
+  "nfpms": [
+    {
+      "id": "agentd",
+      "ids": ["agentd"],
+      "package_name": "agentd",
+      "formats": ["deb", "rpm"],
+      "bindir": "/usr/bin",
+      "release": "1",
+      "section": "net",
+      "priority": "optional",
+      "maintainer": "bit-precise",
+      "vendor": "bit-precise",
+      "homepage": "https://github.com/bit-precise/agentd",
+      "description": "Authenticated service publishing and domain egress agent",
+      "license": "LicenseRef-Proprietary AND MPL-2.0",
+      "conflicts": ["agentd-fips"],
+      "rpm": {"buildhost": "build.agentd.invalid", "compression": "gzip"}
+    }
+  ],
+  "snapshot": {"version_template": "{{ .Env.AGENTD_PACKAGE_VERSION }}"},
+  "checksum": {"disable": true},
+  "changelog": {"disable": true},
+  "release": {"disable": true}
+}
