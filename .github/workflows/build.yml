@@ -525,8 +525,11 @@ jobs:
           REQUIRE_SIGNED: ${{ needs.metadata.outputs.macos_signing }}
         run: |
           set -euo pipefail
-          args=(); if [[ "$REQUIRE_SIGNED" == true ]]; then args+=(--require-signed); fi
-          python3 scripts/verify-macos-package.py --out dist --version "$RELEASE_VERSION" "${args[@]}"
+          if [[ "$REQUIRE_SIGNED" == true ]]; then
+            python3 scripts/verify-macos-package.py --out dist --version "$RELEASE_VERSION" --require-signed
+          else
+            python3 scripts/verify-macos-package.py --out dist --version "$RELEASE_VERSION"
+          fi
 
   windows-arm64-test:
     name: Install Windows ARM64 MSI natively

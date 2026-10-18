@@ -223,7 +223,7 @@ def goreleaser_config(t, v, out, payload, packages=False):
     if any(path.is_symlink() for path in extra_files):
         raise ValueError('release payload cannot contain symlinks')
     archive['files'] = [
-        {'src': str(path), 'dst': path.relative_to(payload).parent.as_posix(), 'strip_parent': True,
+        {'src': path.as_posix(), 'dst': path.relative_to(payload).parent.as_posix(), 'strip_parent': True,
          'info': {'mode': 0o644, 'owner': 'root', 'group': 'root', 'mtime': '1970-01-01T00:00:00Z'}}
         for path in extra_files]
     if packages:
@@ -238,7 +238,7 @@ def goreleaser_config(t, v, out, payload, packages=False):
             packager: {'file_name_template': filename.rsplit('.', 1)[0]}
             for packager, filename in zip(('deb', 'rpm'), names(t, v)[1:])}
         package['contents'] = [
-            {'src': str(path), 'dst': '/usr/share/doc/' + package_name + '/' + path.relative_to(payload).as_posix(),
+            {'src': path.as_posix(), 'dst': '/usr/share/doc/' + package_name + '/' + path.relative_to(payload).as_posix(),
              'file_info': {'mode': 0o644}}
             for path in extra_files]
     else:
@@ -701,7 +701,7 @@ def publish(out, dry_run=False):
     stage.mkdir(parents=True, exist_ok=True)
     config = json.loads((ROOT / '.goreleaser.publish.json').read_text())
     config['dist'] = str(stage / 'goreleaser-dist')
-    imports = [{'glob': str(out / name)} for name in sorted(expected)]
+    imports = [{'glob': (out / name).as_posix()} for name in sorted(expected)]
     config['checksum']['extra_files'] = imports
     config['release']['extra_files'] = imports
     config_path = stage / 'goreleaser.json'

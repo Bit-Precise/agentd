@@ -4,7 +4,7 @@ import importlib.util
 import io
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import subprocess
 import tarfile
 import tempfile
@@ -173,6 +173,21 @@ class ReleaseContractTest(unittest.TestCase):
             config=R.goreleaser_config(R.target('linux','amd64',fips=True),R.versions('v1.2.3'),out,payload,packages=True)
             package=config['nfpms'][0];self.assertEqual(package['package_name'],'agentd-fips');self.assertEqual(package['conflicts'],['agentd'])
 
+    def test_goreleaser_globs_use_forward_slashes_on_windows(self):
+        class WindowsPayload(PureWindowsPath):
+            def rglob(self, pattern):
+                return iter((self/'BUILDINFO.json',self/'docs/README.md'))
+            def is_file(self):return True
+            def is_symlink(self):return False
+        payload=WindowsPayload(r'C:\build\agentd\dist\.staging\payload')
+        expected={payload.joinpath(name).as_posix() for name in ('BUILDINFO.json','docs/README.md')}
+        for os_name,arch in (('windows','arm64'),('linux','amd64')):
+            config=R.goreleaser_config(R.target(os_name,arch),R.versions('v1.2.3'),payload.parent,payload,packages=os_name=='linux')
+            self.assertEqual({item['src'] for item in config['archives'][0]['files']},expected)
+            if os_name=='linux':self.assertEqual({item['src'] for item in config['nfpms'][0]['contents']},expected)
+            # dist is a native filesystem path, not a glob pattern.
+            self.assertEqual(config['dist'],str(payload.parent/'goreleaser-dist'))
+
     def test_publish_rejects_extra_files_and_unsigned_release_before_invocation(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);incoming=root/'incoming';self.fixture_targets(incoming)
@@ -194,6 +209,7 @@ class ReleaseContractTest(unittest.TestCase):
                 config=json.loads(Path(command[command.index('--config')+1]).read_text())
                 for kind in ('checksum','release'):
                     self.assertEqual([Path(item['glob']).name for item in config[kind]['extra_files']],expected)
+                    self.assertTrue(all('\\' not in item['glob'] for item in config[kind]['extra_files']))
                 generated=Path(config['dist']);generated.mkdir(parents=True,exist_ok=True)
                 # GoReleaser writes LF checksums on every host; do not let the
                 # Windows text-mode fixture translate them into CRLF.
