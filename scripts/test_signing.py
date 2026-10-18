@@ -124,14 +124,101 @@ class ReleaseSigningTest(unittest.TestCase):
         args = argparse.Namespace(repository='Bit-Precise/agentd', tenant_id='11111111-1111-1111-1111-111111111111',
             subscription_id='22222222-2222-2222-2222-222222222222', resource_group='signing', account='account',
             profile='profile', environment='release-signing', application_name='agentd-release-signing',
-            application_id='', endpoint='https://wus2.codesigning.azure.net/')
+            application_id='', endpoint='https://wus2.codesigning.azure.net/',
+            discover_subject=False, subject_prefix='repo:Bit-Precise@295183371/agentd@1423467115')
         with mock.patch.object(AZURE.subprocess, 'run') as run:
             plan = AZURE.plan(args)
             run.assert_not_called()
         self.assertTrue(plan['scope'].endswith('/certificateProfiles/profile'))
-        self.assertEqual(plan['federatedCredential']['subject'], 'repo:Bit-Precise/agentd:environment:release-signing')
+        self.assertEqual(plan['federatedCredential']['subject'], 'repo:Bit-Precise@295183371/agentd@1423467115:environment:release-signing')
         self.assertEqual(plan['federatedCredential']['audiences'], ['api://AzureADTokenExchange'])
         self.assertNotIn('client-secret', json.dumps(plan))
+
+
+class AzureSubjectTest(unittest.TestCase):
+    REPOSITORY = {'full_name': 'Bit-Precise/agentd', 'id': 1423467115,
+                  'owner': {'login': 'Bit-Precise', 'id': 295183371}}
+    IMMUTABLE = {'use_default': True, 'use_immutable_subject': True,
+                 'sub_claim_prefix': 'repo:Bit-Precise@295183371/agentd@1423467115'}
+    LEGACY = {'use_default': True, 'use_immutable_subject': False,
+              'sub_claim_prefix': 'repo:Bit-Precise/agentd'}
+
+    def args(self, **overrides):
+        values = dict(repository='Bit-Precise/agentd', tenant_id='11111111-1111-1111-1111-111111111111',
+            subscription_id='22222222-2222-2222-2222-222222222222', resource_group='signing', account='account',
+            profile='profile', environment='release-signing', application_name='agentd-release-signing',
+            application_id='', endpoint='https://wus2.codesigning.azure.net/',
+            discover_subject=False, subject_prefix=self.IMMUTABLE['sub_claim_prefix'])
+        return argparse.Namespace(**(values | overrides))
+
+    def test_offline_plans_require_explicit_legacy_or_immutable_prefix_without_any_reads(self):
+        with mock.patch.object(AZURE, 'run') as run:
+            for source in (self.LEGACY, self.IMMUTABLE):
+                plan = AZURE.plan(self.args(subject_prefix=source['sub_claim_prefix']))
+                self.assertEqual(plan['federatedCredential']['subject'], source['sub_claim_prefix'] + ':environment:release-signing')
+            with self.assertRaisesRegex(ValueError, 'supply --subject-prefix'):
+                AZURE.plan(self.args(subject_prefix=''))
+            run.assert_not_called()
+
+    def test_discovery_reads_explicit_default_settings_and_cross_checks_repository_ids(self):
+        for source in (self.LEGACY, self.IMMUTABLE):
+            with self.subTest(source=source), mock.patch.object(AZURE, 'run', side_effect=[source, self.REPOSITORY]) as run:
+                plan = AZURE.plan(self.args(discover_subject=True, subject_prefix=None))
+                self.assertEqual(plan['githubSubjectPrefix'], source['sub_claim_prefix'])
+                self.assertEqual(run.call_count, 2)
+                self.assertTrue(all(call.args[0][:2] == ['gh', 'api'] for call in run.call_args_list))
+
+    def test_discovery_rejects_custom_or_ambiguous_templates(self):
+        for source in ({'use_default': False, 'include_claim_keys': ['repository_owner_id', 'job_workflow_ref']},
+                       {'use_default': True}, {'use_default': True, 'sub_claim_prefix': self.LEGACY['sub_claim_prefix']}):
+            with self.subTest(source=source), mock.patch.object(AZURE, 'run', return_value=source) as run:
+                with self.assertRaises(ValueError):
+                    AZURE.discover_subject_prefix('Bit-Precise/agentd')
+                self.assertEqual(run.call_count, 1)
+
+    def test_discovery_rejects_prefix_mismatching_mode_ids_or_canonical_name(self):
+        cases = [
+            (self.IMMUTABLE | {'sub_claim_prefix': self.LEGACY['sub_claim_prefix']}, self.REPOSITORY),
+            (self.LEGACY | {'sub_claim_prefix': self.IMMUTABLE['sub_claim_prefix']}, self.REPOSITORY),
+            (self.IMMUTABLE, self.REPOSITORY | {'id': 1}),
+            (self.IMMUTABLE, self.REPOSITORY | {'owner': {'id': 1}}),
+            (self.IMMUTABLE, self.REPOSITORY | {'full_name': 'other/agentd'}),
+        ]
+        for source, repo in cases:
+            with self.subTest(source=source, repo=repo), mock.patch.object(AZURE, 'run', side_effect=[source, repo]):
+                with self.assertRaises(ValueError):
+                    AZURE.discover_subject_prefix('Bit-Precise/agentd')
+
+    def test_offline_prefix_rejects_other_repositories_wildcards_context_or_partial_ids(self):
+        for prefix in ('repo:other/agentd', 'repo:Bit-Precise/agentd:*',
+                       'repo:Bit-Precise/agentd:environment:release-signing',
+                       'repo:Bit-Precise@295183371/agentd', 'repo:Bit-Precise/agentd@1423467115',
+                       'repository_owner_id:295183371:job_workflow_ref:any'):
+            with self.subTest(prefix=prefix), self.assertRaises(ValueError):
+                AZURE.plan(self.args(subject_prefix=prefix))
+
+    def test_apply_rejects_obsolete_offline_prefix_before_any_azure_or_github_write(self):
+        args = self.args(subject_prefix=self.LEGACY['sub_claim_prefix'])
+        plan = AZURE.plan(args)
+        with mock.patch.object(AZURE, 'run', side_effect=[self.IMMUTABLE, self.REPOSITORY]) as run, \
+                mock.patch.object(AZURE.subprocess, 'run') as process:
+            with self.assertRaisesRegex(ValueError, 'does not match current'):
+                AZURE.apply(args, plan)
+            process.assert_not_called()
+            self.assertEqual(run.call_count, 2)
+            self.assertTrue(all(call.args[0][:2] == ['gh', 'api'] for call in run.call_args_list))
+
+    def test_apply_rechecks_even_discovered_plan_and_refuses_custom_template_change(self):
+        args = self.args(discover_subject=True, subject_prefix=None)
+        with mock.patch.object(AZURE, 'run', side_effect=[self.IMMUTABLE, self.REPOSITORY,
+                {'use_default': False, 'include_claim_keys': ['repository_owner_id', 'job_workflow_ref']}]) as run, \
+                mock.patch.object(AZURE.subprocess, 'run') as process:
+            plan = AZURE.plan(args)
+            with self.assertRaisesRegex(ValueError, 'custom OIDC subject template'):
+                AZURE.apply(args, plan)
+            process.assert_not_called()
+            self.assertEqual(run.call_count, 3)
+            self.assertTrue(all(call.args[0][:2] == ['gh', 'api'] for call in run.call_args_list))
 
 
 if __name__ == '__main__':

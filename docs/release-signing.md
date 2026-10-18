@@ -23,10 +23,14 @@ The federated credential must have:
 | Field | Exact value |
 |---|---|
 | issuer | `https://token.actions.githubusercontent.com` |
-| subject | `repo:Bit-Precise/agentd:environment:release-signing` |
+| subject | `repo:Bit-Precise@295183371/agentd@1423467115:environment:release-signing` |
 | audience | `api://AzureADTokenExchange` |
 
-The subject is case-sensitive: use the repository owner's canonical spelling.
+This repository uses GitHub's immutable default subject: both owner and
+repository names include their IDs. The subject is case-sensitive; use the
+actual `sub_claim_prefix` returned by GitHub, not a name-only guess. The helper
+rejects custom subject templates and revalidates live settings before any IAM
+write. Older repositories may still use a name-only default prefix.
 The environment should allow branch `main` for validation and tag pattern `v*`
 for releases. No required reviewer or manual approval is needed by this workflow.
 Configure repository tag/ruleset permissions so only trusted maintainers can
@@ -44,7 +48,9 @@ Set these environment **Variables**, not private signing keys:
 | `AZURE_SIGNING_PROFILE` | Active PublicTrust certificate profile name |
 
 `scripts/configure-azure-signing.py` prepares the exact IAM/GitHub plan. Its
-default is **dry run**: it does not access Azure/GitHub. After reviewing the plan,
+default is **dry run**: `--discover-subject` reads GitHub OIDC configuration and
+repository IDs; `--subject-prefix` supplies an explicit prefix for an offline
+plan without network access. Neither mode writes anything. After reviewing the plan,
 `--apply` creates a dedicated application/service principal, a profile-scoped role
 assignment, the federated credential, and the environment variables. It never
 creates a paid signing account/profile or client secret. Existing environment
@@ -56,7 +62,7 @@ ID with `--application-id` to resume; no unrelated application is silently reuse
 python3 scripts/configure-azure-signing.py \
   --tenant-id YOUR_TENANT_ID --subscription-id YOUR_SUBSCRIPTION_ID \
   --resource-group YOUR_GROUP --account YOUR_SIGNING_ACCOUNT \
-  --profile YOUR_PROFILE --endpoint https://wus2.codesigning.azure.net/
+  --profile YOUR_PROFILE --endpoint https://wus2.codesigning.azure.net/ --discover-subject
 # Add --apply only after reviewing the displayed plan.
 ```
 
@@ -68,11 +74,11 @@ python3 scripts/configure-azure-signing.py \
   --tenant-id 434591f5-2f86-4991-8784-d800512dd8fb \
   --subscription-id e4a93474-db18-4218-b22d-356788c3d84d \
   --resource-group artifactsigning --account bitprecisellc --profile bitprecisellc \
-  --endpoint https://wus2.codesigning.azure.net/
+  --endpoint https://wus2.codesigning.azure.net/ --discover-subject
 ```
 
 The profile was Active/PublicTrust. These are resource identifiers, not signing
-credentials. Running the script without `--apply` has no external effects.
+credentials. Running the script without `--apply` performs no external writes.
 
 The applying operator needs Entra application/SP creation rights, role-assignment
 rights on this profile, and GitHub environment/variable administration rights.
