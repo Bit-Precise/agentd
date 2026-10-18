@@ -6,17 +6,19 @@
 
 ## 使用
 
-在 agents 控制台创建 Workspace、成员和注册密钥，然后在设备上执行：
+在 agents 控制台创建 Workspace 并加入成员，然后在设备上执行：
 
 ```sh
 go mod download
 make agentd
 bin/agentd config validate --config /path/to/config.yaml
-bin/agentd enroll --config /path/to/config.yaml --key-file /private/path/enrollment.key
+bin/agentd login --config /path/to/config.yaml   # 浏览器中确认 Workspace 与运行身份
 bin/agentd run --config /path/to/config.yaml
 ```
 
-注册和配置变更没有人工审批：Control 按注册角色、成员角色和 Workspace 策略自动校验设备声明，通过即生效，越权或冲突直接拒绝并说明原因。Ingress 的 HTTP CONNECT / SOCKS 将获准的 TLS 域名请求送至指定远端出口；Serve 按名称连接本地固定 HTTP 服务；Egress 取本地规则与控制面限制的交集。未匹配的流量不会回落直连。
+无人值守设备改用服务账号的注册密钥：`bin/agentd enroll --config /path/to/config.yaml --key-file /private/path/enrollment.key`。
+
+注册和配置变更没有人工审批：Control 按运行主体的角色上限和 Workspace 策略自动校验设备声明，通过即生效，越权或冲突直接拒绝并说明原因。Ingress 的 HTTP CONNECT / SOCKS 将获准的 TLS 域名请求送至指定远端出口；Serve 按名称连接本地固定 HTTP 服务；Egress 取本地规则与控制面限制的交集。未匹配的流量不会回落直连。
 
 - [生产配置示例](examples/agentd/config.yaml) / [本机配置示例](examples/agentd/local.yaml)
 - [客户端配置](docs/agentd-config.md)
@@ -52,7 +54,7 @@ python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
 协议 v3 支持有界短租约续期，凭据文件为 v2；取消审批后需与 agents 服务端同时升级，不能与旧版本混用。详见 [connection](connection/README.md) 与 [XHTTP](transport/xhttp/README.md)。
 
-当前实现 HTTP CONNECT/SOCKS 与 TLS 域名出口；TUN 运行时明确拒绝，WSS 尚未实现。agents Console 已支持上游 OIDC；agentd 二进制目前仍通过注册密钥接入，尚未实现 `agentd login` 的 OAuth Device Flow。
+当前实现 HTTP CONNECT/SOCKS 与 TLS 域名出口；TUN 运行时明确拒绝，WSS 尚未实现。个人设备用 `agentd login` 接入（OAuth Device Flow，在浏览器确认 Workspace 与本人/服务账号身份）；无人值守设备用服务账号的注册密钥执行 `agentd enroll`。
 
 目标设计在同一二进制增加 Hydra Device Flow：用户在浏览器完成 OIDC 后选择有权限的 Workspace，再选择本人或该空间的 Service Account；SA 仅 maintainer 及以上可选择/管理，不能登录控制台。限定 Workspace 和主体的 OAuth access token 只用于一次设备注册兑换，权限和配置自动校验通过即签发各 Agent 独立凭据（取消审批的部分已实现）。SA 固定属于一个 Workspace，可以对应多个 Agent；无人值守注册密钥将只绑定 SA。Device Flow 尚未改变上述现有命令。真实 CDN 部署仍需验证长响应、缓存、请求预算和回源配置。
 

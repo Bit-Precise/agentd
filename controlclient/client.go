@@ -91,6 +91,33 @@ func New(cfg *config.Config) (*Client, error) {
 	return &Client{cfg: cfg, http: &http.Client{Transport: tr, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("control redirects are forbidden") }}}, nil
 }
 func (c *Client) Close() { c.http.CloseIdleConnections() }
+
+// HTTPClient shares the trusted transport (including the configured CA) with
+// the instance's OAuth authorization server.
+func (c *Client) HTTPClient() *http.Client { return c.http }
+
+// Instance reads the public instance description, including whether the
+// instance offers Device Flow login.
+func (c *Client) Instance(ctx context.Context) (api.InstanceInfo, error) {
+	var info api.InstanceInfo
+	err := c.request(ctx, "GET", "/v1/instance", "", nil, &info)
+	return info, err
+}
+
+// ExchangeDeviceEnrollment spends a one-time Device Flow access token on a
+// new Agent. Control fixes the Workspace and principal from the confirmed
+// authorization and rejects a config.yaml Workspace that differs from it;
+// the token is never stored.
+func (c *Client) ExchangeDeviceEnrollment(ctx context.Context, accessToken string) (api.EnrollResponse, error) {
+	var response api.EnrollResponse
+	request := api.AgentEnrollment{Instance: c.cfg.Instance, Endpoint: c.cfg.Transport.Endpoint, Workspace: c.cfg.Workspace, Name: c.cfg.Agent.Name, Desired: c.cfg.AgentSpec()}
+	err := c.request(ctx, "POST", "/v1/agent-enrollments", accessToken, request, &response)
+	if err == nil {
+		err = c.validate(response.Credentials)
+		response.Credentials.ControlURL = c.cfg.Instance
+	}
+	return response, err
+}
 func (c *Client) request(ctx context.Context, method, path, token string, body, out any) error {
 	var encoded []byte
 	var err error
@@ -154,7 +181,7 @@ func (c *Client) Enroll(ctx context.Context, key string) (api.EnrollResponse, er
 	return response, err
 }
 func (c *Client) validate(v credentials.Credentials) error {
-	if v.Version != api.CredentialsVersion || v.AgentID == "" || v.Workspace != c.cfg.Workspace {
+	if v.Version != api.CredentialsVersion || v.AgentID == "" || v.Workspace != c.cfg.Workspace || (v.Principal != nil && !v.Principal.Valid()) {
 		return errors.New("control response identity mismatch")
 	}
 	if v.ControlURL != "" && strings.TrimSuffix(v.ControlURL, "/") != strings.TrimSuffix(c.cfg.Instance, "/") {

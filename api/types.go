@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/bit-precise/agentd/policy"
@@ -21,12 +22,39 @@ const (
 	StatusActive  = "active"
 	StatusRevoked = "revoked"
 
+	PrincipalUser           = "user"
+	PrincipalServiceAccount = "service_account"
+
 	// CredentialsVersion 2 replaced the manual-approval snapshot with Effective.
 	CredentialsVersion = 2
 
 	maxServices = 128
 	maxRules    = 256
 )
+
+// Principal is the identity an Agent runs as: exactly one User or one Service
+// Account. It is fixed at registration and never derived from config.yaml.
+type Principal struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+}
+
+func (p Principal) Valid() bool {
+	return (p.Type == PrincipalUser || p.Type == PrincipalServiceAccount) && p.ID != "" && len(p.ID) <= 128 && !strings.ContainsAny(p.ID, ": \t\r\n")
+}
+
+// Subject is the typed OAuth subject, for example "service_account:<id>".
+// Emails and display names are never subjects.
+func (p Principal) Subject() string { return p.Type + ":" + p.ID }
+
+func ParseSubject(subject string) (Principal, error) {
+	kind, id, _ := strings.Cut(subject, ":")
+	p := Principal{Type: kind, ID: id}
+	if !p.Valid() {
+		return Principal{}, errors.New("subject must be user:<id> or service_account:<id>")
+	}
+	return p, nil
+}
 
 // AgentSpec is the desired configuration Control validates: which roles the
 // Agent runs and what it offers. It is derived from the local config.yaml.
@@ -207,11 +235,14 @@ type ConfigRejection struct {
 
 // Agent is the API view of a registered device. Roles is the enrollment role
 // ceiling, not the currently enabled roles; see Desired and Effective for those.
+// CreatedBy is the User who performed the registration, for audit only: it
+// never grants ownership or management rights.
 type Agent struct {
 	ID            string           `json:"id"`
 	WorkspaceID   string           `json:"workspaceId"`
 	Workspace     string           `json:"workspace"`
-	UserID        string           `json:"userId"`
+	Principal     Principal        `json:"principal"`
+	CreatedBy     string           `json:"createdBy,omitempty"`
 	Name          string           `json:"name"`
 	Status        string           `json:"status"`
 	Roles         []string         `json:"roles"`
@@ -224,10 +255,13 @@ type Agent struct {
 
 // Credentials is both the Control response and the private credentials.json
 // document. Tokens are returned in plain text only once, at enrollment.
+// Principal records the trusted authorization result; editing config.yaml
+// cannot rebind the profile.
 type Credentials struct {
 	Version       int             `json:"version"`
 	Workspace     string          `json:"workspace"`
 	AgentID       string          `json:"agentId"`
+	Principal     *Principal      `json:"principal,omitempty"`
 	ProviderToken string          `json:"providerToken,omitempty"`
 	AccessToken   string          `json:"accessToken,omitempty"`
 	ControlToken  string          `json:"controlToken,omitempty"`
@@ -248,6 +282,40 @@ type EnrollRequest struct {
 type EnrollResponse struct {
 	Agent       Agent       `json:"agent"`
 	Credentials Credentials `json:"credentials"`
+}
+
+// AgentEnrollment exchanges a one-time Device Flow access token, sent as the
+// Bearer credential, for a new Agent. The Workspace and principal come from the
+// confirmed authorization; Workspace here is only a hint that must match it.
+type AgentEnrollment struct {
+	Instance  string    `json:"instance"`
+	Endpoint  string    `json:"endpoint"`
+	Workspace string    `json:"workspace"`
+	Name      string    `json:"name"`
+	Desired   AgentSpec `json:"desired"`
+}
+
+// InstanceInfo is the public instance description. DeviceAuthorization is
+// present when the instance offers `agentd login`.
+type InstanceInfo struct {
+	ServerURL           string                   `json:"serverURL"`
+	EdgeURL             string                   `json:"edgeURL"`
+	DevelopmentHTTP     bool                     `json:"developmentHTTP"`
+	OIDC                InstanceOIDC             `json:"oidc"`
+	DeviceAuthorization *DeviceAuthorizationInfo `json:"deviceAuthorization,omitempty"`
+}
+type InstanceOIDC struct {
+	Enabled  bool   `json:"enabled"`
+	LoginURL string `json:"loginURL"`
+}
+
+// DeviceAuthorizationInfo names the instance's OAuth authorization server and
+// the public device client. Endpoints are discovered from the issuer.
+type DeviceAuthorizationInfo struct {
+	Issuer   string `json:"issuer"`
+	ClientID string `json:"clientId"`
+	Scope    string `json:"scope"`
+	Audience string `json:"audience"`
 }
 
 // ConfigUpdate replaces the authenticated Agent's desired spec. Workspace and

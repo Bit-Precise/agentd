@@ -96,13 +96,13 @@ func (e *edgeFixture) accept(c net.Conn) {
 			if h.Token != "access-secret" {
 				return p, errors.New("wrong role credential")
 			}
-			p.UserID = "alice"
+			p.PrincipalType, p.PrincipalID = "user", "alice"
 		default:
 			return p, errors.New("wrong role")
 		}
 		return p, nil
 	}, connection.Config{AuthorizeOpen: func(_ context.Context, p connection.Principal, r connection.OpenRequest) (connection.OpenClaims, error) {
-		if p.Role != connection.RoleAccess || p.UserID != "alice" || r.Purpose != connection.PurposeAccess || r.Protocol != "tls" || r.Destination.Host != "example.com" || r.Destination.Port != e.port {
+		if p.Role != connection.RoleAccess || p.PrincipalID != "alice" || r.Purpose != connection.PurposeAccess || r.Protocol != "tls" || r.Destination.Host != "example.com" || r.Destination.Port != e.port {
 			return connection.OpenClaims{}, errors.New("route denied")
 		}
 		return connection.OpenClaims{FlowID: r.FlowID, Purpose: r.Purpose, Destination: r.Destination, Protocol: r.Protocol, Revision: r.Revision, Deadline: r.Deadline}, nil

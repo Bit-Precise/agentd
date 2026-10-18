@@ -14,6 +14,7 @@ import (
 	"github.com/bit-precise/agentd/config"
 	"github.com/bit-precise/agentd/controlclient"
 	"github.com/bit-precise/agentd/credentials"
+	"github.com/bit-precise/agentd/deviceflow"
 	"github.com/bit-precise/agentd/supervisor"
 	"github.com/rs/zerolog"
 )
@@ -30,7 +31,7 @@ func main() {
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "--help" {
-		_, err := fmt.Fprintln(out, "agentd enroll --config config.yaml --key-file enrollment.key [--replace]\nagentd run --config config.yaml\nagentd config validate --config config.yaml\nagentd version")
+		_, err := fmt.Fprintln(out, "agentd login --config config.yaml [--no-browser] [--replace]\nagentd enroll --config config.yaml --key-file enrollment.key [--replace]\nagentd run --config config.yaml\nagentd config validate --config config.yaml\nagentd version")
 		return err
 	}
 	if args[0] == "version" || args[0] == "--version" {
@@ -46,14 +47,15 @@ func run(args []string, out io.Writer) error {
 		command = "validate"
 		args = args[1:]
 	}
-	if command != "run" && command != "validate" && command != "enroll" {
+	if command != "run" && command != "validate" && command != "enroll" && command != "login" {
 		return errors.New("unknown command; use agentd help")
 	}
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(out)
 	path := flags.String("config", "config.yaml", "path to the agent configuration")
 	keyFile := flags.String("key-file", "", "private enrollment key file (enroll only)")
-	replace := flags.Bool("replace", false, "enroll only: replace credentials that Control has revoked or that expired")
+	replace := flags.Bool("replace", false, "enroll/login: replace credentials that Control has revoked or that expired")
+	noBrowser := flags.Bool("no-browser", false, "login only: print the verification URL without opening a browser")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -67,6 +69,11 @@ func run(args []string, out io.Writer) error {
 	if command == "validate" {
 		_, err := fmt.Fprintln(out, "configuration is valid")
 		return err
+	}
+	if command == "login" {
+		ctx, stop := signal.NotifyContext(context.Background(), terminationSignals()...)
+		defer stop()
+		return login(ctx, cfg, loginOptions{noBrowser: *noBrowser, replace: *replace}, out, os.Stderr, openBrowser, &deviceflow.Client{})
 	}
 	if command == "enroll" {
 		if *keyFile == "" {
@@ -124,7 +131,7 @@ func run(args []string, out io.Writer) error {
 		case err == nil:
 			c = &next
 		case controlclient.AuthenticationRejected(err):
-			return fmt.Errorf("device credential revoked or expired; run agentd enroll --replace to register again: %w", err)
+			return fmt.Errorf("device credential revoked or expired; register again with agentd login --replace (or enroll --replace): %w", err)
 		case c.Effective.ExpiresAt.After(time.Now()):
 			// Supervision keeps retrying; the stored snapshot bounds offline operation.
 			log.Warn().Err(err).Time("effectiveUntil", c.Effective.ExpiresAt).Msg("control unreachable at startup; using the stored effective configuration")

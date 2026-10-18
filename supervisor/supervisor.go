@@ -499,7 +499,7 @@ func (s *Supervisor) pollControl(ctx context.Context, stop context.CancelCauseFu
 				return
 			}
 			s.log.Error().Err(err).Msg("control rejected this device credential; stopping roles")
-			stop(fmt.Errorf("device credential revoked or expired; run agentd enroll --replace to register again: %w", err))
+			stop(fmt.Errorf("device credential revoked or expired; register again with agentd login --replace (or enroll --replace): %w", err))
 			return
 		default:
 			if ctx.Err() != nil {
