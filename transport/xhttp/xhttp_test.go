@@ -620,3 +620,34 @@ func TestAcceptedPrincipalMetadata(t *testing.T) {
 		t.Fatal("client-side connection claimed server-authorized identity")
 	}
 }
+
+func TestTLSOffloadRequiresExplicitTrustedListener(t *testing.T) {
+	for _, test := range []struct {
+		name                 string
+		offload, development bool
+		token                string
+		want                 int
+	}{
+		{"default rejects forwarded TLS claim", false, false, "alice", 403},
+		{"development stays loopback only", false, true, "alice", 403},
+		{"offload still authenticates", true, false, "invalid", 401},
+		{"offload admits authenticated request to protocol validation", true, false, "alice", 400},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			h, err := NewHandler(ServerConfig{Authorize: testAuth, TLSOffload: test.offload, AllowHTTP: test.development})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer h.Close()
+			req := httptest.NewRequest(http.MethodGet, "http://edge.example/agent", nil)
+			req.RemoteAddr = "10.0.0.10:12345"
+			req.Header.Set("X-Forwarded-Proto", "https")
+			req.Header.Set("Authorization", "Bearer "+test.token)
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, req)
+			if w.Code != test.want {
+				t.Fatalf("got %d want %d", w.Code, test.want)
+			}
+		})
+	}
+}

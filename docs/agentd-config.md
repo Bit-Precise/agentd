@@ -1,6 +1,6 @@
 # agentd 本地配置与三角色模型
 
-状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前范围以 [运行说明](../README.md) 和 [本地联调](local-development.md) 为准，TUN、WSS、OIDC 与多节点仍未交付。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
+状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前范围以 [运行说明](../README.md) 和 [本地联调](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md) 为准，TUN、WSS、OIDC 与多节点仍未交付。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
 
 实际接入为 `agentd enroll --config FILE --key-file PRIVATE_KEY_FILE`，批准后 `agentd run --config FILE`。本机 HTTP 联调显式设置 `transport.allowHTTP: true` 且 instance/endpoint 都用 loopback；生产使用 HTTPS 与可选 `caFile`。见 [local.yaml](../examples/agentd/local.yaml)。凭据与轮询状态不放入 YAML。
 

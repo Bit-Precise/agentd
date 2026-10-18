@@ -31,6 +31,7 @@ const (
 type ServerConfig struct {
 	Authorize               func(*http.Request) (string, error)
 	AllowHTTP               bool // explicit loopback-only development exception
+	TLSOffload              bool // trusted TLS ingress terminates HTTPS before this listener
 	MaxSessions             int
 	MaxSessionsPerPrincipal int
 	MaxPacketBytes          int
@@ -159,7 +160,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if r.TLS == nil {
+	if r.TLS == nil && !h.cfg.TLSOffload {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
 		if !h.cfg.AllowHTTP || err != nil || !loopbackHost(host) {
 			http.Error(w, "HTTPS required", http.StatusForbidden)

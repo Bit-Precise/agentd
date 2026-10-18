@@ -134,3 +134,10 @@ go test -race ./transport/xhttp
 
 No real CDN has been qualified by these tests. Header/request flood limits and
 authorization callback cost must also be enforced at the deployment front door.
+
+Server embeddings behind a trusted HTTPS ingress may explicitly set
+`ServerConfig.TLSOffload`. This permits plaintext only on that backend listener;
+HTTP authorization and all transport checks remain mandatory. It is not inferred
+from `Forwarded` or `X-Forwarded-Proto`, and the backend listener must be protected
+from untrusted direct access. `AllowHTTP` remains a loopback-only development
+exception. The agent's public endpoint continues to require HTTPS.

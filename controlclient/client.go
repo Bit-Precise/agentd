@@ -14,8 +14,8 @@ import (
 	"os"
 	"strings"
 
+	types "github.com/bit-precise/agentd/api"
 	"github.com/bit-precise/agentd/config"
-	"github.com/bit-precise/agentd/control/types"
 	"github.com/bit-precise/agentd/credentials"
 )
 
