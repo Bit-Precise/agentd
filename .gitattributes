@@ -1,0 +1,3 @@
+# Keep vendored license text byte-identical in Windows and Unix checkouts.
+/transport/xhttp/LICENSE text eol=lf
+/transport/xhttp/NOTICE text eol=lf

@@ -360,9 +360,14 @@ def collect(incoming, out, require_signed=False):
                 elif name.startswith('_licenses/'):
                     relative = PurePosixPath(name).parts[2:]
                     target_path = licenses.joinpath(*relative)
-                    if target_path.exists() and sha256(target_path) != sha256(path):
-                        raise ValueError('different license contents at same path')
-                    copy_file(path, target_path)
+                    # Windows checkouts can use CRLF for repository licenses.
+                    # The original bytes were checked by verify_manifest above;
+                    # normalize only the merged copy, keeping all other bytes.
+                    data = path.read_bytes().replace(b'\r\n', b'\n')
+                    if target_path.exists() and target_path.read_bytes() != data:
+                        raise ValueError('different license contents at same path: ' + '/'.join(relative))
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    target_path.write_bytes(data)
                 else:
                     raise ValueError('unexpected release entry: ' + name)
         if found != expected:

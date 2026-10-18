@@ -85,6 +85,42 @@ class ReleaseContractTest(unittest.TestCase):
             metadata=group/'_metadata/darwin-amd64.json';info=json.loads(metadata.read_text());info['version']='v9.0.0';metadata.write_text(json.dumps(info));R.manifest(group)
             with self.assertRaisesRegex(ValueError,'disagree'):R.collect(incoming,root/'different')
 
+    def test_collect_normalizes_only_crlf_in_merged_license_copy(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);incoming=root/'incoming';self.fixture_targets(incoming)
+            originals={}
+            for t in R.all_targets():
+                group=incoming/('target-'+t['key'])
+                path=group/'_licenses'/t['key']/'go/LICENSE'
+                path.write_bytes(b'Copyright\r\nPermission.\r\n' if t['os']=='windows' else b'Copyright\nPermission.\n')
+                originals[path]=path.read_bytes();R.manifest(group)
+            R.collect(incoming,root/'release')
+            with tarfile.open(root/'release/agentd-licenses.tgz') as archive:
+                self.assertEqual(archive.extractfile('go/LICENSE').read(),b'Copyright\nPermission.\n')
+            for path,data in originals.items():self.assertEqual(path.read_bytes(),data)
+            self.assertEqual(len(R.verify_manifest(root/'release')),28)
+
+    def test_collect_rejects_real_license_difference(self):
+        for changed in (b'Different license\n',b'Copyright \nPermission.\n',b'Copyright\rPermission.\n',b'\xef\xbb\xbfCopyright\nPermission.\n'):
+            with self.subTest(changed=changed),tempfile.TemporaryDirectory() as temp:
+                root=Path(temp);incoming=root/'incoming';self.fixture_targets(incoming)
+                for t in R.all_targets():
+                    group=incoming/('target-'+t['key'])
+                    path=group/'_licenses'/t['key']/'go/LICENSE'
+                    path.write_bytes(changed if t['key']=='windows-amd64' else b'Copyright\nPermission.\n')
+                    R.manifest(group)
+                with self.assertRaisesRegex(ValueError,'different license contents at same path: go/LICENSE'):
+                    R.collect(incoming,root/'release')
+
+    def test_collect_checks_original_license_digest_before_normalizing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);incoming=root/'incoming';self.fixture_targets(incoming)
+            group=incoming/'target-windows-amd64';path=group/'_licenses/windows-amd64/go/LICENSE'
+            path.write_bytes(b'Copyright\n');R.manifest(group)
+            path.write_bytes(b'Copyright\r\n')
+            with self.assertRaisesRegex(ValueError,'invalid checksum for _licenses/windows-amd64/go/LICENSE'):
+                R.collect(incoming,root/'release')
+
     def test_archive_is_deterministic(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);payload=root/'payload';payload.mkdir();(payload/'agentd').write_text('binary')
