@@ -208,11 +208,16 @@ def package_linux(t, v, out, payload, nfpm):
         run([nfpm, 'package', '--config', config_path, '--packager', packager, '--target', out / filename], env=dict(os.environ, GOFIPS140='off'))
 
 
-def package_mac(t, v, out, payload, sign_identity='', app_sign_identity=''):
+def package_mac(t, v, out, payload, sign_identity='', app_sign_identity='', sign_keychain=''):
     if sys.platform != 'darwin' or t['os'] != 'darwin':
         raise ValueError('PKG creation must run on native macOS')
+    payload_info = json.loads((payload / 'BUILDINFO.json').read_text())
+    payload_info.update(signed=bool(sign_identity), binarySigned=bool(app_sign_identity))
+    (payload / 'BUILDINFO.json').write_text(json.dumps(payload_info, indent=2, sort_keys=True) + '\n')
     if app_sign_identity:
-        run(['codesign', '--force', '--options', 'runtime', '--timestamp', '--sign', app_sign_identity, payload / 'agentd'])
+        command = ['codesign', '--force', '--options', 'runtime', '--timestamp', '--sign', app_sign_identity]
+        if sign_keychain: command += ['--keychain', sign_keychain]
+        run(command + [payload / 'agentd'])
         run(['codesign', '--verify', '--strict', payload / 'agentd'])
         archive_tree(payload, out / names(t)[0])
     root = payload.parent / 'pkg-root'
@@ -223,9 +228,13 @@ def package_mac(t, v, out, payload, sign_identity='', app_sign_identity=''):
             copy_file(path, destination)
             destination.chmod(0o755 if relative == 'agentd' else 0o644)
     command = ['pkgbuild', '--root', root, '--identifier', 'com.bit-precise.agentd', '--version', v['pkgVersion'], '--install-location', '/', '--ownership', 'recommended']
+    destination = out / names(t)[1]
+    unsigned = payload.parent / 'unsigned.pkg' if sign_identity else destination
+    run(command + [unsigned])
     if sign_identity:
-        command += ['--sign', sign_identity]
-    run(command + [out / names(t)[1]])
+        command = ['productsign', '--sign', sign_identity, '--timestamp']
+        if sign_keychain: command += ['--keychain', sign_keychain]
+        run(command + [unsigned, destination])
     if sign_identity:
         run(['pkgutil', '--check-signature', out / names(t)[1]])
     # Expanding verifies this is a real installer, rather than a renamed archive.
@@ -267,7 +276,18 @@ def verify_manifest(root):
     return seen
 
 
-def collect(incoming, out):
+def validate_release_signing(info):
+    for item in info:
+        if item['os'] not in ('windows', 'darwin'): continue
+        if item.get('signed') is not True or item.get('binarySigned') is not True:
+            raise ValueError('release requires signed installer and binary: ' + item['key'])
+        if item['os'] == 'windows' and item.get('timestampVerified') is not True:
+            raise ValueError('release requires verified Authenticode timestamp: ' + item['key'])
+        if item['os'] == 'darwin' and (item.get('notarized') is not True or item.get('pkgStapled') is not True):
+            raise ValueError('release requires notarization and stapled PKG: ' + item['key'])
+
+
+def collect(incoming, out, require_signed=False):
     incoming, out = Path(incoming), Path(out)
     expected, found = set(expected_assets()), set()
     if out.exists() and any(out.iterdir()):
@@ -303,6 +323,7 @@ def collect(incoming, out):
             raise ValueError('release target metadata is incomplete or duplicated')
         if len({i['version'] for i in info}) != 1 or len({i['commit'] for i in info}) != 1:
             raise ValueError('release targets disagree on version/source commit')
+        if require_signed: validate_release_signing(info)
         archive_tree(licenses, out / 'agentd-licenses.tgz')
     (out / 'BUILDINFO.json').write_text(json.dumps({'products': expected_assets(), 'targets': sorted(info, key=lambda i:i['key'])}, indent=2, sort_keys=True) + '\n')
     manifest(out)
@@ -319,26 +340,28 @@ def main():
         p = commands.add_parser(command)
         p.add_argument('--os', required=True); p.add_argument('--arch', required=True); p.add_argument('--goarm', default='')
         p.add_argument('--version', required=True); p.add_argument('--out', required=True); p.add_argument('--fips', action='store_true')
+        p.add_argument('--no-manifest', action='store_true', help='defer checksums until external signing and verification finish')
         if command == 'package':
-            p.add_argument('--nfpm', default='nfpm'); p.add_argument('--sign-identity', default=''); p.add_argument('--app-sign-identity', default='')
+            p.add_argument('--nfpm', default='nfpm'); p.add_argument('--sign-identity', default=''); p.add_argument('--app-sign-identity', default=''); p.add_argument('--sign-keychain', default='')
     for command in ('manifest', 'verify'):
         p=commands.add_parser(command); p.add_argument('--out', required=True)
-    p=commands.add_parser('collect'); p.add_argument('--incoming', required=True); p.add_argument('--out', required=True)
+    p=commands.add_parser('collect'); p.add_argument('--incoming', required=True); p.add_argument('--out', required=True); p.add_argument('--require-signed', action='store_true')
     args = parser.parse_args()
     try:
         if args.command == 'version': print(json.dumps(versions(args.version)))
         elif args.command == 'expected': print('\n'.join(expected_assets()))
         elif args.command == 'verify-fips': check_fips(args.binary, os.environ); print('Pinned Go FIPS module and default runtime mode verified')
         elif args.command in ('build', 'package'):
+            if args.no_manifest: (Path(args.out) / 'SHA256SUMS').unlink(missing_ok=True)
             t,v,out,payload=build(args)
             if args.command == 'package':
                 if t['os']=='linux': package_linux(t,v,out,payload,args.nfpm)
-                elif t['os']=='darwin': package_mac(t,v,out,payload,args.sign_identity,args.app_sign_identity)
+                elif t['os']=='darwin': package_mac(t,v,out,payload,args.sign_identity,args.app_sign_identity,args.sign_keychain)
                 else: raise ValueError('use scripts/build-windows.ps1 to create native MSI')
-            manifest(out)
+            if not args.no_manifest: manifest(out)
         elif args.command == 'manifest': manifest(args.out)
         elif args.command == 'verify': verify_manifest(args.out)
-        elif args.command == 'collect': collect(args.incoming,args.out)
+        elif args.command == 'collect': collect(args.incoming,args.out,args.require_signed)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'release: {error}\n')
 

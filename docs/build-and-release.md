@@ -89,16 +89,25 @@ Git 版本写进 `agentd version`，不从包文件名推断。安装器要求�
 
 ## 签名与 FIPS 的真实边界
 
-当前 CI 未配置商业签名身份，macOS PKG 和 Windows MSI/EXE 均不宣称取得发布者认证；ARM64 Go 二进制自身的 ad-hoc 签名不等于 Developer ID。可选签名入口：
+tag 发布强制 Windows Authenticode 签名和 Apple Developer ID 签名/公证。缺少配置、签名失败、timestamp 无效或 Apple 未返回 Accepted 都停止发布，不能自动降级为 unsigned。普通 main/PR 构建明确生成 unsigned 测试产物；Go ARM64 ad-hoc 签名不代表 Developer ID。
+
+配置与验证步骤见 [release-signing.md](release-signing.md)。GitHub `release-signing` environment 只划分 OIDC subject 和配置范围，不要求新增人工审批。`workflow_dispatch` 的 `signing_validation` 只允许在 main 上运行，完整签名/公证和安装测试后上传 artifact，不发布 GitHub Release。正式 `v*` tag 才发布。
+
+Windows 使用官方 Azure Artifact Signing v2.0.0 + Azure login v3.1.0，两者固定 commit，OIDC 只在 Windows 签名 job 授予 `id-token: write`。签名顺序是 EXE → 验证签名和 timestamp → 用该 EXE 构建 MSI → 签 MSI → 再验证两者并安装测试 → SHA256SUMS。保留本地 `-SignThumbprint` 签名方式，不读取未指定的证书。
+
+macOS 先对 CLI 执行 Developer ID Application codesign（hardened runtime + secure timestamp），然后构建 PKG 并用 Developer ID Installer productsign。Apple 公证分别提交 PKG 和包含 **TGZ 内同一已签名 CLI** 的 ZIP；两次都 Accepted 后对 PKG staple/validate 并作 Gatekeeper install assessment。裸 Mach-O CLI 与 TGZ **不能 staple**：TGZ 的 CLI 通过其签名 CDHash 取得在线公证票据，离线分发应使用已 stapled 的 PKG。最终校验 TGZ 内的 CLI 字节与公证输入相同，才生成校验和；不把 ZIP 临时载体作为额外发布产品。
+
+Apple 私钥、证书与公证凭据只落在权限受限临时目录/keychain，不进入源码或 artifact。脚本在成功/失败/普通终止信号后恢复原 keychain 搜索列表，删除临时 keychain/文件；不修改 runner 默认 keychain。`BUILDINFO.json` 聚合各目标的签名、公证、staple 状态与提交 ID，正式汇总阶段再次拒绝任何缺失状态。
+
+本地已有签名证书仍可使用：
 
 ```sh
-# 已在自己的 Keychain 安装证书时才执行。
 bash scripts/build-release.sh --os darwin --arch arm64 --version v0.1.0 --out dist \
   --app-sign-identity 'Developer ID Application: YOUR IDENTITY' \
   --sign-identity 'Developer ID Installer: YOUR IDENTITY'
 ```
 
-Windows 使用 `-SignThumbprint`、可选 `-SignStoreLocation`、`-SignTool` 和 HTTPS `-TimestampUrl`；只读取操作者明确指定的证书。没有凭据时照常生成 unsigned 包；不伪造签名，也不自动导入/上传任何秘密。Apple notarization 尚未自动化。
+这条本地命令只签名；正式公证入口为 `scripts/sign-macos.py`，读取文档列出的 environment 配置。
 
 FIPS 产物固定 `GOFIPS140=v1.0.0-c2097c7c`，这是 Go 1.27.2 自带 `lib/fips140/certified.txt` 对应的精确模块版本，不随 `latest` 漂移。构建检查 `go version -m` 中的模块值和 `DefaultGODEBUG=fips140=on`；Linux CI 还实际运行 FIPS 探针与客户端测试。证据覆盖所用 Go 模块和默认运行模式，**不是 agentd 整体产品获得 NIST 认证，也不继承 Cloudflare 的证书**。生产合规仍取决于模块安全策略和实际部署环境。
 
