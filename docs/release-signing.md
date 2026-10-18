@@ -5,12 +5,12 @@ and macOS jobs perform signing directly; no reusable workflow in
 `Bit-Precise/actions` is used. Azure Variables and Apple Variables/Secrets remain
 at GitHub **organization scope**, with access granted to `agentd`. Signing jobs
 use the repository's `release-signing` environment to constrain allowed refs;
-the environment does not hold duplicate signing credentials.
+the environment does not hold duplicate signing credentials. Both platforms sign binaries through GoReleaser post-build hooks before archiving.
 
-Both architectures of Windows EXE/MSI and macOS TGZ/PKG are signed in the
-`release-signing` GitHub environment. Tagged builds fail if any required setting
+Windows 386/amd64/arm64 ZIP payloads and MSI packages, both macOS ZIPs, and the
+universal PKG are signed through the `release-signing` GitHub environment. Tagged builds fail if any required setting
 or signature is missing. Unsigned PR/main builds do not access signing secrets.
-The 26 product filenames are unchanged.
+The public matrix matches GitHub CLI: 21 versioned products plus one checksums file.
 
 ## Azure Artifact Signing
 
@@ -90,14 +90,16 @@ FIC, the repository environment/OIDC settings and the profile role assignment;
 the signing workload receives none of those administrative permissions.
 
 The workflow uses [Azure login v3.1.0](https://github.com/Azure/login/releases/tag/v3.1.0)
-and [Artifact Signing v2.0.0](https://github.com/Azure/artifact-signing-action/releases/tag/v2.0.0),
-pinned to their verified release commits. The latter authenticates using the
-Azure CLI session created by GitHub OIDC. It signs with SHA256 plus Microsoft's
-RFC3161 timestamp service, `http://timestamp.acs.microsoft.com`, as recommended
-by the official action. The signed timestamp response is cryptographically
-validated by Windows; this URL is not a credential transport. Signing dependency
-caches and trace logging are disabled. Azure login clears its session after the
-job; there is no long-lived Azure client secret in the workflow.
+for GitHub OIDC and a SHA256-pinned Microsoft.ArtifactSigning.Client 1.0.128
+package for its Azure signing DLib. The Windows SDK SignTool is checked for a
+valid Microsoft signature. Following the [GitHub CLI workflow](https://github.com/cli/cli/blob/fa92838bef95fe4a29c1587693885d5e9bdb6cf1/.github/workflows/deployment.yml),
+`scripts/sign-windows.ps1 -Prepare` prepares the signing dependencies and public
+metadata, then the GoReleaser post-build hook invokes that same helper to sign
+the EXE. The MSI step reuses the helper after packaging. Azure CLI is the only
+permitted credential source in the DLib metadata; no client secret is used.
+SignTool uses SHA256 and Microsoft's RFC3161 timestamp service at
+`http://timestamp.acs.microsoft.com`. Signatures and timestamps are validated
+before publication. Azure login clears the CLI session after the job.
 
 EXE signing finishes before the MSI is assembled. `-RequireSigned` checks Windows
 Authenticode `Valid`, signer certificate, timestamp certificate, and `signtool
@@ -119,9 +121,7 @@ To prepare these on macOS:
    generated private key in your local login keychain.
 2. In [Apple Developer Certificates](https://developer.apple.com/account/resources/certificates/list),
    use the intended developer team to create **Developer ID Application** and
-   **Developer ID Installer** certificates using that CSR. If your team restricts
-   creation, its Account Holder/admin must grant the necessary access or perform
-   this step. Download and import both `.cer` certificates into Keychain Access.
+   **Developer ID Installer** certificates using that CSR. Creating these exportable Developer ID certificates requires the Account Holder. Download and import both `.cer` certificates into Keychain Access.
 3. In Keychain Access **My Certificates**, verify each identity expands to show
    its corresponding private key. Export each identity separately as `.p12`,
    using a strong nonempty password. Exporting `.cer` alone is insufficient.
@@ -174,12 +174,14 @@ is replaced. PKCS#12 exports are removed immediately after import. The `.p8`
 file and ephemeral keychain are deleted even if a command fails. Hosted signing
 runners must remain ephemeral: forced VM termination cannot execute cleanup.
 
-Notarization accepts two inputs per architecture: a ZIP containing the exact
-signed CLI distributed in TGZ, and the signed PKG. Both must return `Accepted`.
-PKG is stapled and validated, then assessed by Gatekeeper. Raw CLI binaries and
-TGZ archives do not support stapling; the notarized CLI's ticket is resolved
-online from its CDHash. Prefer PKG for offline Gatekeeper validation. SHA256SUMS
-is created only after these steps, and hashes the final stapled PKG.
+Each architecture's final GoReleaser ZIP is submitted directly for notarization
+and must reach Accepted. ZIP files cannot be stapled. A separate universal job
+verifies both input manifests and receipts, merges the two Mach-O slices, signs
+the resulting universal CLI again, builds/signs the PKG, then notarizes and
+staples the PKG. The universal installer is tested on Intel and Apple Silicon.
+Per-architecture ZIPs are never rewritten after notarization. SHA256 checksums
+are computed only from the final signed files; the release contains 21 products
+and its versioned checksum file, while combined BUILDINFO remains internal CI data.
 
 ## Verification without publishing
 

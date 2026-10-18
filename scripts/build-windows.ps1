@@ -1,22 +1,22 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-Build agentd's Windows EXE and MSI with the pinned WiX .NET tool.
+Build versioned Windows ZIP/MSI products or verify them on a native host.
 .EXAMPLE
 ./scripts/build-windows.ps1 -Architecture amd64 -Version v1.2.3 -OutDir artifacts -SmokeTest
 .EXAMPLE
-./scripts/build-windows.ps1 -Architecture 386 -Version v1.2.3 -SignThumbprint 0123456789012345678901234567890123456789
+./scripts/build-windows.ps1 -Architecture arm64 -Version v1.2.3 -OutDir downloaded -Stage Verify -RequireSigned
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)] [ValidateSet('386', 'amd64')] [string] $Architecture,
+    [Parameter(Mandatory = $true)] [ValidateSet('386', 'amd64', 'arm64')] [string] $Architecture,
     [Parameter(Mandatory = $true)] [string] $Version,
     [string] $OutDir = 'artifacts',
     [string] $Python = 'python',
     [switch] $SmokeTest,
-    # Package consumes an already-built EXE. Finalize verifies the external MSI
-    # signature and creates checksums; neither stage rebuilds the signed EXE.
-    [ValidateSet('All', 'Package', 'Finalize')] [string] $Stage = 'All',
+    # Package/Finalize preserve the GoReleaser ZIP and its signed EXE. Verify
+    # installs final ZIP/MSI products without build staging, Go, .NET or WiX.
+    [ValidateSet('All', 'Package', 'Finalize', 'Verify')] [string] $Stage = 'All',
     [switch] $RequireSigned,
     [ValidatePattern('^$|^[A-Fa-f0-9]{40}$')] [string] $SignThumbprint = '',
     [ValidateSet('CurrentUser', 'LocalMachine')] [string] $SignStoreLocation = 'CurrentUser',
@@ -30,6 +30,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 # Failures can occur before output paths are initialized (including on a
 # non-Windows host). Keep diagnostics safe under StrictMode in those cases.
 $staging = $null
+$verifyTemporary = $null
 
 function Invoke-Native {
     param([string] $File, [string[]] $Arguments)
@@ -79,69 +80,162 @@ function Assert-SignedArtifact {
     Invoke-Native $SignTool @('verify', '/pa', '/all', '/tw', $Path)
 }
 
-function Sign-Artifact {
-    param([string] $Path)
-    if (-not $SignThumbprint) { return }
-    $signArguments = @('sign', '/sha1', $SignThumbprint, '/s', 'My', '/fd', 'SHA256', '/tr', $TimestampUrl, '/td', 'SHA256')
-    if ($SignStoreLocation -eq 'LocalMachine') { $signArguments += '/sm' }
-    Invoke-Native $SignTool ($signArguments + $Path)
-    Assert-SignedArtifact $Path
+function Find-VerificationTool {
+    $sdkRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10/bin'
+    $native = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+    $toolArchitectures = if ($native -eq 'Arm64') { @('arm64', 'x64') } else { @('x64', 'x86') }
+    foreach ($toolArchitecture in $toolArchitectures) {
+        $tool = Get-ChildItem -Path (Join-Path $sdkRoot "*/$toolArchitecture/signtool.exe") -ErrorAction SilentlyContinue |
+            Where-Object { $_.Directory.Parent.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+            Sort-Object { [version] $_.Directory.Parent.Name } -Descending | Select-Object -First 1
+        if ($null -ne $tool) { return $tool.FullName }
+    }
+    throw 'Windows SDK SignTool is required for signature verification.'
 }
 
-try {
-    if (-not $IsWindows) { throw 'Windows MSI packages must be built on Windows with PowerShell 7 or newer.' }
-    if ($SmokeTest) {
-        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = [Security.Principal.WindowsPrincipal]::new($identity)
-        if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-            throw '-SmokeTest requires an elevated PowerShell session for per-machine MSI installation.'
+function Assert-CompatibleArchitecture {
+    param([string] $Target, [string] $HostArchitecture)
+    if (($Target -eq 'arm64' -and $HostArchitecture -ne 'Arm64') -or
+        ($Target -eq 'amd64' -and $HostArchitecture -ne 'X64') -or
+        ($Target -eq '386' -and $HostArchitecture -notin @('X86', 'X64')) -or
+        $Target -notin @('386', 'amd64', 'arm64')) {
+        throw "Architecture $Target requires a compatible native Windows host for installation; current OS is $HostArchitecture."
+    }
+}
+
+function Assert-SmokeHost {
+    Assert-CompatibleArchitecture -Target $Architecture -HostArchitecture ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString())
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw 'Installer verification requires an elevated PowerShell session on a disposable clean machine.'
+    }
+}
+
+function Read-ArchiveBinary {
+    param([string] $ArchivePath, [string] $Destination)
+    Add-Type -AssemblyName System.IO.Compression.ZipFile
+    $archive = [IO.Compression.ZipFile]::OpenRead($ArchivePath)
+    try {
+        $entries = @($archive.Entries | Where-Object { $_.FullName -ceq 'bin/agentd.exe' })
+        if ($entries.Count -ne 1 -or $entries[0].Length -lt 1 -or $entries[0].Length -gt 512MB) {
+            throw 'Release ZIP must contain exactly one nonempty bin/agentd.exe (at most 512 MiB).'
+        }
+        # Extract this one fixed file only, never arbitrary ZIP entry paths.
+        $source = $entries[0].Open()
+        try {
+            $destinationStream = [IO.File]::Open($Destination, [IO.FileMode]::CreateNew)
+            try { $source.CopyTo($destinationStream) } finally { $destinationStream.Dispose() }
+        } finally { $source.Dispose() }
+    } finally { $archive.Dispose() }
+    return (Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Assert-ArchivePayload {
+    param([string] $ReleaseScript, [string] $OutputDirectory, [string] $Executable, [string] $ArchiveName)
+    $result = Invoke-Native $Python @($ReleaseScript, 'verify-archive', '--os', 'windows', '--arch', $Architecture,
+        '--version', $Version, '--out', $OutputDirectory)
+    $info = ($result -join "`n") | ConvertFrom-Json
+    if ($info.archive -cne $ArchiveName -or $info.binary -cne 'bin/agentd.exe' -or
+        $info.sha256 -cne (Get-FileHash -LiteralPath $Executable -Algorithm SHA256).Hash.ToLowerInvariant()) {
+        throw 'GoReleaser ZIP payload does not match the MSI source executable.'
+    }
+    return [string] $info.sha256
+}
+
+function Invoke-InstallerSmoke {
+    param([string] $Installer, [string] $ExpectedSHA256, [string] $ExpectedVersion, [string] $Logs)
+    Assert-SmokeHost
+    $programFiles = $env:ProgramFiles
+    if ($Architecture -eq '386' -and ${env:ProgramFiles(x86)}) { $programFiles = ${env:ProgramFiles(x86)} }
+    $installDir = Join-Path $programFiles ('agentd-msi-smoke-' + [Guid]::NewGuid().ToString('N'))
+    $installed = $false
+    try {
+        Invoke-Msi @('/i', $Installer, '/qn', '/norestart', "INSTALLFOLDER=$installDir", 'ADDLOCAL=Core',
+            '/l*v', (Join-Path $Logs 'install.log'))
+        $installed = $true
+        $installedExe = Join-Path $installDir 'agentd.exe'
+        # Check exact ZIP/MSI byte identity before executing the installed CLI.
+        if ((Get-FileHash -LiteralPath $installedExe -Algorithm SHA256).Hash.ToLowerInvariant() -cne $ExpectedSHA256) {
+            throw 'Installed executable differs from bin/agentd.exe in the release ZIP.'
+        }
+        $actualVersion = (Invoke-Native $installedExe @('version')) -join "`n"
+        if ($actualVersion.Trim() -cne $ExpectedVersion) {
+            throw "Installed version '$actualVersion' differs from '$ExpectedVersion'."
+        }
+        foreach ($relative in @('README.md', 'config.example.yaml', 'THIRD_PARTY_NOTICES.md', 'licenses/go/LICENSE')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $installDir $relative) -PathType Leaf)) {
+                throw "Installed payload is missing $relative."
+            }
+        }
+    } finally {
+        if ($installed) {
+            Invoke-Msi @('/x', $Installer, '/qn', '/norestart', '/l*v', (Join-Path $Logs 'uninstall.log'))
+            if (Test-Path -LiteralPath (Join-Path $installDir 'agentd.exe')) { throw 'MSI uninstall left agentd.exe installed.' }
         }
     }
-    if ($SignThumbprint -and $Stage -ne 'All') { throw '-SignThumbprint is supported only with -Stage All.' }
-    if ($SignThumbprint -or $RequireSigned) {
-        if ($SignTool -eq 'signtool.exe' -and -not (Get-Command $SignTool -ErrorAction SilentlyContinue)) {
-            $sdkRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits/10/bin'
-            $sdkTool = Get-ChildItem -Path (Join-Path $sdkRoot '*/x64/signtool.exe') | Sort-Object FullName -Descending | Select-Object -First 1
-            if ($null -eq $sdkTool) { throw 'The Windows SDK signtool.exe is required for signature verification.' }
-            $SignTool = $sdkTool.FullName
-        }
-        $null = Get-Command $SignTool -ErrorAction Stop
-    }
+}
+
+function Invoke-WindowsBuild {
+    if (-not $IsWindows) { throw 'Windows MSI operations require Windows with PowerShell 7 or newer.' }
     if ($SignThumbprint) {
-        $timestamp = [Uri] $TimestampUrl
-        if (-not $timestamp.IsAbsoluteUri -or $timestamp.Scheme -ne 'https') { throw 'TimestampUrl must be an absolute HTTPS URL.' }
+        throw '-SignThumbprint cannot modify an EXE after ZIP creation; sign in the GoReleaser binary hook and sign the MSI separately.'
+    }
+    if ($SmokeTest -or $Stage -eq 'Verify') { Assert-SmokeHost }
+    if ($RequireSigned) {
+        if ($SignTool -eq 'signtool.exe' -and -not (Get-Command $SignTool -ErrorAction SilentlyContinue)) {
+            $script:SignTool = Find-VerificationTool
+        }
         $null = Get-Command $SignTool -ErrorAction Stop
     }
     $null = Get-Command $Python -ErrorAction Stop
-    $null = Get-Command 'dotnet' -ErrorAction Stop
     $repo = Split-Path $PSScriptRoot -Parent
     $release = Join-Path $PSScriptRoot 'release.py'
     $output = [IO.Path]::GetFullPath($OutDir)
-    $versionJson = Invoke-Native $Python @($release, 'version', '--version', $Version)
-    $versionInfo = ($versionJson -join "`n") | ConvertFrom-Json
+    $productJson = Invoke-Native $Python @($release, 'products', '--os', 'windows', '--arch', $Architecture, '--version', $Version)
+    $products = ($productJson -join "`n") | ConvertFrom-Json
+    $versionInfo = $products.version
     $packageVersion = [string] $versionInfo.msiVersion
-    if ($packageVersion -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid MSI version: $packageVersion" }
+    if ($packageVersion -notmatch '^\d+\.\d+\.\d+$' -or $products.target.arch -cne $Architecture -or
+        $products.target.os -cne 'windows' -or $products.assets.Count -ne 2 -or $products.payloadBinary -cne 'agentd.exe') {
+        throw 'Invalid target/version data from release.py products.'
+    }
+    $archiveName, $msiName = [string] $products.assets[0], [string] $products.assets[1]
+    if ([IO.Path]::GetFileName($archiveName) -cne $archiveName -or [IO.Path]::GetExtension($archiveName) -cne '.zip' -or
+        [IO.Path]::GetFileName($msiName) -cne $msiName -or [IO.Path]::GetExtension($msiName) -cne '.msi') {
+        throw 'Expected versioned ZIP and MSI basenames from release.py products.'
+    }
     if ($Stage -eq 'All') {
-        Invoke-Native $Python @($release, 'build', '--os', 'windows', '--arch', $Architecture, '--version', $Version, '--out', $output, '--no-manifest')
+        Invoke-Native $Python @($release, 'build', '--os', 'windows', '--arch', $Architecture,
+            '--version', $Version, '--out', $output, '--no-manifest')
+    }
+    $archivePath = Join-Path $output $archiveName
+    $msi = Join-Path $output $msiName
+    if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) { throw "Missing GoReleaser ZIP: $archivePath" }
+    if ($Stage -eq 'Verify') {
+        if (-not (Test-Path -LiteralPath $msi -PathType Leaf)) { throw "Missing release MSI: $msi" }
+        $script:verifyTemporary = Join-Path ([IO.Path]::GetTempPath()) ('agentd-msi-verify-' + [Guid]::NewGuid().ToString('N'))
+        $null = New-Item -ItemType Directory -Path $script:verifyTemporary
+        $script:staging = $script:verifyTemporary
+        $exe = Join-Path $staging 'agentd.exe'
+        $expectedHash = Read-ArchiveBinary -ArchivePath $archivePath -Destination $exe
+        if ($RequireSigned) {
+            Assert-SignedArtifact $exe
+            Assert-SignedArtifact $msi
+        }
+        Invoke-InstallerSmoke -Installer $msi -ExpectedSHA256 $expectedHash -ExpectedVersion $versionInfo.version -Logs $staging
+        Write-Host "Verified $archiveName and $msiName on native $Architecture Windows; input products were not modified."
+        return
     }
     Remove-Item -LiteralPath (Join-Path $output 'SHA256SUMS') -Force -ErrorAction SilentlyContinue
-    $staging = Join-Path $output ".staging/windows-$Architecture"
+    $script:staging = Join-Path $output ".staging/windows-$Architecture"
     $payload = Join-Path $staging 'payload'
-    $exe = Join-Path $output "agentd-windows-$Architecture.exe"
-    $msi = Join-Path $output "agentd-windows-$Architecture.msi"
-    $stagedMsi = Join-Path $staging "agentd-windows-$Architecture.msi"
-    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Missing release executable: $exe" }
-    if (-not (Test-Path -LiteralPath (Join-Path $payload 'agentd.exe') -PathType Leaf)) { throw 'Missing staged agentd.exe.' }
+    $exe = Join-Path $payload 'agentd.exe'
+    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'Missing staged GoReleaser agentd.exe; use -Stage Verify for final products only.' }
+    $expectedHash = Assert-ArchivePayload -ReleaseScript $release -OutputDirectory $output -Executable $exe -ArchiveName $archiveName
+    if ($RequireSigned) { Assert-SignedArtifact $exe }
     if ($Stage -ne 'Finalize') {
-        Sign-Artifact $exe
-        if ($RequireSigned) { Assert-SignedArtifact $exe }
-        Copy-Item -LiteralPath $exe -Destination (Join-Path $payload 'agentd.exe') -Force
-        $payloadInfoPath = Join-Path $payload 'BUILDINFO.json'
-        $payloadInfo = Get-Content -LiteralPath $payloadInfoPath -Raw | ConvertFrom-Json
-        $payloadInfo.signed = [bool] ($SignThumbprint -or $RequireSigned)
-        $payloadInfo | Add-Member -NotePropertyName binarySigned -NotePropertyValue ([bool] ($SignThumbprint -or $RequireSigned)) -Force
-        $payloadInfo | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $payloadInfoPath -Encoding utf8
-
+        $null = Get-Command 'dotnet' -ErrorAction Stop
         $toolPath = Join-Path $output '.tools/wix-5.0.2'
         $wix = Join-Path $toolPath 'wix.exe'
         if (-not (Test-Path -LiteralPath $wix -PathType Leaf)) {
@@ -149,98 +243,61 @@ try {
         }
         $wixVersion = (Invoke-Native $wix @('--version')) -join "`n"
         if ($wixVersion.Trim() -notmatch '^5\.0\.2(?:[+.\s]|$)') { throw "Expected WiX 5.0.2, got: $wixVersion" }
-        if ($Architecture -eq 'amd64') {
-            $wixArch = 'x64'
-            $programFilesFolder = 'ProgramFiles64Folder'
-            $upgradeCode = '29773e61-3d95-4baa-9cd7-c3a815de4dfa'
-            $pathComponentGuid = '6225b3fb-212c-485e-a0fe-4b374732f569'
-        } else {
-            $wixArch = 'x86'
-            $programFilesFolder = 'ProgramFilesFolder'
-            $upgradeCode = '67207472-250a-4699-8b8e-b96589fd6c70'
-            $pathComponentGuid = '122f3d4c-31bc-4d10-9598-d5eb6b8905fe'
-        }
+        $architectureTable = Get-Content -LiteralPath (Join-Path $repo 'installer/windows/architectures.json') -Raw | ConvertFrom-Json -AsHashtable
+        $architectureInfo = $architectureTable[$Architecture]
         $fragment = Join-Path $staging 'payload.wxs'
         Invoke-Native $Python @((Join-Path $repo 'installer/windows/generate_payload.py'), '--payload', $payload, '--arch', $Architecture, '--out', $fragment)
+        $stagedMsi = Join-Path $staging $msiName
         Invoke-Native $wix @(
             'build', (Join-Path $repo 'installer/windows/Product.wxs'), $fragment,
-            '-arch', $wixArch, '-d', "Architecture=$Architecture", '-d', "PackageVersion=$packageVersion",
-            '-d', "UpgradeCode=$upgradeCode", '-d', "PathComponentGuid=$pathComponentGuid",
-            '-d', "ProgramFilesFolder=$programFilesFolder", '-bindpath', "Payload=$payload",
-            '-intermediatefolder', (Join-Path $staging 'wix-obj'), '-o', $stagedMsi
+            '-arch', $architectureInfo.wixArch, '-d', "Architecture=$Architecture", '-d', "PackageVersion=$packageVersion",
+            '-d', "UpgradeCode=$($architectureInfo.upgradeCode)", '-d', "PathComponentGuid=$($architectureInfo.pathComponentGuid)",
+            '-d', "ProgramFilesFolder=$($architectureInfo.programFilesFolder)", '-d', "InstallDirectoryName=$($architectureInfo.installDirectory)",
+            '-bindpath', "Payload=$payload", '-intermediatefolder', (Join-Path $staging 'wix-obj'), '-o', $stagedMsi
         )
-        Sign-Artifact $stagedMsi
         Copy-Item -LiteralPath $stagedMsi -Destination $msi -Force
     }
     if ($Stage -eq 'Package') {
-        Write-Host 'MSI assembled from the verified EXE; external MSI signing and Finalize are required.'
-        exit 0
+        Write-Host 'MSI assembled from the unchanged GoReleaser ZIP binary; sign MSI then run -Stage Finalize.'
+        return
     }
-    if ($RequireSigned) {
-        Assert-SignedArtifact $exe
-        Assert-SignedArtifact $msi
-    }
-
+    if ($RequireSigned) { Assert-SignedArtifact $msi }
     if ($SmokeTest) {
-        # An isolated install path avoids touching an existing default install.
-        # Major upgrades can still replace a registered product of this architecture,
-        # so the documented smoke-test prerequisite is a disposable clean machine.
-        $installDir = Join-Path $env:ProgramFiles ("agentd-msi-smoke-" + [Guid]::NewGuid().ToString('N'))
-        if ($Architecture -eq '386' -and ${env:ProgramFiles(x86)}) {
-            $installDir = Join-Path ${env:ProgramFiles(x86)} (Split-Path $installDir -Leaf)
-        }
-        $installed = $false
-        try {
-            Invoke-Msi @('/i', $msi, '/qn', '/norestart', "INSTALLFOLDER=$installDir", 'ADDLOCAL=Core', '/l*v', (Join-Path $staging 'install.log'))
-            $installed = $true
-            $installedExe = Join-Path $installDir 'agentd.exe'
-            $actualVersion = (Invoke-Native $installedExe @('version')) -join "`n"
-            if ($actualVersion.Trim() -cne [string] $versionInfo.version) {
-                throw "Installed version '$actualVersion' differs from '$($versionInfo.version)'."
-            }
-            $expectedHash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
-            if ((Get-FileHash -LiteralPath $installedExe -Algorithm SHA256).Hash -ne $expectedHash) {
-                throw 'Installed executable differs from the release executable.'
-            }
-            foreach ($relative in @('README.md', 'config.example.yaml', 'THIRD_PARTY_NOTICES.md', 'licenses/go/LICENSE')) {
-                if (-not (Test-Path -LiteralPath (Join-Path $installDir $relative) -PathType Leaf)) {
-                    throw "Installed payload is missing $relative."
-                }
-            }
-        } finally {
-            if ($installed) {
-                Invoke-Msi @('/x', $msi, '/qn', '/norestart', '/l*v', (Join-Path $staging 'uninstall.log'))
-                if (Test-Path -LiteralPath (Join-Path $installDir 'agentd.exe')) { throw 'MSI uninstall left agentd.exe installed.' }
-            }
-        }
+        Invoke-InstallerSmoke -Installer $msi -ExpectedSHA256 $expectedHash -ExpectedVersion $versionInfo.version -Logs $staging
     }
     $metadataPath = Join-Path $output "_metadata/windows-$Architecture.json"
     $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
-    $metadata.signed = [bool] ($SignThumbprint -or $RequireSigned)
-    $metadata | Add-Member -NotePropertyName binarySigned -NotePropertyValue ([bool] ($SignThumbprint -or $RequireSigned)) -Force
-    $metadata | Add-Member -NotePropertyName timestampVerified -NotePropertyValue ([bool] ($SignThumbprint -or $RequireSigned)) -Force
+    $metadata.signed = [bool] $RequireSigned
+    $metadata | Add-Member -NotePropertyName binarySigned -NotePropertyValue ([bool] $RequireSigned) -Force
+    $metadata | Add-Member -NotePropertyName timestampVerified -NotePropertyValue ([bool] $RequireSigned) -Force
+    $metadata | Add-Member -NotePropertyName archiveBinarySHA256 -NotePropertyValue $expectedHash -Force
     if ($RequireSigned) { $metadata | Add-Member -NotePropertyName signingProvider -NotePropertyValue 'Azure Artifact Signing' -Force }
     $metadata | Add-Member -NotePropertyName wixVersion -NotePropertyValue '5.0.2' -Force
     $metadata | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $metadataPath -Encoding utf8
     Invoke-Native $Python @($release, 'manifest', '--out', $output)
-    Write-Host "Built $exe and $msi (MSI version $packageVersion)."
-} catch {
-    $buildError = $_
-    Write-Error $buildError -ErrorAction Continue
-    if ($null -ne $staging) {
-        # Only inspect this build's fixed MSI transaction logs. Application
-        # configuration and credential files are never included in diagnostics.
-        foreach ($logName in @('install.log', 'uninstall.log')) {
-            $logPath = Join-Path $staging $logName
-            if (Test-Path -LiteralPath $logPath -PathType Leaf -ErrorAction SilentlyContinue) {
-                Write-Host "MSI diagnostic: $logName (last 100 lines)"
-                try {
-                    Get-Content -LiteralPath $logPath -Tail 100 -ErrorAction Stop | ForEach-Object { Write-Host $_ }
-                } catch {
-                    Write-Warning "Could not read MSI diagnostic log $logName."
+    Write-Host "Built $archivePath and $msi (MSI version $packageVersion)."
+}
+
+# Dot-sourcing exposes the archive/host helpers to isolated tests without builds.
+if ($MyInvocation.InvocationName -ne '.') {
+    try {
+        Invoke-WindowsBuild
+    } catch {
+        $buildError = $_
+        Write-Error $buildError -ErrorAction Continue
+        if ($null -ne $staging) {
+            # Inspect only this build's fixed MSI transaction logs.
+            foreach ($logName in @('install.log', 'uninstall.log')) {
+                $logPath = Join-Path $staging $logName
+                if (Test-Path -LiteralPath $logPath -PathType Leaf -ErrorAction SilentlyContinue) {
+                    Write-Host "MSI diagnostic: $logName (last 100 lines)"
+                    try { Get-Content -LiteralPath $logPath -Tail 100 -ErrorAction Stop | ForEach-Object { Write-Host $_ } }
+                    catch { Write-Warning "Could not read MSI diagnostic log $logName." }
                 }
             }
         }
+        exit 1
+    } finally {
+        if ($null -ne $verifyTemporary) { Remove-Item -LiteralPath $verifyTemporary -Recurse -Force -ErrorAction SilentlyContinue }
     }
-    exit 1
 }

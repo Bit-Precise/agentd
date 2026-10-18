@@ -22,3 +22,4 @@ agentd-user-token.txt
 *.db-wal
 *.db-shm
 *.db-journal
+/apple/

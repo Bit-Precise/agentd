@@ -1,0 +1,26 @@
+{
+  "386": {
+    "wixArch": "x86",
+    "programFilesFolder": "ProgramFilesFolder",
+    "installDirectory": "agentd",
+    "upgradeCode": "67207472-250a-4699-8b8e-b96589fd6c70",
+    "pathComponentGuid": "122f3d4c-31bc-4d10-9598-d5eb6b8905fe",
+    "componentNamespace": "a0a2c761-823e-45a9-91bf-7f9cdd68e90e"
+  },
+  "amd64": {
+    "wixArch": "x64",
+    "programFilesFolder": "ProgramFiles64Folder",
+    "installDirectory": "agentd",
+    "upgradeCode": "29773e61-3d95-4baa-9cd7-c3a815de4dfa",
+    "pathComponentGuid": "6225b3fb-212c-485e-a0fe-4b374732f569",
+    "componentNamespace": "a0a2c761-823e-45a9-91bf-7f9cdd68e90e"
+  },
+  "arm64": {
+    "wixArch": "arm64",
+    "programFilesFolder": "ProgramFiles64Folder",
+    "installDirectory": "agentd-arm64",
+    "upgradeCode": "a92a82da-f171-588b-ba24-82e3708489a2",
+    "pathComponentGuid": "ad201ec1-1c34-571d-97c7-ee459b41f43d",
+    "componentNamespace": "ea7455e6-f3d1-5649-a463-2404cf61793c"
+  }
+}

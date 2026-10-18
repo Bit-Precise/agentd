@@ -4,19 +4,21 @@
   "builds": [{"skip": true}],
   "snapshot": {"version_template": "{{ .Env.AGENTD_PACKAGE_VERSION }}"},
   "checksum": {
-    "name_template": "SHA256SUMS",
+    "name_template": "agentd_{{ .Env.AGENTD_PACKAGE_VERSION }}_checksums.txt",
     "algorithm": "sha256",
     "extra_files": [
-      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd-*"},
-      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/BUILDINFO.json"}
+      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd_{{ .Env.AGENTD_PACKAGE_VERSION }}_linux_*"},
+      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd_{{ .Env.AGENTD_PACKAGE_VERSION }}_macOS_*"},
+      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd_{{ .Env.AGENTD_PACKAGE_VERSION }}_windows_*"}
     ]
   },
   "release": {
     "github": {"owner": "Bit-Precise", "name": "agentd"},
     "prerelease": "auto",
     "extra_files": [
-      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd-*"},
-      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/BUILDINFO.json"}
+      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd_{{ .Env.AGENTD_PACKAGE_VERSION }}_linux_*"},
+      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd_{{ .Env.AGENTD_PACKAGE_VERSION }}_macOS_*"},
+      {"glob": "{{ .Env.AGENTD_RELEASE_DIR }}/agentd_{{ .Env.AGENTD_PACKAGE_VERSION }}_windows_*"}
     ]
   }
 }

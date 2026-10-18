@@ -3,14 +3,15 @@
 
 import argparse
 import hashlib
+import json
 from pathlib import Path
 import uuid
 import xml.etree.ElementTree as ET
 
 
 WIX_NAMESPACE = "http://wixtoolset.org/schemas/v4/wxs"
-# Project-specific namespace. Keep this stable across releases and upgrades.
-COMPONENT_NAMESPACE = uuid.UUID("a0a2c761-823e-45a9-91bf-7f9cdd68e90e")
+# Architecture identities/namespaces must remain stable across upgrades.
+ARCHITECTURES = json.loads(Path(__file__).with_name("architectures.json").read_text())
 ET.register_namespace("", WIX_NAMESPACE)
 
 
@@ -23,8 +24,9 @@ def element(parent, tag, **attributes):
 
 
 def generate(payload, arch, output):
-    if arch not in ("386", "amd64"):
+    if arch not in ARCHITECTURES:
         raise ValueError(f"unsupported Windows architecture: {arch}")
+    namespace = uuid.UUID(ARCHITECTURES[arch]["componentNamespace"])
     payload = Path(payload)
     if payload.is_symlink() or not payload.is_dir():
         raise ValueError("payload must be a real directory")
@@ -63,7 +65,7 @@ def generate(payload, arch, output):
         component = element(
             directories[relative.parent.as_posix()], "Component",
             Id=component_id,
-            Guid=str(uuid.uuid5(COMPONENT_NAMESPACE, arch + "/" + name)),
+            Guid=str(uuid.uuid5(namespace, arch + "/" + name)),
         )
         # Do not put arbitrary source paths through the WiX preprocessor.
         # BindPath is expanded by the binder after preprocessing has finished.
@@ -79,7 +81,7 @@ def generate(payload, arch, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--payload", required=True, type=Path)
-    parser.add_argument("--arch", required=True, choices=("386", "amd64"))
+    parser.add_argument("--arch", required=True, choices=tuple(ARCHITECTURES))
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     generate(args.payload, args.arch, args.out)

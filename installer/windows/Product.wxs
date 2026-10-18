@@ -10,7 +10,7 @@
                   DowngradeErrorMessage="A newer version of agentd is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <StandardDirectory Id="$(var.ProgramFilesFolder)">
-      <Directory Id="INSTALLFOLDER" Name="agentd">
+      <Directory Id="INSTALLFOLDER" Name="$(var.InstallDirectoryName)">
         <Component Id="AgentdPath" Guid="$(var.PathComponentGuid)">
           <RegistryValue Root="HKLM" Key="Software\agentd\$(var.Architecture)"
                          Name="PathInstalled" Type="integer" Value="1" KeyPath="yes" />

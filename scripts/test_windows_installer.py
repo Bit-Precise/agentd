@@ -2,8 +2,11 @@
 
 import importlib.util
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
+import uuid
 import xml.etree.ElementTree as ET
 
 
@@ -68,6 +71,27 @@ class WindowsPayloadTest(unittest.TestCase):
         other_arch = {c.attrib["Id"]: c.attrib["Guid"] for c in self.generate("386").findall(".//w:Component", NS)}
         self.assertEqual(set(second), set(other_arch))
         self.assertTrue(set(second.values()).isdisjoint(other_arch.values()))
+        arm64 = {c.attrib["Id"]: c.attrib["Guid"] for c in self.generate("arm64").findall(".//w:Component", NS)}
+        self.assertEqual(set(second), set(arm64))
+        self.assertTrue(set(second.values()).isdisjoint(arm64.values()))
+        self.assertTrue(set(other_arch.values()).isdisjoint(arm64.values()))
+
+    def test_architecture_identity_and_default_paths_are_independent(self):
+        architectures = PAYLOAD.ARCHITECTURES
+        self.assertEqual(set(architectures), {"386", "amd64", "arm64"})
+        self.assertEqual([architectures[a]["wixArch"] for a in ("386", "amd64", "arm64")], ["x86", "x64", "arm64"])
+        for field in ("upgradeCode", "pathComponentGuid"):
+            identities = [uuid.UUID(arch[field]) for arch in architectures.values()]
+            self.assertEqual(len(set(identities)), 3)
+        self.assertEqual(architectures["arm64"]["programFilesFolder"], "ProgramFiles64Folder")
+        self.assertNotEqual(architectures["arm64"]["installDirectory"], architectures["amd64"]["installDirectory"])
+        # Preserve component identities of existing x86/x64 installations.
+        legacy_namespace = uuid.UUID("a0a2c761-823e-45a9-91bf-7f9cdd68e90e")
+        for arch in ("386", "amd64"):
+            components = self.generate(arch).findall(".//w:Component", NS)
+            expected = {str(uuid.uuid5(legacy_namespace, arch + "/" + path.relative_to(self.payload).as_posix()))
+                        for path in self.payload.rglob("*") if path.is_file()}
+            self.assertEqual({item.attrib["Guid"] for item in components}, expected)
 
     def test_fragment_deterministic(self):
         self.generate()
@@ -77,7 +101,7 @@ class WindowsPayloadTest(unittest.TestCase):
 
     def test_missing_binary_and_unsupported_architecture_rejected(self):
         with self.assertRaisesRegex(ValueError, "architecture"):
-            self.generate("arm64")
+            self.generate("mips")
         (self.payload / "agentd.exe").unlink()
         with self.assertRaisesRegex(ValueError, "agentd.exe"):
             self.generate()
@@ -101,6 +125,12 @@ class WindowsPayloadTest(unittest.TestCase):
             self.skipTest("host filesystem is case-insensitive")
         with self.assertRaisesRegex(ValueError, "collision"):
             self.generate()
+
+    @unittest.skipUnless(shutil.which('pwsh'), 'PowerShell 7 required; exercised in Windows CI')
+    def test_archive_only_verification_helpers_and_architecture_guards(self):
+        result = subprocess.run(['pwsh', '-NoLogo', '-NoProfile', '-NonInteractive', '-File',
+            str(ROOT / 'scripts/test-windows-installer.ps1')], capture_output=True, text=True, timeout=45)
+        self.assertEqual(result.returncode, 0, result.stdout + '\n' + result.stderr)
 
 
 if __name__ == "__main__":

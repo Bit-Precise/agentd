@@ -52,4 +52,4 @@ python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
 当前实现 HTTP CONNECT/SOCKS 与 TLS 域名出口；TUN 运行时明确拒绝，WSS 尚未实现。用户认证目前由 agents 提供 Token/浏览器会话，未接入外部 OIDC。真实 CDN 部署仍需验证长响应、缓存、请求预算和回源配置。
 
-标准构建产出 Linux 裸二进制、DEB/RPM，macOS TGZ/PKG，以及 Windows EXE/MSI；另有 Linux amd64 FIPS 构建。签名与 FIPS 模块要求以[发布说明](docs/build-and-release.md)为准，不声称继承 Cloudflare 的代码签名或产品认证。
+发布矩阵与 GitHub CLI 对齐：Linux 四种架构的 tar.gz/DEB/RPM、macOS 两种架构的 ZIP 和 universal PKG，以及 Windows 三种架构的 ZIP/MSI；共 21 个产品，加校验和文件共 22 个公开资产。签名、安装验证及本地 FIPS 构建说明见[发布说明](docs/build-and-release.md)。

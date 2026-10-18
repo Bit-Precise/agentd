@@ -3,31 +3,91 @@
   "project_name": "agentd",
   "builds": [
     {
-      "id": "agentd",
+      "id": "linux",
       "main": "./cmd/agentd",
-      "binary": "agentd",
+      "binary": "bin/agentd",
       "flags": ["-mod=readonly", "-trimpath"],
       "ldflags": ["-s -w -X main.Version={{ .Env.AGENTD_SOURCE_VERSION }}"],
-      "env": ["CGO_ENABLED=0", "GOFIPS140={{ .Env.AGENTD_GOFIPS140 }}"],
-      "goos": ["linux", "darwin", "windows"],
+      "env": ["CGO_ENABLED=0", "GOFIPS140=off"],
+      "goos": ["linux"],
       "goarch": ["386", "amd64", "arm", "arm64"],
-      "goarm": ["5", "7"],
-      "ignore": [
-        {"goos": "darwin", "goarch": "386"},
-        {"goos": "darwin", "goarch": "arm"},
-        {"goos": "windows", "goarch": "arm"},
-        {"goos": "windows", "goarch": "arm64"}
-      ]
+      "goarm": ["6"]
+    },
+    {
+      "id": "linux-fips",
+      "main": "./cmd/agentd",
+      "binary": "bin/agentd",
+      "flags": ["-mod=readonly", "-trimpath"],
+      "ldflags": ["-s -w -X main.Version={{ .Env.AGENTD_SOURCE_VERSION }}"],
+      "env": ["CGO_ENABLED=0", "GOFIPS140=v1.0.0-c2097c7c"],
+      "goos": ["linux"],
+      "goarch": ["amd64"]
+    },
+    {
+      "id": "darwin",
+      "main": "./cmd/agentd",
+      "binary": "bin/agentd",
+      "flags": ["-mod=readonly", "-trimpath"],
+      "ldflags": ["-s -w -X main.Version={{ .Env.AGENTD_SOURCE_VERSION }}"],
+      "env": ["CGO_ENABLED=0", "GOFIPS140=off"],
+      "goos": ["darwin"],
+      "goarch": ["amd64", "arm64"],
+      "hooks": {
+        "post": [{"cmd": "python3 scripts/sign-macos.py binary \"{{ .Path }}\"", "output": true}]
+      }
+    },
+    {
+      "id": "windows",
+      "main": "./cmd/agentd",
+      "binary": "bin/agentd",
+      "flags": ["-mod=readonly", "-trimpath"],
+      "ldflags": ["-s -w -X main.Version={{ .Env.AGENTD_SOURCE_VERSION }}"],
+      "env": ["CGO_ENABLED=0", "GOFIPS140=off"],
+      "goos": ["windows"],
+      "goarch": ["386", "amd64", "arm64"],
+      "hooks": {
+        "post": [{"cmd": "pwsh -NoProfile -File scripts/sign-windows.ps1 -Path \"{{ .Path }}\"", "output": true}]
+      }
     }
   ],
-  "archives": [{"formats": ["binary"]}],
+  "archives": [
+    {
+      "id": "linux-archive",
+      "ids": ["linux"],
+      "formats": ["tar.gz"],
+      "wrap_in_directory": true,
+      "name_template": "agentd_{{ .Version }}_linux_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    },
+    {
+      "id": "linux-fips-archive",
+      "ids": ["linux-fips"],
+      "formats": ["tar.gz"],
+      "wrap_in_directory": true,
+      "name_template": "agentd_{{ .Version }}_linux_{{ .Arch }}_fips"
+    },
+    {
+      "id": "darwin-archive",
+      "ids": ["darwin"],
+      "formats": ["zip"],
+      "name_template": "agentd_{{ .Version }}_macOS_{{ .Arch }}",
+      "wrap_in_directory": true,
+      "builds_info": {"owner": "root", "group": "root", "mtime": "1970-01-01T00:00:00Z"}
+    },
+    {
+      "id": "windows-archive",
+      "ids": ["windows"],
+      "formats": ["zip"],
+      "wrap_in_directory": false,
+      "name_template": "agentd_{{ .Version }}_windows_{{ .Arch }}"
+    }
+  ],
   "nfpms": [
     {
-      "id": "agentd",
-      "ids": ["agentd"],
+      "id": "linux",
+      "ids": ["linux"],
       "package_name": "agentd",
       "formats": ["deb", "rpm"],
-      "bindir": "/usr/bin",
+      "bindir": "/usr",
       "release": "1",
       "section": "net",
       "priority": "optional",
@@ -37,6 +97,23 @@
       "description": "Authenticated service publishing and domain egress agent",
       "license": "LicenseRef-Proprietary AND MPL-2.0",
       "conflicts": ["agentd-fips"],
+      "rpm": {"buildhost": "build.agentd.invalid", "compression": "gzip"}
+    },
+    {
+      "id": "linux-fips",
+      "ids": ["linux-fips"],
+      "package_name": "agentd-fips",
+      "formats": ["deb", "rpm"],
+      "bindir": "/usr",
+      "release": "1",
+      "section": "net",
+      "priority": "optional",
+      "maintainer": "bit-precise",
+      "vendor": "bit-precise",
+      "homepage": "https://github.com/bit-precise/agentd",
+      "description": "Authenticated service publishing and domain egress agent",
+      "license": "LicenseRef-Proprietary AND MPL-2.0",
+      "conflicts": ["agentd"],
       "rpm": {"buildhost": "build.agentd.invalid", "compression": "gzip"}
     }
   ],
