@@ -1,5 +1,14 @@
 # Release signing configuration
 
+The production pipeline now calls the organization reusable workflows
+`Bit-Precise/actions/.github/workflows/sign-windows.yml@v1` and
+`Bit-Precise/actions/.github/workflows/sign-macos.yml@v1`. Configure Azure
+Variables and Apple Variables/Secrets at organization scope. The GitHub subject
+template uses `repository_owner_id` and `job_workflow_ref`. The per-repository
+environment setup below and `configure-azure-signing.py` are retained only for
+standalone compatibility; that script intentionally rejects organization-custom
+subject templates and must not configure the shared workflow identity.
+
 Both architectures of Windows EXE/MSI and macOS TGZ/PKG are signed in the
 `release-signing` GitHub environment. Tagged builds fail if any required setting
 or signature is missing. Unsigned PR/main builds do not access signing secrets.

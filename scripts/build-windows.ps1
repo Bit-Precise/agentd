@@ -43,7 +43,16 @@ function Invoke-Msi {
         if ($_ -match '"') { throw 'An MSI argument contains an unsupported double quote.' }
         '"' + $_ + '"'
     }
-    $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList ($quoted -join ' ') -Wait -PassThru
+    Write-Host "Starting MSI operation $($Arguments[0]); waiting for the client process only."
+    # Start-Process -Wait also waits for descendants. Windows Installer can
+    # retain a service process after the requesting msiexec client has finished.
+    $process = Start-Process -FilePath 'msiexec.exe' -ArgumentList ($quoted -join ' ') -PassThru
+    if (-not $process.WaitForExit(300000)) {
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        throw 'msiexec client exceeded five minutes. Inspect its log in the output staging directory.'
+    }
+    $process.Refresh()
+    Write-Host "MSI operation $($Arguments[0]) completed with exit code $($process.ExitCode)."
     if ($process.ExitCode -notin @(0, 3010)) {
         throw "msiexec failed with exit code $($process.ExitCode). See the MSI log in the output staging directory."
     }

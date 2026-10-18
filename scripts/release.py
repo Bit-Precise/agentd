@@ -208,16 +208,18 @@ def package_linux(t, v, out, payload, nfpm):
         run([nfpm, 'package', '--config', config_path, '--packager', packager, '--target', out / filename], env=dict(os.environ, GOFIPS140='off'))
 
 
-def package_mac(t, v, out, payload, sign_identity='', app_sign_identity='', sign_keychain=''):
+def package_mac(t, v, out, payload, sign_identity='', app_sign_identity='', sign_keychain='', binary_presigned=False):
     if sys.platform != 'darwin' or t['os'] != 'darwin':
         raise ValueError('PKG creation must run on native macOS')
     payload_info = json.loads((payload / 'BUILDINFO.json').read_text())
-    payload_info.update(signed=bool(sign_identity), binarySigned=bool(app_sign_identity))
+    payload_info.update(signed=bool(sign_identity), binarySigned=bool(app_sign_identity or binary_presigned))
     (payload / 'BUILDINFO.json').write_text(json.dumps(payload_info, indent=2, sort_keys=True) + '\n')
     if app_sign_identity:
         command = ['codesign', '--force', '--options', 'runtime', '--timestamp', '--sign', app_sign_identity]
         if sign_keychain: command += ['--keychain', sign_keychain]
         run(command + [payload / 'agentd'])
+        run(['codesign', '--verify', '--strict', payload / 'agentd'])
+    if app_sign_identity or binary_presigned:
         run(['codesign', '--verify', '--strict', payload / 'agentd'])
         archive_tree(payload, out / names(t)[0])
     root = payload.parent / 'pkg-root'
@@ -243,7 +245,7 @@ def package_mac(t, v, out, payload, sign_identity='', app_sign_identity='', sign
     if not any(path.name == 'PackageInfo' for path in expanded.rglob('PackageInfo')):
         raise ValueError('PKG has no component metadata')
     metadata_path = out / '_metadata' / (t['key'] + '.json')
-    metadata = json.loads(metadata_path.read_text()); metadata['signed'] = bool(sign_identity); metadata['binarySigned'] = bool(app_sign_identity)
+    metadata = json.loads(metadata_path.read_text()); metadata['signed'] = bool(sign_identity); metadata['binarySigned'] = bool(app_sign_identity or binary_presigned)
     metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + '\n')
 
 
