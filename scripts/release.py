@@ -684,10 +684,19 @@ def publish(out, dry_run=False):
     env = dict(build_environment(), AGENTD_RELEASE_DIR=str(out), AGENTD_PACKAGE_VERSION=v['packageVersion'])
     if not dry_run:
         validate_release_signing(targets)
+        tag = v['version']
+        if env.get('GITHUB_ACTIONS') == 'true':
+            if (env.get('GITHUB_REF_TYPE') != 'tag' or env.get('GITHUB_REF_NAME') != tag or
+                    env.get('GITHUB_REF') != 'refs/tags/' + tag):
+                raise ValueError('GitHub release ref must match the tag recorded in release metadata')
         commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, env=env, text=True).strip()
-        tag = subprocess.check_output(['git', 'describe', '--tags', '--exact-match', 'HEAD'], cwd=ROOT, env=env, text=True).strip()
-        if targets[0]['commit'] != commit or v['version'] != tag:
+        tag_commit = subprocess.check_output(['git', 'rev-parse', '--verify', 'refs/tags/' + tag + '^{commit}'],
+                                             cwd=ROOT, env=env, text=True).strip()
+        if targets[0]['commit'] != commit or tag_commit != commit:
             raise ValueError('release inputs must match the checked-out commit and exact source tag')
+        # Multiple tags can name this commit. Pin both the validation run and
+        # actual upload to the requested tag instead of GoReleaser's discovery.
+        env['GORELEASER_CURRENT_TAG'] = tag
     stage = out / '.staging' / 'publish'
     stage.mkdir(parents=True, exist_ok=True)
     config = json.loads((ROOT / '.goreleaser.publish.json').read_text())

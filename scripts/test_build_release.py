@@ -195,7 +195,9 @@ class ReleaseContractTest(unittest.TestCase):
                 for kind in ('checksum','release'):
                     self.assertEqual([Path(item['glob']).name for item in config[kind]['extra_files']],expected)
                 generated=Path(config['dist']);generated.mkdir(parents=True,exist_ok=True)
-                (generated/R.checksum_name('v1.2.3')).write_text(''.join(f'{R.sha256(out/name)}  {name}\n' for name in expected))
+                # GoReleaser writes LF checksums on every host; do not let the
+                # Windows text-mode fixture translate them into CRLF.
+                (generated/R.checksum_name('v1.2.3')).write_bytes(''.join(f'{R.sha256(out/name)}  {name}\n' for name in expected).encode())
             with mock.patch.object(R,'goreleaser_command',return_value='goreleaser'),mock.patch.object(R,'run',side_effect=fake_release):
                 R.publish(out,dry_run=True)
                 first=(out/R.checksum_name('v1.2.3')).read_bytes()

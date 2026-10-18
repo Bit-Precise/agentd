@@ -44,7 +44,7 @@ SIGNED_DETAILS = 'Authority=Developer ID Application: Example (ABCDE12345)\nTeam
 
 def fake_signed_build(root, arch='arm64', directory='dist'):
     out = root / directory
-    payload = out / ('.staging/darwin-' + arch + '/payload')
+    payload = out / '.staging' / ('darwin-' + arch) / 'payload'
     payload.mkdir(parents=True)
     (payload / 'agentd').write_bytes(('signed-test-binary-' + arch).encode())
     (payload / 'README.md').write_text('test package documentation\n')
@@ -330,7 +330,7 @@ class ReleaseSigningTest(unittest.TestCase):
                 MAC.sign(args, env)
             imports = [call.args[0] for call in command.call_args_list if call.args[0][:2] == ['security', 'import']]
             self.assertEqual(len(imports), 1)
-            self.assertIn('application.p12', str(imports[0][2]))
+            self.assertEqual(Path(imports[0][2]).name, 'application.p12')
 
 
 def universal_sources(root):
@@ -379,7 +379,7 @@ class MacUniversalSigningTest(unittest.TestCase):
             build.assert_not_called()
             package.assert_called_once()
             notary.assert_called_once()
-            self.assertTrue(str(notary.call_args.args[0]).endswith('_macOS_universal.pkg'))
+            self.assertTrue(Path(notary.call_args.args[0]).name.endswith('_macOS_universal.pkg'))
             self.assertTrue(all(path.read_bytes() == contents for path, contents in before.items()))
             out = Path(args.out).resolve()
             metadata = json.loads((out / '_metadata/darwin-universal.json').read_text())
@@ -427,7 +427,7 @@ class MacUniversalSigningTest(unittest.TestCase):
             root = Path(temp)
             args, _ = universal_sources(root)
             def wrong_team(argv, **kwargs):
-                if argv[:2] == ['codesign', '--display'] and '--architecture' in argv and 'arm64' in argv and '/payload/' in str(argv[-1]):
+                if argv[:2] == ['codesign', '--display'] and '--architecture' in argv and 'arm64' in argv and Path(argv[-1]).parent.name == 'payload':
                     return SIGNED_DETAILS.replace('TeamIdentifier=ABCDE12345', 'TeamIdentifier=WRONG12345')
                 return fake_mac_command(argv, **kwargs)
             with mock.patch.object(MAC.sys, 'platform', 'darwin'), mock.patch.object(MAC, 'command', side_effect=wrong_team), \
