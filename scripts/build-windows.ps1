@@ -41,10 +41,18 @@ function Invoke-Native {
 
 function Invoke-Msi {
     param([string[]] $Arguments)
-    # Start-Process requires its own quoting when a path contains spaces.
+    # msiexec parses its raw command line: switches must remain unquoted,
+    # and a property quotes its value (INSTALLFOLDER="C:\Program Files\...").
+    # Quoting every token can open installer UI instead of honoring /qn and /l*v.
     $quoted = $Arguments | ForEach-Object {
         if ($_ -match '"') { throw 'An MSI argument contains an unsupported double quote.' }
-        '"' + $_ + '"'
+        if ($_ -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+            $Matches[1] + '="' + $Matches[2] + '"'
+        } elseif ($_ -match '\s') {
+            '"' + $_ + '"'
+        } else {
+            $_
+        }
     }
     Write-Host "Starting MSI operation $($Arguments[0]); waiting for the client process only."
     # Start-Process -Wait also waits for descendants. Windows Installer can
