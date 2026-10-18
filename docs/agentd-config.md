@@ -1,10 +1,10 @@
 # agentd 本地配置与三角色模型
 
-状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前范围以 [运行说明](../README.md) 和 [本地联调](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md) 为准，TUN、WSS、agentd Device Flow 与多节点仍未交付。agents Console 的上游 OIDC 已实现。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
+状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及旧模型的 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前运行时的 `Approval`、`pendingApproval` 和 `expectedDesired` 人工审核属于待迁移旧模型；本文目标设计取消所有角色的人工审批，不表示运行时代码已经完成迁移。当前范围以 [运行说明](../README.md) 和 [本地联调](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md) 为准，TUN、WSS、agentd Device Flow 与多节点仍未交付。agents Console 的上游 OIDC 已实现。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
 
-实际接入为 `agentd enroll --config FILE --key-file PRIVATE_KEY_FILE`，批准后 `agentd run --config FILE`。本机 HTTP 联调显式设置 `transport.allowHTTP: true` 且 instance/endpoint 都用 loopback；生产使用 HTTPS 与可选 `caFile`。见 [local.yaml](../examples/agentd/local.yaml)。凭据与轮询状态不放入 YAML。
+当前旧实现的接入为 `agentd enroll --config FILE --key-file PRIVATE_KEY_FILE`，按现有批准流程后执行 `agentd run --config FILE`；该人工步骤仅描述已交付行为，目标流程中身份与策略机器校验通过后直接注册、应用并运行。本机 HTTP 联调显式设置 `transport.allowHTTP: true` 且 instance/endpoint 都用 loopback；生产使用 HTTPS 与可选 `caFile`。见 [local.yaml](../examples/agentd/local.yaml)。凭据与轮询状态不放入 YAML。
 
-2026-10-18 目标身份修订见 [User/SA 与 Hydra Device Flow](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md)：一个 profile 固定一个 Workspace 和一个 User/SA 主体，三种运行角色共享该主体。拟议 `agentd login --config FILE` 使用标准 Device Flow，在浏览器选择 Workspace/本人或 SA，取得限定用途的 AT 后换取独立设备凭据；`enroll --key-file` 保留为 SA 无人值守路径。SA 固定属于一个 Workspace，选择与管理要求 maintainer+。这些命令/模型增量尚未实现。
+2026-10-18 目标身份修订见 [User/SA 与 Hydra Device Flow](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md)：一个 profile 固定一个 Workspace 和一个 User/SA 主体，三种运行角色共享该主体。拟议 `agentd login --config FILE` 使用标准 Device Flow，在浏览器选择 Workspace/本人或 SA，取得限定用途的 AT 后换取独立设备凭据；`enroll --key-file` 保留为 SA 无人值守路径。SA 固定属于一个 Workspace，选择与管理要求 maintainer+。浏览器中的人类操作记录为 `actorUserId`，用于授权操作的权限校验与审计，不是额外审批岗位；它不能替代 profile 的有效 User/SA 主体。三种角色均无需人工批准，身份、User Membership / SA 管理权限和 Workspace 策略由 Control 自动校验。这些命令/模型增量尚未实现。
 
 本地 YAML 不保存 OAuth device_code、AT 或共享 client secret；配置中的 Workspace 只是与授权结果核对的提示，不能通过编辑 YAML 更换主体。选中 Workspace 后，CLI 应保存/核对当前 profile 的 Workspace 和私有身份；与已有 profile 不符时要求显式新建隔离 profile，不能覆盖其凭据。
 
@@ -15,8 +15,8 @@
 | 角色 | 流量方向 | 本地配置 | 控制端职责 |
 |---|---|---|---|
 | ingress | 本机应用 → agentd → Edge → 远端出口 | HTTP CONNECT、SOCKS5、TUN 入口及送往 Edge 的域名范围 | 访问会话认证、EgressRoute 选择、User/SA 主体授权 |
-| serve | 浏览器 → gateway → Edge → agentd → 本地服务 | 服务名与本地 HTTP/HTTPS 源站的映射 | PublishedRoute、名称分配、访问授权与发布批准 |
-| egress | 访问端 → Edge → 此 agentd → 目标网站 | 此 Agent 愿意提供的域名、端口、协议范围 | 能力审批、指定出口路由及使用授权 |
+| serve | 浏览器 → gateway → Edge → agentd → 本地服务 | 服务名与本地 HTTP/HTTPS 源站的映射 | 发布策略机器校验、名称预留与访问授权 |
+| egress | 访问端 → Edge → 此 agentd → 目标网站 | 此 Agent 愿意提供的域名、端口、协议范围 | 出口能力策略机器校验、指定出口路由及使用授权 |
 
 `ingress` 是本机访问入口角色；旧文档的 `IngressRule` 是 Serve 源站匹配规则，新架构称 `ServeOriginRule`。两者不是同一配置，也不共享路由表。
 
@@ -37,19 +37,23 @@ flowchart LR
     end
 ```
 
-**2. 本地配置、批准配置与运行状态分开**
+**2. 本地配置、有效配置与运行状态分开**
 
-本地文件表达“这台 Agent 要运行什么、愿意提供什么”，control 保存“该 Workspace 已批准什么、谁可以使用”。本地减少能力可以立即生效；新增发布或扩大能力要经过控制端检查，满足已有批准范围的变更可以自动批准。
+本地文件表达“这台 Agent 要运行什么、愿意提供什么”，Control 保存主体角色上限、Workspace 策略及独立的业务授权。注册与后续配置变更统一进行机器校验：身份和策略校验通过即注册、生成有效配置并应用；没有人工审核队列、批准范围或 `expectedDesired` 审批操作。本地减少能力立即生效；新增发布或扩大能力在机器校验通过、对应版本完成同步后生效。
 
 ```text
-本地 desired / 本地允许范围
-    ∩ control approved / 平台约束
-    ∩ 当前身份与业务授权
-    ∩ 当前可用连接和配置版本
-    = 实际可接收的业务
+EffectiveConfig = 本地 Desired ∩ 主体角色上限 ∩ Workspace 策略
+
+实际可接收的业务 = EffectiveConfig
+    ∩ 当前请求消费者的有效业务 Grant
+    ∩ 匹配的路由、有效凭据、连接和配置版本
 ```
 
-control 不自动改写 `config.yaml`，也不能远程重新开启本地关闭的角色。配置文件不保存短期租约、当前 revision、Connection ID 或用户 Token；这些是运行状态。`agent.stateDir` 保存注册标识、凭据及已批准状态等，秘密文件只对运行账号可读。相对路径以配置文件所在目录为基准。热重载拒绝修改 stateDir；变更需显式迁移并重启，不能因目录变化静默创建第二个注册身份。
+这里的消费者与提供方分开：ingress 请求使用该 profile 的 User/SA 主体；Serve 请求使用独立的浏览器 User/anonymous 消费者。提供服务或出口的 Agent 不得以自身主体或 `actorUserId` 替换请求消费者。
+
+格式错误或无效配置返回 `400`，身份有效但权限或策略不允许返回 `403`，名称占用、条件版本等冲突返回 `409`；认证无效仍返回 `401`。越权配置被明确拒绝，不静默放行，不保存为待人工处理的申请。被拒绝的扩展不得进入 EffectiveConfig；上一份仍符合当前策略与本地限制的配置可以继续运行。等待网络应答或版本同步使用 `syncing`，不表示待审批。注册和配置应用成功不等于请求已获业务授权；Grant 仍按独立授权规则判断，默认成员授权只按 Workspace 的明确策略创建。
+
+Control 不自动改写 `config.yaml`，也不能远程重新开启本地关闭的角色。配置文件不保存短期租约、当前 revision、Connection ID 或用户 Token；这些是运行状态。`agent.stateDir` 保存注册标识、凭据及已同步的有效配置版本等，秘密文件只对运行账号可读。相对路径以配置文件所在目录为基准。热重载拒绝修改 stateDir；变更需显式迁移并重启，不能因目录变化静默创建第二个注册身份。
 
 示例描述一个 Workspace profile。其他 profile 的注册身份、用户会话、监听端口和状态目录必须隔离；首版同一主机的 TUN 接管只激活一个 Workspace profile。
 
@@ -134,7 +138,7 @@ serve:
 
 同一 profile 内服务名唯一。同步以 Registration 和稳定资源绑定为依据，不能因名称相同接管其他发布。配置缺项只撤回本 Registration 对对应服务的提供意愿，不删除别的 Agent/管理员创建的资源和 Grant。同 Tunnel 存在有效等价副本时，它们可继续服务；全局停用 PublishedRoute 是单独的授权管理操作。
 
-同 Tunnel 副本的源站能力必须满足同一批准配置。单个副本改变本地 origin 后，不能继续以旧 revision 被选中；它进入等待同步状态，其他相容副本可以继续工作。第一版默认专属 Tunnel，加入共享 Tunnel 是显式操作。
+同 Tunnel 副本的源站能力必须满足同一机器校验后的有效配置。单个副本改变本地 origin 后，不能继续以旧 revision 被选中；它进入等待同步状态，其他相容副本可以继续工作。第一版默认专属 Tunnel，加入共享 Tunnel 是显式操作。
 
 **6. egress：此 Agent 愿意提供哪些出口目标**
 
@@ -150,13 +154,13 @@ egress:
       protocol: tls
 ```
 
-`allow` 是本机能力宣告和实际拨号的上限；`deny` 是本机显式拒绝。control 批准的范围只能在本地愿意提供的范围内生效。即使 Edge 错误发来超范围请求，agentd 也必须在目标 DNS/拨号前拒绝。
+`allow` 是本机能力宣告和实际拨号的上限；`deny` 是本机显式拒绝。Control 根据主体角色上限与 Workspace 策略生成的有效范围，只能在本地愿意提供的范围内生效。即使 Edge 错误发来超范围请求，agentd 也必须在目标 DNS/拨号前拒绝。
 
-最终可用目标取本地 allow、控制端批准范围、平台约束和被选 EgressRoute 的交集，并扣除任一适用 deny。允许列表为空时不提供任何出口；新增域名不会自动创建路由，也不会自动授予任何用户 `egress.use`。配置可以声明尚待批准的范围，运行状态应明确显示 pending，而非 available。
+最终可用目标取本地 allow、主体角色上限、Workspace 策略和被选 EgressRoute 的交集，并扣除任一适用 deny；业务请求还必须满足 ingress 请求消费者的 User/SA Grant，不能改用此出口 Agent 的主体。允许列表为空时不提供任何出口；新增域名不会自动创建路由，也不会自动授予任何主体 `egress.use`。超出角色上限或 Workspace 策略的配置直接返回 `400/403` 等明确错误，名称或版本冲突返回 `409`；没有“尚待人工批准”的有效范围。机器校验通过但尚未收到对应版本 ACK 时显示 `syncing`，不能提前显示 available。
 
-本地收紧 allow、增加 deny 或关闭 egress 时，先在本机禁止新的不合规 OPEN，并关闭失去本地许可的现有 Egress 流，再向 control/Edge 报告。即使控制面失联，本机收紧仍立即生效。扩大的部分等待批准，仍处于批准交集的部分可以继续运行。
+本地收紧 allow、增加 deny 或关闭 egress 时，先在本机禁止新的不合规 OPEN，并关闭失去本地许可的现有 Egress 流，再向 control/Edge 报告。即使控制面失联，本机收紧仍立即生效。扩大的部分等待 Control 机器校验通过和版本同步；已同步且仍符合当前策略与本地限制的部分可以继续运行。
 
-出口 agentd 使用 capability 绑定的域名，在出口网络进行 DNS 解析，按平台及本机拨号安全策略检查结果，再使用同一解析结果连接。域名 allow 不等于批准任意解析地址；本地 HTTP 服务的 Serve 配置与 Egress 域名白名单不互相授权。
+出口 agentd 使用 capability 绑定的域名，在出口网络进行 DNS 解析，按平台及本机拨号安全策略检查结果，再使用同一解析结果连接。域名 allow 不等于允许任意解析地址；本地 HTTP 服务的 Serve 配置与 Egress 域名白名单不互相授权。
 
 **7. 统一的域名规则**
 
@@ -183,19 +187,19 @@ AgentRegistration / 控制会话
    └─ egress flows
 ```
 
-ingress 使用独立的访问会话/承载连接；serve 与 egress 可复用 provider 连接。它们同属一个 agentd supervisor 和一个固定 User/SA 主体，物理连接数量不由角色数量决定。access 与 provider 的凭据用途和业务授权仍独立，不能让 provider Token 自动成为浏览器用户或复用人类批准者的 Grant。
+ingress 使用独立的访问会话/承载连接；serve 与 egress 可复用 provider 连接。它们同属一个 agentd supervisor 和一个固定 User/SA 主体，物理连接数量不由角色数量决定。access 与 provider 的凭据用途和业务授权仍独立，不能让 provider Token 自动成为浏览器用户或复用人类操作者 `actorUserId` 的 Grant。
 
-每个角色分别记录 `disabled / pending_auth / pending_approval / syncing / ready / degraded / failed` 等状态，并附原因；服务项还应区分名称冲突、源站不可用等。某一角色等待批准不应使其他有效角色停机；profile 的实际 User/SA 主体失效则使其所有角色失效。浏览器退出不是 SA 或设备主体撤销。进程健康、控制连接健康和每个角色业务健康分别暴露。
+每个角色分别记录 `disabled / pending_auth / syncing / ready / degraded / failed` 等状态，并附原因；目标模型没有 `pending_approval`。`pending_auth` 表示等待完成身份认证，`syncing` 表示等待机器校验结果、网络 ACK 或对应配置版本生效，均不是人工审批。服务项还应区分配置被拒绝、名称冲突、源站不可用等。某一角色配置被拒绝或正在同步不应使其他有效角色停机；profile 的实际 User/SA 主体失效则使其所有角色失效。浏览器退出不是 SA 或设备主体撤销。进程健康、控制连接健康和每个角色业务健康分别暴露。
 
 | 变更/事件 | 预期行为 |
 |---|---|
 | ingress 关闭或 access 凭据失效 | 停止本机接入、关闭对应访问流；有效 provider 流继续 |
 | profile 的 User/SA 主体失效 | 该 profile 的全部角色停止准入与续期，撤销对应会话及业务流 |
-| SA 的人类创建者/批准者离职 | 不影响已绑定 SA 的 profile；审计关联保留 |
+| SA 的人类创建者/操作者离职 | 不影响已绑定 SA 的 profile；`actorUserId` 等审计关联保留 |
 | serve 删除一项 | 停止本 Agent 为该项接新流并关闭其流；其他服务和 egress 继续 |
 | egress 收紧或关闭 | 本机立即执行新限制；serve 和仍获准目标不受影响 |
-| 新增服务/出口范围 | 提交 desired，批准并应用后 ready；不影响其他已就绪项 |
-| 改变已有服务 origin | 暂停本副本该服务，等待新配置批准与应用；不默用新 URL |
+| 新增服务/出口范围 | 提交 Desired，机器校验通过并同步应用后 ready；越权或冲突直接拒绝，不影响其他已就绪项 |
+| 改变已有服务 origin | 暂停本副本该服务，等待新配置机器校验与版本同步；不默用尚未生效的新 URL |
 | provider 承载断开 | 其上流失败，重连后探测并重新 ready；不重放原业务数据 |
 | 整个 Registration 被停用 | 三种角色全部失效 |
 
@@ -203,22 +207,23 @@ ingress 使用独立的访问会话/承载连接；serve 与 egress 可复用 pr
 
 拟定启动入口为 `agentd run --config ./config.yaml`。本地文件是声明来源；兼容的角色快捷命令应修改/提交同一套 desired 配置，不能启动一份隐藏的第二运行状态。
 
-重载顺序为：解析与 schema 校验 → 生成 local revision/hash → 计算增删改 → 对收紧项安装本地准入屏障 → 提交需要批准的变更 → 应用 control 批准版本 → 上报 ACK/健康。Serve 激活需涉及 gateway、Edge 和实际 provider 的相容版本。
+重载顺序为：解析与 schema 校验 → 生成 local revision/hash → 计算增删改 → 对收紧项安装本地准入屏障 → 提交 Desired → Control 在当前身份、主体角色上限和 Workspace 策略下机器校验并条件提交 → 应用对应 EffectiveConfig/revision → 上报 ACK/健康。格式、权限或冲突错误明确返回 `400/403/409`，不会转入人工队列。Serve 激活需涉及 gateway、Edge 和实际 provider 的相容版本；等待 ACK 或网络恢复只是同步状态。
 
 未知字段、重复 YAML key、重复服务名、非法域名/端口、错误版本、配置内部的重复监听绑定都应拒绝。解析失败时明确保留上一份有效配置，不能静默忽略部分限制。初次启动没有有效配置则失败。实际绑定时端口被其他进程占用等运行错误，仅使相关入口失败，不阻止其他有效角色启动，也不阻止已验证的 egress 收紧生效；仍可用的入口和失败原因分别显示。运行时某个源站暂时不可达也仅影响对应服务状态，不是全文件语法错误。
 
-配置中的省略角色与 `enabled: false` 等价；省略子入口也默认关闭。启用 serve 必须有非空 services；启用 egress 可接受空 allow，此时无出口能力。相同文件重复应用幂等，不重复注册、不重复建服务、不延长授权；已停用项不能被迟到的批准或 ACK 恢复。
+配置中的省略角色与 `enabled: false` 等价；省略子入口也默认关闭。启用 serve 必须有非空 services；启用 egress 可接受空 allow，此时无出口能力。相同文件重复应用幂等，不重复注册、不重复建服务、不延长授权；已停用项不能被迟到的配置响应或 ACK 恢复。
 
-需要批准的更新以稳定对象 ID、local revision 和控制端条件版本关联；本地已经删除/改变的申请即使稍后获批，也不再进入 effective。关闭流使用各自的流句柄，不通过杀死共享 provider 连接完成普通角色停用。
+配置更新以稳定对象 ID、local revision/hash 和控制端条件版本关联；本地已经删除/改变的配置，即使稍后收到旧请求的成功响应，也不再进入 EffectiveConfig。条件版本用于防止并发覆盖，与旧模型的 `expectedDesired` 人工审核无关。关闭流使用各自的流句柄，不通过杀死共享 provider 连接完成普通角色停用。
 
 **10. 必须验证的组合**
 
 - ingress、serve、egress 各单独启用，以及四种多角色组合；省略/disabled 不启动对应入口或 handler。
 - 同进程 ingress 发起访问、serve 接收请求、egress 拨目标，身份、流 ID 和配额不串用。
-- 本地 ingress 匹配但 Edge 未授权时拒绝；egress 已宣告但未批准时不能被选中。
+- 本地 ingress 匹配但 Edge 未授权时拒绝；三种角色只有身份、主体角色上限与 Workspace 策略机器校验通过后才能应用，egress 已宣告但校验失败或版本未同步时不能被选中。
 - TUN 与本机 egress 访问同域名时不递归；源站拨号和控制连接也不进入自身捕获，真实 DNS 解析不会返回本机 FakeDNS 合成地址。
 - 关闭一种角色、删除一个服务或收紧一个域名，只关闭相应失效流。
-- 控制面失联期间本地拒绝立即执行；重新连接后旧审批不能恢复已关闭能力。
-- 重载不改变授权截止时间，不抢占名称，不删除其他副本/管理员资源，不把待批准扩权提前上线。
+- 控制面失联期间本地拒绝立即执行；重新连接后旧配置响应不能恢复已关闭能力。
+- 重载不改变授权截止时间，不抢占名称，不删除其他副本/管理员资源，不把校验失败或尚未同步的扩展提前上线。
+- 注册与三角色配置变更均不产生人工审批任务；校验通过自动应用，格式/权限/冲突分别明确返回 `400/403/409`，`pending_auth` 与 `syncing` 不被展示成“等待管理员批准”。
 
 这些是完整设计的验收条件；已实现子集及本机自动化测试见 [运行说明](../README.md)。当前重载仅支持 provider 的服务及出口限制，其他运行参数需重启；TUN、WSS、Service Account 与 Hydra Device Flow 仍待交付，当前注册/控制轮询及临近到期续期已实现。

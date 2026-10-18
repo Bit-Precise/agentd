@@ -2,7 +2,7 @@
 
 基线更新：下文保留旧 Xray/VLESS Reverse 方案的对齐记录。现已确定由 agents 管理认证、连接目录和业务流，XHTTP/WSS 仅提供承载；本地 `config.yaml` 支持 ingress/serve/egress 组合。当前规范以 [架构方案](agents-agentd-architecture.md) 和 [本地配置](agentd-config.md) 为准。
 
-身份模型最新决策采用 [单 Workspace SA 与 Hydra Device Flow](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md)。它是本产品的目标设计，不宣称与 Headscale 用户/服务节点或 Cloudflare 凭据兼容；下文旧的统一 User 访问身份描述不覆盖 SA。该增量尚未实现。
+身份模型最新决策采用 [单 Workspace SA 与 Hydra Device Flow](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md)。它是本产品的目标设计，不宣称与 Headscale 用户/服务节点或 Cloudflare 凭据兼容；下文旧的统一 User 访问身份描述不覆盖 SA。注册和配置变更已确定无需人工审批，按当前权限与策略自动接受或拒绝；下文旧的能力审批、管理员批准及相关对齐结论均已被此决策取代。该增量尚未实现。
 
 日期：2026-10-17。依据为 [调研记录](agents-agentd-research.md) 中的固定源码版本、Cloudflare 官方文档与 Headscale 官方资料。对照对象为更新后的 [架构方案](agents-agentd-architecture.md)。本次是设计与证据审查，没有运行互通测试。
 
