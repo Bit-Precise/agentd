@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="agentd ($(var.Architecture))"
+           Manufacturer="agentd contributors"
+           Version="$(var.PackageVersion)"
+           UpgradeCode="$(var.UpgradeCode)"
+           Language="1033" Scope="perMachine" InstallerVersion="500"
+           Compressed="yes">
+    <MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize"
+                  DowngradeErrorMessage="A newer version of agentd is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <StandardDirectory Id="$(var.ProgramFilesFolder)">
+      <Directory Id="INSTALLFOLDER" Name="agentd">
+        <Component Id="AgentdPath" Guid="$(var.PathComponentGuid)">
+          <RegistryValue Root="HKLM" Key="Software\agentd\$(var.Architecture)"
+                         Name="PathInstalled" Type="integer" Value="1" KeyPath="yes" />
+          <Environment Id="AgentdPathEnvironment" Name="PATH" Value="[INSTALLFOLDER]"
+                       Action="set" Part="last" Permanent="no" System="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <Feature Id="Core" Title="agentd and documentation" Level="1" AllowAbsent="no">
+      <ComponentGroupRef Id="AgentdPayload" />
+    </Feature>
+    <!-- Opt in with ADDLOCAL=Core,Path; the default does not alter machine PATH. -->
+    <Feature Id="Path" Title="Add agentd to machine PATH" Level="2">
+      <ComponentRef Id="AgentdPath" />
+    </Feature>
+  </Package>
+</Wix>

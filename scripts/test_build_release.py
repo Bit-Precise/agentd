@@ -1,227 +1,134 @@
-"""Exercise CLI validation, archive layout and the workflow's actual Python steps."""
-
-import hashlib
+"""Portable release-contract tests; real installers are exercised in native CI."""
+import argparse
+import importlib.util
+import io
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import tarfile
 import tempfile
-import textwrap
 import unittest
 from unittest import mock
-import zipfile
 
+SPEC=importlib.util.spec_from_file_location('release',Path(__file__).with_name('release.py'))
+R=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(R)
 
-ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = ROOT / "scripts/build-release.sh"
-WORKFLOW = ROOT / ".github/workflows/build.yml"
+class ReleaseContractTest(unittest.TestCase):
+    def test_exact_twenty_six_products(self):
+        actual=R.expected_assets()
+        self.assertEqual(len(actual),26);self.assertEqual(len(set(actual)),26)
+        self.assertEqual(sum(name.endswith('.deb') for name in actual),6)
+        self.assertEqual(sum(name.endswith('.rpm') for name in actual),6)
+        self.assertEqual(sum(name.endswith('.pkg') for name in actual),2)
+        self.assertEqual(sum(name.endswith('.msi') for name in actual),2)
+        self.assertEqual(sum(name.endswith('.tgz') for name in actual),2)
+        self.assertIn('agentd-fips-linux-x86_64.rpm',actual)
+        self.assertIn('agentd-linux-aarch64.rpm',actual)
+        self.assertIn('agentd-linux-armhf',actual)
+        self.assertEqual(R.names(R.target('linux','arm','7')),['agentd-linux-armhf','agentd-linux-armhf.deb','agentd-linux-armhf.rpm'])
 
+    def test_versions_and_invalid_arguments(self):
+        self.assertEqual(R.versions('v1.2.3')['msiVersion'],'1.2.3')
+        self.assertEqual(R.versions('v2026.10.1')['msiVersion'],'26.10.1')
+        self.assertEqual(R.versions('dev-deadbeef')['msiVersion'],'0.0.0')
+        self.assertEqual(R.versions('v1.2.3-rc.1')['packageVersion'],'1.2.3-rc.1')
+        for value in ['$(touch injected)','v1/escape','v300.1.1','v1.2.65536','v1.2']:
+            with self.subTest(value=value),self.assertRaises(ValueError):R.versions(value)
+        for args in [('windows','arm64'),('darwin','386'),('linux','mips'),('linux','arm','6')]:
+            with self.assertRaises(ValueError):R.target(*args)
+        with self.assertRaises(ValueError):R.target('linux','arm64',fips=True)
 
-def embedded_python():
-    chunks, current = [], None
-    for line in WORKFLOW.read_text().splitlines():
-        if line.strip() == "python3 - <<'PY'":
-            current = []
-        elif current is not None and line.strip() == "PY":
-            chunks.append(textwrap.dedent("\n".join(current)))
-            current = None
-        elif current is not None:
-            current.append(line)
-    return chunks
+    def test_fips_requires_pinned_module_and_runtime_default(self):
+        for line in ['DefaultGODEBUG=fips140=on','DefaultGODEBUG=foo=1,fips140=on,bar=2']:
+            with mock.patch('subprocess.check_output',return_value='build GOFIPS140='+R.FIPS_VERSION+'\nbuild '+line+'\n'):
+                R.check_fips('binary',{})
+        with mock.patch('subprocess.check_output',return_value='build GOFIPS140=off\n'):
+            with self.assertRaises(ValueError):R.check_fips('binary',{})
 
-
-class BuildReleaseTest(unittest.TestCase):
-    def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
-        (self.root / "scripts").mkdir()
-        shutil.copyfile(SCRIPT, self.root / "scripts/build-release.sh")
-        for name in ["README.md", "THIRD_PARTY_NOTICES.md", "go.mod", "go.sum", "examples/agentd/config.yaml", "examples/agentd/local.yaml", "examples/agents/config.yaml", "docs/local-development.md", "docs/build-and-release.md", "docs/agentd-config.md", "docs/backend-implementation.md", "edge/README.md", "connection/README.md", "transport/xhttp/README.md", "transport/xhttp/LICENSE", "transport/xhttp/NOTICE"]:
-            path = self.root / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(name + "\n")
-        module = self.root / "fixture-module"
-        module.mkdir()
-        (module / "LICENSE").write_text("MIT license\nCopyright fixture owner\n")
-        (module / "secret.txt").write_text("must not be packaged")
-        toolchain = self.root / "fixture-toolchain"
-        toolchain.mkdir()
-        (toolchain / "LICENSE").write_text("Go license\nCopyright The Go Authors\n")
-        tools = self.root / "tools"
-        tools.mkdir()
-        fake_go = tools / "go"
-        fake_go.write_text(textwrap.dedent("""\
-            #!/usr/bin/env python3
-            import json, os, pathlib, sys
-            if os.environ.get('FAIL_GO'):
-                raise SystemExit(7)
-            if sys.argv[1] == 'env':
-                print(json.dumps({'GOROOT':os.environ.get('FAKE_GOROOT', str(pathlib.Path.cwd() / 'fixture-toolchain')), 'GOVERSION':'go1.27.2'}))
-                raise SystemExit(0)
-            if sys.argv[1] == 'list':
-                assert '-deps' in sys.argv and '-json=Module' in sys.argv
-                assert './cmd/agents' in sys.argv and './cmd/agentd' in sys.argv
-                print(json.dumps({'Module': {'Path':'github.com/bit-precise/agentd', 'Main':True}}))
-                print(json.dumps({'Module': {'Path':'fixture.example/dependency', 'Version':'v1.0.0', 'Dir':str(pathlib.Path.cwd() / 'fixture-module')}}))
-                raise SystemExit(0)
-            assert sys.argv[1] == 'build'
-            if os.environ.get('FAIL_AGENTS') and sys.argv[-1] == './cmd/agents':
-                raise SystemExit(8)
-            assert '-mod=readonly' in sys.argv and '-trimpath' in sys.argv
-            assert os.environ['CGO_ENABLED'] == '0'
-            assert os.environ['GOFIPS140'] == 'off'
-            output = pathlib.Path(sys.argv[sys.argv.index('-o') + 1])
-            output.write_text(json.dumps({
-                'os': os.environ['GOOS'], 'arch': os.environ['GOARCH'],
-                'arm': os.environ['GOARM'],
-                'command': sys.argv[-1],
-                'ldflags': sys.argv[sys.argv.index('-ldflags') + 1],
-            }))
-            """))
-        fake_go.chmod(0o755)
-        self.env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ["PATH"], SOURCE_DATE_EPOCH="1700000000")
-        self.output = self.root / "output with spaces"
-
-    def invoke(self, *args, **kwargs):
-        return subprocess.run(["bash", str(self.root / "scripts/build-release.sh"), *args],
-                              cwd=self.root, env=kwargs.get("env", self.env), text=True,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    def build(self, goos, arch, arm=""):
-        args = ["--os", goos, "--arch", arch, "--version", "v0.1.0", "--out", str(self.output)]
-        if arm:
-            args.extend(["--goarm", arm])
-        result = self.invoke(*args)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        artifact_arch = "armhf" if arm == "7" else arch
-        suffix = ".zip" if goos == "windows" else ".tar.gz"
-        return self.output / f"agentd-v0.1.0-{goos}-{artifact_arch}{suffix}"
-
-    def test_all_nine_targets_and_checksum_lines(self):
-        matrix = [("linux", "386", ""), ("linux", "amd64", ""),
-                  ("linux", "arm", "5"), ("linux", "arm", "7"), ("linux", "arm64", ""),
-                  ("darwin", "amd64", ""), ("darwin", "arm64", ""),
-                  ("windows", "amd64", ""), ("windows", "386", "")]
-        for goos, arch, arm in matrix:
-            with self.subTest(goos=goos, arch=arch, arm=arm):
-                archive = self.build(goos, arch, arm)
-                base = archive.name.removesuffix(".tar.gz").removesuffix(".zip")
-                binary = "agentd.exe" if goos == "windows" else "agentd"
-                server_binary = "agents.exe" if goos == "windows" else "agents"
-                if goos == "windows":
-                    with zipfile.ZipFile(archive) as package:
-                        read = package.read
-                        data = json.loads(read(f"{base}/{binary}"))
-                        server_data = json.loads(read(f"{base}/{server_binary}"))
-                        self.assertTrue(read(f"{base}/agents.example.yaml"))
-                        self.assertEqual(package.testzip(), None)
-                        buildinfo = read(f"{base}/BUILDINFO").decode()
-                        self.assertTrue(read(f"{base}/licenses/xhttp/LICENSE"))
-                        self.assertIn(b"Copyright fixture owner", read(f"{base}/licenses/modules/fixture.example/dependency@v1.0.0/LICENSE"))
-                        self.assertTrue(read(f"{base}/go.mod"))
-                        self.assertIn(b"The Go Authors", read(f"{base}/licenses/go/LICENSE"))
-                        self.assertFalse(any(name.endswith('/secret.txt') for name in package.namelist()))
-                else:
-                    with tarfile.open(archive) as package:
-                        data = json.load(package.extractfile(f"{base}/{binary}"))
-                        server_data = json.load(package.extractfile(f"{base}/{server_binary}"))
-                        self.assertEqual(package.getmember(f"{base}/{server_binary}").mode, 0o755)
-                        self.assertTrue(package.extractfile(f"{base}/docs/local-development.md").read())
-                        self.assertEqual(package.getmember(f"{base}/{binary}").mode, 0o755)
-                        buildinfo = package.extractfile(f"{base}/BUILDINFO").read().decode()
-                        self.assertTrue(package.extractfile(f"{base}/licenses/xhttp/LICENSE").read())
-                        self.assertIn(b"Copyright fixture owner", package.extractfile(f"{base}/licenses/modules/fixture.example/dependency@v1.0.0/LICENSE").read())
-                        self.assertTrue(package.extractfile(f"{base}/go.sum").read())
-                        self.assertIn(b"The Go Authors", package.extractfile(f"{base}/licenses/go/LICENSE").read())
-                        self.assertFalse(any(name.endswith('/secret.txt') for name in package.getnames()))
-                self.assertEqual((data["os"], data["arch"], data["arm"]), (goos, arch, arm))
-                self.assertIn("-X main.Version=v0.1.0", data["ldflags"])
-                self.assertEqual(data["command"], "./cmd/agentd")
-                self.assertEqual(server_data["command"], "./cmd/agents")
-                self.assertEqual((server_data["os"], server_data["arch"], server_data["arm"]), (goos, arch, arm))
-                self.assertEqual(len(buildinfo.splitlines()), 6)
-                self.assertIn("binaries=agentd,agents", buildinfo.splitlines())
-                self.assertIn("go_version=go1.27.2", buildinfo.splitlines())
-                self.assertNotIn(r"\n", buildinfo)
-        lines = (self.output / "SHA256SUMS").read_text().splitlines()
-        self.assertEqual(len(lines), 9)
-        for line in lines:
-            digest, name = line.split("  ", 1)
-            self.assertEqual(hashlib.sha256((self.output / name).read_bytes()).hexdigest(), digest)
-
-    def test_invalid_target_and_injectable_version_rejected(self):
-        for args in [["--os", "windows", "--arch", "arm64"], ["--os", "linux", "--arch", "arm"],
-                     ["--os", "darwin", "--arch", "386"], ["--os", "linux", "--arch", "amd64", "--goarm", "7"]]:
-            result = self.invoke(*args, "--version", "v1", "--out", str(self.output))
-            self.assertNotEqual(result.returncode, 0)
-        result = self.invoke("--os", "linux", "--arch", "amd64", "--version", "$(touch injected)", "--out", str(self.output))
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse((self.root / "injected").exists())
-        self.assertFalse(self.output.exists())
-
-    def test_build_error_is_not_packaged(self):
-        env = dict(self.env, FAIL_GO="1")
-        result = self.invoke("--os", "linux", "--arch", "amd64", "--version", "v1", "--out", str(self.output), env=env)
-        self.assertEqual(result.returncode, 7)
-        self.assertFalse(self.output.exists())
-
-    def test_server_build_failure_does_not_publish_client_only_package(self):
-        env = dict(self.env, FAIL_AGENTS="1")
-        result = self.invoke("--os", "linux", "--arch", "amd64", "--version", "v1", "--out", str(self.output), env=env)
-        self.assertEqual(result.returncode, 8)
-        self.assertFalse(self.output.exists())
-
-    def test_packaging_reproducible(self):
-        for goos in ["linux", "windows"]:
-            first = self.build(goos, "amd64").read_bytes()
-            second = self.build(goos, "amd64").read_bytes()
-            self.assertEqual(first, second)
-
-    def test_homebrew_toolchain_license_layout(self):
-        libexec = self.root / "fixture-toolchain/libexec"
-        libexec.mkdir()
-        self.env["FAKE_GOROOT"] = str(libexec)
-        archive = self.build("darwin", "arm64")
-        with tarfile.open(archive) as package:
-            name = next(name for name in package.getnames() if name.endswith('/licenses/go/LICENSE'))
-            self.assertIn(b"The Go Authors", package.extractfile(name).read())
-
-
-class WorkflowPythonTest(unittest.TestCase):
-    def test_nul_separated_formatting_paths(self):
-        code = next(chunk for chunk in embedded_python() if "gofmt" in chunk)
-        with mock.patch("subprocess.check_output", side_effect=[b"one.go\0two.go\0", ""]) as command:
-            exec(compile(code, "workflow-format", "exec"), {})
-        self.assertEqual(command.call_args_list[1].args[0], ["gofmt", "-l", "one.go", "two.go"])
-
-    def test_aggregate_manifest_has_real_lines_and_checks_hashes(self):
-        code = next(chunk for chunk in embedded_python() if "SHA256SUMS" in chunk)
+    def test_manifest_excludes_tools_and_detects_tampering(self):
         with tempfile.TemporaryDirectory() as temp:
-            previous = os.getcwd()
-            os.chdir(temp)
-            try:
-                for i in range(9):
-                    group = Path("incoming") / f"target-{i}"
-                    group.mkdir(parents=True)
-                    name, payload = f"agentd-target-{i}.tar.gz", f"archive-{i}".encode()
-                    (group / name).write_bytes(payload)
-                    (group / "SHA256SUMS").write_text(hashlib.sha256(payload).hexdigest() + "  " + name + "\n")
-                exec(compile(code, "workflow-aggregate", "exec"), {})
-                lines = Path("release/SHA256SUMS").read_text().splitlines()
-                self.assertEqual(len(lines), 9)
-                for line in lines:
-                    digest, name = line.split("  ", 1)
-                    self.assertEqual(hashlib.sha256((Path("release") / name).read_bytes()).hexdigest(), digest)
-                shutil.rmtree("release")
-                Path("incoming/target-0/agentd-target-0.tar.gz").write_bytes(b"tampered")
-                with self.assertRaises(SystemExit):
-                    exec(compile(code, "workflow-aggregate", "exec"), {})
-            finally:
-                os.chdir(previous)
+            out=Path(temp);(out/'agentd-linux-amd64').write_bytes(b'binary')
+            (out/'.tools').mkdir();(out/'.tools/tool').write_text('not a release asset')
+            (out/'.staging').mkdir();(out/'.staging/token').write_text('must not publish')
+            R.manifest(out);self.assertEqual(R.verify_manifest(out),{'agentd-linux-amd64'})
+            (out/'agentd-linux-amd64').write_bytes(b'changed')
+            with self.assertRaises(ValueError):R.verify_manifest(out)
+            (out/'SHA256SUMS').write_text('0'*64+'  ../escape\n')
+            with self.assertRaises(ValueError):R.verify_manifest(out)
 
+    def fixture_targets(self, incoming):
+        for t in R.all_targets():
+            group=incoming/('target-'+t['key']);group.mkdir(parents=True)
+            for name in R.names(t):(group/name).write_text('built '+name)
+            metadata=group/'_metadata'/ (t['key']+'.json');metadata.parent.mkdir()
+            metadata.write_text(json.dumps({**t,**R.versions('v1.2.3'),'commit':'abc','goVersion':R.GO_VERSION,'goFIPS140':R.FIPS_VERSION if t['fips'] else 'off'}))
+            license=group/'_licenses'/t['key']/'go/LICENSE';license.parent.mkdir(parents=True);license.write_text('Go license')
+            R.manifest(group)
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_collect_checks_complete_set_and_every_input_digest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);incoming=root/'incoming';self.fixture_targets(incoming)
+            R.collect(incoming,root/'release')
+            names=R.verify_manifest(root/'release')
+            self.assertEqual(names,set(R.expected_assets())|{'agentd-licenses.tgz','BUILDINFO.json'})
+            self.assertEqual(len((root/'release/SHA256SUMS').read_text().splitlines()),28)
+            (incoming/'target-windows-386/agentd-windows-386.msi').write_text('tampered')
+            with self.assertRaises(ValueError):R.collect(incoming,root/'bad')
+
+    def test_collect_rejects_missing_product_and_different_versions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);incoming=root/'incoming';self.fixture_targets(incoming)
+            group=incoming/'target-darwin-amd64';(group/'agentd-amd64.pkg').unlink();R.manifest(group)
+            with self.assertRaisesRegex(ValueError,'missing'):R.collect(incoming,root/'missing')
+            (group/'agentd-amd64.pkg').write_text('pkg')
+            metadata=group/'_metadata/darwin-amd64.json';info=json.loads(metadata.read_text());info['version']='v9.0.0';metadata.write_text(json.dumps(info));R.manifest(group)
+            with self.assertRaisesRegex(ValueError,'disagree'):R.collect(incoming,root/'different')
+
+    def test_archive_is_deterministic(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);payload=root/'payload';payload.mkdir();(payload/'agentd').write_text('binary')
+            R.archive_tree(payload,root/'one.tgz');R.archive_tree(payload,root/'two.tgz')
+            self.assertEqual((root/'one.tgz').read_bytes(),(root/'two.tgz').read_bytes())
+            with tarfile.open(root/'one.tgz') as archive:self.assertEqual(archive.getmember('agentd').mode,0o755)
+
+    def test_nfpm_architectures_conflicts_and_paths(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out=Path(temp);payload=out/'payload';payload.mkdir();(payload/'agentd').write_text('binary');(payload/'README.md').write_text('docs')
+            for arch in R.LINUX:
+                with mock.patch.object(R,'run') as run:
+                    t=R.target('linux',arch);R.package_linux(t,R.versions('v1.2.3'),out,payload,'nfpm')
+                    config=json.loads((out/'nfpm.json').read_text())
+                    self.assertEqual(config['arch'],{'arm':'arm5','armhf':'arm7'}.get(arch,arch))
+                    self.assertEqual(config['conflicts'],['agentd-fips'])
+                    self.assertEqual(config['contents'][1 if config['contents'][0]['src'].endswith('README.md') else 0]['dst'],'/usr/bin/agentd')
+                    self.assertEqual(len(run.call_args_list),2)
+            with mock.patch.object(R,'run'):
+                R.package_linux(R.target('linux','amd64',fips=True),R.versions('v1.2.3'),out,payload,'nfpm')
+            config=json.loads((out/'nfpm.json').read_text());self.assertEqual(config['name'],'agentd-fips');self.assertEqual(config['conflicts'],['agentd'])
+
+class BuildPayloadTest(unittest.TestCase):
+    def test_client_only_build_and_platform_payload(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);payload_sources=['README.md','THIRD_PARTY_NOTICES.md','go.mod','go.sum','examples/agentd/config.yaml','docs/agentd-config.md','docs/build-and-release.md','connection/README.md','transport/xhttp/README.md','transport/xhttp/LICENSE','transport/xhttp/NOTICE']
+            for name in payload_sources:
+                p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(name)
+            goroot=root/'toolchain';goroot.mkdir();(goroot/'LICENSE').write_text('Go license')
+            def fake_run(command,**kwargs):
+                if command[:2]==['go','build']:
+                    self.assertEqual(command[-1],'./cmd/agentd');self.assertEqual(kwargs['env']['CGO_ENABLED'],'0')
+                    Path(command[command.index('-o')+1]).write_text('fake client')
+                return subprocess.CompletedProcess(command,0,stdout='abc')
+            def output(command,**kwargs):
+                if command[:2]==['go','list']:return json.dumps({'Module':{'Main':True,'Path':'client'}})
+                return json.dumps({'GOROOT':str(goroot),'GOVERSION':R.GO_VERSION})
+            for os_name,arch in [('linux','amd64'),('darwin','arm64'),('windows','386')]:
+                args=argparse.Namespace(os=os_name,arch=arch,goarm='',fips=False,version='v1.2.3',out=str(root/'out'))
+                with mock.patch.object(R,'ROOT',root),mock.patch.object(R,'run',side_effect=fake_run),mock.patch('subprocess.check_output',side_effect=output),mock.patch('subprocess.run',return_value=subprocess.CompletedProcess([],0,stdout='abc')):
+                    t,v,out,payload=R.build(args)
+                self.assertFalse((payload/'agents').exists());self.assertFalse((payload/'agents.exe').exists())
+                self.assertFalse((payload/'agents.example.yaml').exists())
+                self.assertTrue((payload/'licenses/go/LICENSE').is_file())
+                self.assertTrue((out/R.names(t)[0]).exists())
+
+if __name__=='__main__':unittest.main()

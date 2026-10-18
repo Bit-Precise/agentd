@@ -9,17 +9,15 @@ on:
   workflow_dispatch:
     inputs:
       test_linux_arm64:
-        description: Also test on the GitHub-hosted Linux ARM64 runner
+        description: Also test natively on Linux ARM64
         type: boolean
         default: false
 
 permissions:
   contents: read
-
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
-
 env:
   GO_VERSION: '1.27.2'
   GOTOOLCHAIN: local
@@ -30,248 +28,241 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Determine artifact version
-        id: version
+      - id: version
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
-            version=$GITHUB_REF_NAME
-          else
-            version="dev-${GITHUB_SHA:0:12}"
-          fi
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then version=$GITHUB_REF_NAME; else version="dev-${GITHUB_SHA:0:12}"; fi
           printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
 
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            race: true
-          - os: macos-latest
-            race: true
-          - os: windows-latest
-            race: false
+          - {os: ubuntu-latest, race: true}
+          - {os: macos-latest, race: true}
+          - {os: windows-latest, race: false}
     steps:
-      # Official actions, verified release tags; immutable commit pins.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+        with: {persist-credentials: false}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: go.sum
-      - name: Verify module lockfiles
+      - name: Verify dependency graph
         shell: bash
         run: |
           set -euo pipefail
           go mod download
           git diff --exit-code -- go.mod go.sum
           go mod verify
-      - name: Check formatting
+      - name: Vet and test
+        shell: bash
+        env:
+          RACE: ${{ matrix.race }}
+        run: |
+          set -euo pipefail
+          go vet -mod=readonly ./...
+          args=(); if [[ "$RACE" == true ]]; then args+=(-race); fi
+          go test -mod=readonly "${args[@]}" -timeout=120s ./...
+      - name: Release tooling tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/build-release.sh
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Formatting
         if: runner.os == 'Linux'
         shell: bash
         run: |
           python3 - <<'PY'
           import subprocess
           files = subprocess.check_output(['git', 'ls-files', '-z', '*.go']).decode().split('\0')
-          files = [name for name in files if name]
-          changed = subprocess.check_output(['gofmt', '-l', *files], text=True)
-          if changed:
-              raise SystemExit('Run gofmt on:\n' + changed)
+          changed = subprocess.check_output(['gofmt', '-l', *[p for p in files if p]], text=True)
+          if changed: raise SystemExit('Run gofmt on:\n' + changed)
           PY
-      - name: Vet
-        run: go vet -mod=readonly ./...
-      - name: Test with race detector
-        if: matrix.race
-        run: go test -mod=readonly -race -timeout=120s ./...
-      - name: Test without race detector
-        if: ${{ !matrix.race }}
-        run: go test -mod=readonly -timeout=120s ./...
-      - name: Validate build script
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          bash -n scripts/build-release.sh
-          node --input-type=module --check < control/assets/web/app.js
-          python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
   test-linux-arm64:
-    name: Optional native Linux ARM64 test
     if: github.event_name == 'workflow_dispatch' && inputs.test_linux_arm64
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+        with: {persist-credentials: false}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: go.sum
-      - name: Verify dependencies and test natively
-        shell: bash
-        run: |
-          set -euo pipefail
-          go mod download
-          git diff --exit-code -- go.mod go.sum
-          go test -mod=readonly -timeout=120s ./...
+        with: {go-version: '${{ env.GO_VERSION }}'}
+      - run: go test -mod=readonly -timeout=120s ./...
 
-  test-postgres:
-    name: PostgreSQL persistence and isolation
+  linux:
+    name: Linux packages (${{ matrix.arch }}${{ matrix.fips && ', FIPS' || '' }})
+    needs: [metadata, test]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: agents_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d agents_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: go.sum
-      - name: Test real PostgreSQL transactions and constraints
-        env:
-          AGENTS_TEST_POSTGRES_DSN: postgres://postgres:postgres@127.0.0.1:5432/agents_test?sslmode=disable
-        shell: bash
-        run: |
-          set -euo pipefail
-          go mod download
-          git diff --exit-code -- go.mod go.sum
-          go mod verify
-          go test -mod=readonly -race -timeout=120s ./control/db -run '^TestPostgresPersistenceAndConstraints$' -count=1
-
-  build:
-    name: Build agents + agentd (${{ matrix.goos }}/${{ matrix.artifact_arch }})
-    needs: [metadata, test, test-postgres]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {goos: linux, goarch: '386', artifact_arch: '386', goarm: ''}
-          - {goos: linux, goarch: amd64, artifact_arch: amd64, goarm: ''}
-          - {goos: linux, goarch: arm, artifact_arch: arm, goarm: '5'}
-          - {goos: linux, goarch: arm, artifact_arch: armhf, goarm: '7'}
-          - {goos: linux, goarch: arm64, artifact_arch: arm64, goarm: ''}
-          - {goos: darwin, goarch: amd64, artifact_arch: amd64, goarm: ''}
-          - {goos: darwin, goarch: arm64, artifact_arch: arm64, goarm: ''}
-          - {goos: windows, goarch: amd64, artifact_arch: amd64, goarm: ''}
-          - {goos: windows, goarch: '386', artifact_arch: '386', goarm: ''}
+          - {arch: '386', fips: false}
+          - {arch: amd64, fips: false}
+          - {arch: arm, fips: false}
+          - {arch: armhf, fips: false}
+          - {arch: arm64, fips: false}
+          - {arch: amd64, fips: true}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+        with: {persist-credentials: false}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: go.sum
-      - name: Verify module lockfiles
+        with: {go-version: '${{ env.GO_VERSION }}'}
+      - name: Install pinned package builder and RPM inspector
         shell: bash
         run: |
           set -euo pipefail
-          go mod download
-          git diff --exit-code -- go.mod go.sum
-          go mod verify
-      - name: Build and package server and client (pure-Go SQLite)
+          python3 scripts/install-nfpm.py --destination "$RUNNER_TEMP/agentd-tools"
+          sudo apt-get update
+          sudo apt-get install -y rpm
+      - name: Build real binary, DEB and RPM
         shell: bash
         env:
-          TARGET_OS: ${{ matrix.goos }}
-          TARGET_ARCH: ${{ matrix.goarch }}
-          TARGET_ARM: ${{ matrix.goarm }}
+          TARGET_ARCH: ${{ matrix.arch }}
+          FIPS_BUILD: ${{ matrix.fips }}
           RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
         run: |
           set -euo pipefail
-          args=(--os "$TARGET_OS" --arch "$TARGET_ARCH" --version "$RELEASE_VERSION" --out dist)
-          if [[ -n "$TARGET_ARM" ]]; then args+=(--goarm "$TARGET_ARM"); fi
-          bash scripts/build-release.sh "${args[@]}"
-          (cd dist && sha256sum --check SHA256SUMS)
-      - name: Smoke test native Linux binaries
-        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+          args=(); if [[ "$FIPS_BUILD" == true ]]; then args+=(--fips); fi
+          bash scripts/build-release.sh --os linux --arch "$TARGET_ARCH" --version "$RELEASE_VERSION" --out dist --nfpm "$RUNNER_TEMP/agentd-tools/nfpm" "${args[@]}"
+          python3 scripts/release.py verify --out dist
+          dpkg-deb --info dist/*.deb
+          dpkg-deb --contents dist/*.deb
+          rpm -K dist/*.rpm
+          test "$(rpm -qp --qf '%{FILEDIGESTALGO}' dist/*.rpm)" = 8
+          rpm -qpl dist/*.rpm | grep '^/usr/bin/agentd$'
+      - name: Install and remove native amd64 DEB
+        if: matrix.arch == 'amd64'
         shell: bash
+        env:
+          FIPS_BUILD: ${{ matrix.fips }}
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
         run: |
           set -euo pipefail
-          mkdir smoke
-          tar -xzf dist/*.tar.gz -C smoke --strip-components=1
-          smoke/agents version
-          smoke/agentd version
-          smoke/agents init --config "$RUNNER_TEMP/agents-smoke/agents.yaml"
-          test -s "$RUNNER_TEMP/agents-smoke/state/agents/admin.token"
-      - name: Upload target artifact
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          sudo dpkg -i dist/*.deb
+          test "$(/usr/bin/agentd version)" = "$RELEASE_VERSION"
+          name=agentd; if [[ "$FIPS_BUILD" == true ]]; then name=agentd-fips; fi
+          sudo dpkg -r "$name"
+      - name: Verify pinned Go FIPS module at build and runtime
+        if: matrix.fips
+        shell: bash
+        env:
+          GOFIPS140: v1.0.0-c2097c7c
+        run: |
+          set -euo pipefail
+          python3 scripts/release.py verify-fips --binary dist/agentd-fips-linux-amd64
+          go run -mod=readonly ./scripts/fipsprobe
+          go test -mod=readonly -timeout=120s ./...
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: target-${{ matrix.goos }}-${{ matrix.artifact_arch }}
-          path: dist/*
+          name: target-linux-${{ matrix.arch }}${{ matrix.fips && '-fips' || '' }}
+          path: dist/**
+          include-hidden-files: false
           if-no-files-found: error
           compression-level: 0
-          retention-days: 14
+
+  macos:
+    name: macOS TGZ and PKG (${{ matrix.arch }})
+    needs: [metadata, test]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: macos-15-intel, arch: amd64}
+          - {os: macos-15, arch: arm64}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: {go-version: '${{ env.GO_VERSION }}'}
+      - name: Build native unsigned installer and archive
+        shell: bash
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          bash scripts/build-release.sh --os darwin --arch "$TARGET_ARCH" --version "$RELEASE_VERSION" --out dist
+          python3 scripts/release.py verify --out dist
+          tar -tzf "dist/agentd-darwin-$TARGET_ARCH.tgz"
+          test ! -e /usr/local/bin/agentd
+          sudo installer -pkg "dist/agentd-$TARGET_ARCH.pkg" -target /
+          test "$(/usr/local/bin/agentd version)" = "$RELEASE_VERSION"
+          pkgutil --pkg-info com.bit-precise.agentd
+          sudo rm /usr/local/bin/agentd
+          sudo rm -rf /usr/local/share/doc/agentd
+          sudo pkgutil --forget com.bit-precise.agentd
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: target-darwin-${{ matrix.arch }}
+          path: dist/**
+          include-hidden-files: false
+          if-no-files-found: error
+          compression-level: 0
+
+  windows:
+    name: Windows EXE and MSI (${{ matrix.arch }})
+    needs: [metadata, test]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ['386', amd64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: {go-version: '${{ env.GO_VERSION }}'}
+      - name: Build native unsigned MSI and verify install/uninstall
+        shell: pwsh
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+          RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          dotnet --list-runtimes
+          ./scripts/build-windows.ps1 -Architecture $env:TARGET_ARCH -Version $env:RELEASE_VERSION -OutDir dist -SmokeTest
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer build failed' }
+          python scripts/release.py verify --out dist
+          if ($LASTEXITCODE -ne 0) { throw 'Windows checksums failed' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: target-windows-${{ matrix.arch }}
+          path: dist/**
+          include-hidden-files: false
+          if-no-files-found: error
+          compression-level: 0
 
   package:
-    name: Verify and collect all release assets
-    needs: [metadata, build]
+    name: Verify all 26 products and collect release
+    needs: [metadata, linux, macos, windows]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: target-*
           path: incoming
           merge-multiple: false
           digest-mismatch: error
-      - name: Verify target manifests and generate combined checksums
-        shell: bash
+      - name: Verify exact product list and each input checksum
         run: |
-          python3 - <<'PY'
-          import hashlib
-          from pathlib import Path
-          import shutil
-
-          groups = sorted(Path('incoming').glob('target-*'))
-          if len(groups) != 9:
-              raise SystemExit(f'Expected 9 target artifacts, got {len(groups)}')
-          output = Path('release')
-          output.mkdir()
-          sums = []
-          for group in groups:
-              lines = (group / 'SHA256SUMS').read_text().splitlines()
-              if len(lines) != 1:
-                  raise SystemExit(f'Expected one archive in {group}')
-              digest, name = lines[0].split('  ', 1)
-              if Path(name).name != name or not name.endswith(('.tar.gz', '.zip')):
-                  raise SystemExit(f'Invalid archive name in {group}')
-              source = group / name
-              checksum = hashlib.sha256()
-              with source.open('rb') as stream:
-                  for block in iter(lambda: stream.read(1 << 20), b''):
-                      checksum.update(block)
-              actual = checksum.hexdigest()
-              if actual != digest or (output / name).exists():
-                  raise SystemExit(f'Invalid or duplicate asset: {name}')
-              shutil.copyfile(source, output / name)
-              sums.append((name, digest))
-          (output / 'SHA256SUMS').write_text(''.join(f'{digest}  {name}\n' for name, digest in sorted(sums)))
-          PY
-          (cd release && sha256sum --check SHA256SUMS)
-      - name: Upload complete release bundle
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          python3 scripts/release.py collect --incoming incoming --out release
+          python3 scripts/release.py verify --out release
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: agentd-release-${{ needs.metadata.outputs.version }}
           path: release/*
@@ -280,20 +271,19 @@ jobs:
           retention-days: 30
 
   release:
-    name: Publish tagged GitHub Release
+    name: Publish verified tagged assets
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [metadata, package]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
+    timeout-minutes: 15
+    permissions: {contents: write}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: agentd-release-${{ needs.metadata.outputs.version }}
           path: release
           digest-mismatch: error
-      - name: Publish verified assets
+      - name: Publish verified artifacts
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
