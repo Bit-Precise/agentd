@@ -2,7 +2,7 @@
 
 基线更新：以下案例的服务受众和指定出口语义继续保留；旧 VLESS Reverse 接入、purpose 池和角色快捷命令属于历史方案。当前入口是本地 `config.yaml`，同一进程可组合 ingress、serve、egress；agents 管理认证、连接目录和业务流，XHTTP/WSS 仅作承载。具体配置见 [本地配置规范](agentd-config.md) 和 [完整示例](../examples/agentd/config.yaml)，Serve 公网请求统一先经过 gateway。
 
-状态：设计走查，命令和输出为拟议接口，尚未实现。依据 [架构方案](agents-agentd-architecture.md) 与 [对齐审查](agents-agentd-alignment.md)。
+状态：设计走查，命令和输出为拟议接口，尚未实现。依据 [架构方案](agents-agentd-architecture.md) 与 [对齐审查（历史）](archive/agents-agentd-alignment.md)。
 
 2026-10-18 身份流程以 [Hydra Device Flow 与 User/SA 设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md) 为准：所有示例中的 `agentd login` 都表示同一二进制的标准 Device Flow；浏览器先认证人类，再选择 Workspace 和本人/该空间 SA，SA 仅 maintainer+ 可选择。服务器必须使用 SA，SA 可有多个 Agent 且不能登录 Console。下文若只写“用户身份”表示个人 profile，不涵盖服务器 profile；其他旧命令仍只是场景示意，不能当作已实现 CLI。
 

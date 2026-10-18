@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bit-precise/agentd/api"
 	"github.com/bit-precise/agentd/config"
 	"github.com/bit-precise/agentd/credentials"
 	"github.com/rs/zerolog"
@@ -20,7 +21,7 @@ func TestControlRejectionStopsImmediately(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(401) }))
 	defer server.Close()
 	cfg := &config.Config{Instance: server.URL, Workspace: "work", Agent: config.AgentConfig{StateDir: filepath.Join(t.TempDir(), "state")}}
-	creds := &credentials.Credentials{Version: 1, AgentID: "device", Workspace: "work", ControlToken: "control-token", ControlURL: server.URL, Approval: credentials.Approval{Revision: 1, ExpiresAt: time.Now().Add(time.Hour)}}
+	creds := &credentials.Credentials{Version: api.CredentialsVersion, AgentID: "device", Workspace: "work", ControlToken: "control-token", ControlURL: server.URL, Effective: api.EffectiveConfig{Revision: 1, ExpiresAt: time.Now().Add(time.Hour)}}
 	s, err := New(cfg, creds, zerolog.Nop())
 	if err != nil {
 		t.Fatal(err)
@@ -32,34 +33,92 @@ func TestControlRejectionStopsImmediately(t *testing.T) {
 	}
 }
 
-func TestStaticApprovalExpiryIsReported(t *testing.T) {
+func TestStaticEffectiveExpiryIsReported(t *testing.T) {
 	cfg := &config.Config{Workspace: "work", Agent: config.AgentConfig{StateDir: filepath.Join(t.TempDir(), "state")}}
-	creds := &credentials.Credentials{Workspace: "work", Approval: credentials.Approval{Revision: 1, ExpiresAt: time.Now().Add(100 * time.Millisecond)}}
+	creds := &credentials.Credentials{Workspace: "work", Effective: api.EffectiveConfig{Revision: 1, ExpiresAt: time.Now().Add(100 * time.Millisecond)}}
 	s, err := New(cfg, creds, zerolog.Nop())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.Run(t.Context()); err == nil || !strings.Contains(err.Error(), "approval snapshot expired") {
-		t.Fatalf("silent approval expiry: %v", err)
+	if err = s.Run(t.Context()); err == nil || !strings.Contains(err.Error(), "effective configuration snapshot expired") {
+		t.Fatalf("silent effective configuration expiry: %v", err)
+	}
+}
+
+func TestControlOutageKeepsRunningUntilEffectiveExpiry(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(503) }))
+	defer server.Close()
+	cfg := &config.Config{Instance: server.URL, Workspace: "work", Agent: config.AgentConfig{StateDir: filepath.Join(t.TempDir(), "state")}}
+	for _, tc := range []struct {
+		name    string
+		expires time.Duration
+		want    string
+	}{{"outage outlives the snapshot", 400 * time.Millisecond, "expired without reaching control"}, {"outage within validity", time.Hour, context.DeadlineExceeded.Error()}} {
+		t.Run(tc.name, func(t *testing.T) {
+			creds := &credentials.Credentials{Version: api.CredentialsVersion, AgentID: "device", Workspace: "work", ControlToken: "control-token", ControlURL: server.URL, Effective: api.EffectiveConfig{Revision: 1, ExpiresAt: time.Now().Add(tc.expires)}}
+			s, err := New(cfg, creds, zerolog.Nop())
+			if err != nil {
+				t.Fatal(err)
+			}
+			s.pollInterval = 20 * time.Millisecond
+			ctx, cancel := context.WithTimeout(t.Context(), 800*time.Millisecond)
+			defer cancel()
+			started := time.Now()
+			err = s.Run(ctx)
+			if err == nil || !strings.Contains(err.Error(), tc.want) || time.Since(started) < 350*time.Millisecond {
+				t.Fatalf("control outage handling = %v after %v", err, time.Since(started))
+			}
+		})
+	}
+}
+
+func TestRejectedDesiredUpdateIsNotRetried(t *testing.T) {
+	var updates atomic.Int32
+	creds := &credentials.Credentials{Version: api.CredentialsVersion, AgentID: "device", Workspace: "work", ControlToken: "control-token", Effective: api.EffectiveConfig{Revision: 1, ExpiresAt: time.Now().Add(time.Hour)}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/agent/config" {
+			updates.Add(1)
+			w.WriteHeader(403)
+			_, _ = w.Write([]byte(`{"error":{"kind":"forbidden","message":"desired role exceeds enrollment permission"}}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(creds)
+	}))
+	defer server.Close()
+	creds.ControlURL = server.URL
+	cfg := &config.Config{Instance: server.URL, Workspace: "work", Agent: config.AgentConfig{StateDir: filepath.Join(t.TempDir(), "state")}}
+	s, err := New(cfg, creds, zerolog.Nop())
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.pollInterval = 10 * time.Millisecond
+	ctx, cancel := context.WithCancelCause(t.Context())
+	done := make(chan struct{})
+	go func() { defer close(done); s.pollControl(ctx, cancel) }()
+	time.Sleep(200 * time.Millisecond)
+	cancel(nil)
+	<-done
+	if updates.Load() != 1 || context.Cause(ctx) != context.Canceled {
+		t.Fatalf("policy rejection was retried %d times or stopped the agent: %v", updates.Load(), context.Cause(ctx))
 	}
 }
 
 func TestFailedDesiredUpdateIsRetried(t *testing.T) {
 	var updates atomic.Int32
 	var desired atomic.Bool
-	creds := &credentials.Credentials{Version: 1, AgentID: "device", Workspace: "work", ControlToken: "control-token", Approval: credentials.Approval{Revision: 1, ExpiresAt: time.Now().Add(time.Hour)}}
+	creds := &credentials.Credentials{Version: api.CredentialsVersion, AgentID: "device", Workspace: "work", ControlToken: "control-token", Effective: api.EffectiveConfig{Revision: 1, ExpiresAt: time.Now().Add(time.Hour)}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/agent/config" {
 			if updates.Add(1) == 1 {
 				w.WriteHeader(503)
 				return
 			}
-			var cfg config.Config
-			if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+			var update api.ConfigUpdate
+			if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 				t.Error(err)
 			}
-			desired.Store(len(cfg.Serve.Services) == 1 && cfg.Serve.Services[0].Name == "new")
-			w.WriteHeader(200)
+			desired.Store(len(update.Desired.Serve.Services) == 1 && update.Desired.Serve.Services[0].Name == "new")
+			_, _ = w.Write([]byte("{}"))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(creds)

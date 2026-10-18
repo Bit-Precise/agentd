@@ -1,6 +1,6 @@
 # agents / agentd P0 问题修复方案
 
-历史方案说明：本文记录对原生 Reverse PoC 的补救设计及风险。当前已确认不让 Xray Reverse/用户表承担产品会话和授权，改由 agents 管理连接与流；本文中的流级准入、目标绑定及撤销原则继续适用，Xray handler/worker 修补不再是必选实现。当前规范见 [架构方案](agents-agentd-architecture.md) 和 [本地配置](agentd-config.md)。
+历史方案说明：本文记录对原生 Reverse PoC 的补救设计及风险。当前已确认不让 Xray Reverse/用户表承担产品会话和授权，改由 agents 管理连接与流；本文中的流级准入、目标绑定及撤销原则继续适用，Xray handler/worker 修补不再是必选实现。当前规范见 [架构方案](../agents-agentd-architecture.md) 和 [本地配置](../agentd-config.md)。
 
 这份方案针对 PoC 已确认的两个问题：
 

@@ -1,6 +1,6 @@
 # agents / agentd 详细审阅
 
-审阅后的决策：已确认由 agents 管理认证、连接目录和业务流，XHTTP/WSS 只负责承载；新增本地三角色 `config.yaml`。本文保留审阅时的发现与行号，当前设计以 [架构方案](agents-agentd-architecture.md) 和 [本地配置规范](agentd-config.md) 为准。
+审阅后的决策：已确认由 agents 管理认证、连接目录和业务流，XHTTP/WSS 只负责承载；新增本地三角色 `config.yaml`。本文保留审阅时的发现与行号，当前设计以 [架构方案](../agents-agentd-architecture.md) 和 [本地配置规范](../agentd-config.md) 为准。
 
 日期：2026-10-17。审阅范围：本目录全部六份设计文档、`poc/xray-reverse` 配置与脚本，以及调研固定版本的 Xray、Headscale 相关源码。`agents/`、`agentd/` 尚无产品源码；文中的缺口不等于已经发生的产品漏洞。本文记录审阅结果和建议，不替代原设计或宣称功能已实现。
 
@@ -16,7 +16,7 @@
 
 **2. 实体及其关系**
 
-依据：[架构实体定义](agents-agentd-architecture.md) 第 160–221 行、注册流程第 274–294 行、[P0 修复方案](agents-agentd-p0-remediation.md) 第 26–60 行。
+依据：[架构实体定义](../agents-agentd-architecture.md) 第 160–221 行、注册流程第 274–294 行、[P0 修复方案](agents-agentd-p0-remediation.md) 第 26–60 行。
 
 | 层次 | 实体与关系 | 应保持的语义 |
 |---|---|---|

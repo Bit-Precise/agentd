@@ -1,8 +1,8 @@
 # agents / agentd 调研记录
 
-用途更新：本文保留固定上游版本的证据。VLESS/Reverse 调研不再表示产品选用它们；当前已确认 agents 自管认证、连接和业务流，XHTTP/WSS 仅作传输适配。见 [架构方案](agents-agentd-architecture.md) 和 [本地配置](agentd-config.md)。
+用途更新：本文保留固定上游版本的证据。VLESS/Reverse 调研不再表示产品选用它们；当前已确认 agents 自管认证、连接和业务流，XHTTP/WSS 仅作传输适配。见 [架构方案](../agents-agentd-architecture.md) 和 [本地配置](../agentd-config.md)。
 
-日期：2026-10-17。仅调研公开文档、当前 cloudflared 工作区和开源代码；没有运行服务、登录外部账号或进行网络联调。配套方案见 [架构设计](agents-agentd-architecture.md)。
+日期：2026-10-17。仅调研公开文档、当前 cloudflared 工作区和开源代码；没有运行服务、登录外部账号或进行网络联调。配套方案见 [架构设计](../agents-agentd-architecture.md)。
 
 **源码基线**
 

@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bit-precise/agentd/api"
 	"github.com/bit-precise/agentd/config"
 	"github.com/bit-precise/agentd/connection"
 	"github.com/bit-precise/agentd/credentials"
@@ -85,14 +86,12 @@ func (e *edgeFixture) accept(c net.Conn) {
 		if h.Workspace != "workspace1" || h.AgentID != "agent-1" {
 			return connection.Principal{}, errors.New("wrong identity")
 		}
-		p := connection.Principal{Role: h.Role, Workspace: h.Workspace, AgentID: h.AgentID, ConnectorID: h.ConnectorID, Generation: 1, Revision: h.Revision, ExpiresAt: time.Now().Add(time.Minute)}
+		p := connection.Principal{Role: h.Role, Workspace: h.Workspace, AgentID: h.AgentID, ConnectorID: h.ConnectorID, Generation: 1, ExpiresAt: time.Now().Add(time.Minute)}
 		switch h.Role {
 		case connection.RoleProvider:
 			if h.Token != "provider-secret" {
 				return p, errors.New("wrong role credential")
 			}
-			p.Services = h.Services
-			p.EgressEnabled = h.EgressEnabled
 		case connection.RoleAccess:
 			if h.Token != "access-secret" {
 				return p, errors.New("wrong role credential")
@@ -211,7 +210,8 @@ func TestAgentdThreeRolesOverModifiedXHTTP(t *testing.T) {
 	}
 	rule := policy.Rule{Domain: policy.Domain{Exact: "example.com"}, Ports: []int{int(port)}, Protocol: "tls"}
 	cfg := &config.Config{Instance: "https://instance1.example.com", Workspace: "workspace1", Agent: config.AgentConfig{Name: "agentd1", StateDir: state}, Transport: config.TransportConfig{Type: "xhttp", Endpoint: edge.server.URL + "/agent", Mode: "packet-up", CAFile: caPath}, Ingress: config.IngressConfig{Enabled: true, HTTP: config.ListenerConfig{Enabled: true, Listen: freeAddress(t)}, SOCKS: config.ListenerConfig{Enabled: true, Listen: freeAddress(t)}, Routes: []policy.Rule{rule}, OnUnmatched: "reject"}, Serve: config.ServeConfig{Enabled: true, Services: []config.ServiceConfig{{Name: "demo", Origin: origin.URL}}}, Egress: config.EgressConfig{Enabled: true, Allow: []policy.Rule{rule}}}
-	creds := &credentials.Credentials{Version: 1, Workspace: "workspace1", AgentID: "agent-1", ProviderToken: "provider-secret", AccessToken: "access-secret", Approval: credentials.Approval{Revision: 7, ExpiresAt: time.Now().Add(time.Hour), Services: map[string]string{"demo": origin.URL}, Egress: []policy.Rule{rule}}}
+	creds := &credentials.Credentials{Version: api.CredentialsVersion, Workspace: "workspace1", AgentID: "agent-1", ProviderToken: "provider-secret", AccessToken: "access-secret",
+		Effective: api.EffectiveConfig{Revision: 7, ExpiresAt: time.Now().Add(time.Hour), Ingress: true, Services: []api.EffectiveService{{Name: "demo", Origin: origin.URL, Hostname: "demo.workspace1.instance1.example.com"}}, Egress: []policy.Rule{rule}}}
 	s, err := supervisor.New(cfg, creds, zerolog.Nop(), supervisor.WithEgressDialer(func(ctx context.Context, network, address string) (net.Conn, error) {
 		if address != net.JoinHostPort("example.com", targetPort) {
 			return nil, errors.New("unexpected dial")
@@ -240,10 +240,9 @@ func TestAgentdThreeRolesOverModifiedXHTTP(t *testing.T) {
 	edge.mu.Lock()
 	provider := edge.provider
 	edge.mu.Unlock()
-	if len(provider.Principal().Services) != 1 || provider.Principal().Services[0] != "demo" {
-		t.Fatal("provider did not advertise approved service")
-	}
-	flow, err := provider.Open(ctx, connection.OpenRequest{Purpose: connection.PurposeServe, Resource: "demo", Revision: 7, Deadline: time.Now().Add(30 * time.Second)})
+	// The provider authorizes by content: an Edge decision made at a newer
+	// effective revision is still served when the service is unchanged.
+	flow, err := provider.Open(ctx, connection.OpenRequest{Purpose: connection.PurposeServe, Resource: "demo", Revision: 8, Deadline: time.Now().Add(30 * time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,14 +349,17 @@ func TestAgentdThreeRolesOverModifiedXHTTP(t *testing.T) {
 	default:
 	}
 	// A new transport after failure keeps the process Connector identity and
-	// advertises the current local service set, without restoring withdrawn work.
+	// does not restore withdrawn work.
 	connectorID := provider.Principal().ConnectorID
 	_ = provider.Close()
 	wait(t, edge.providerReady)
 	edge.mu.Lock()
 	reconnected := edge.provider
 	edge.mu.Unlock()
-	if reconnected == provider || reconnected.Principal().ConnectorID != connectorID || len(reconnected.Principal().Services) != 0 {
-		t.Fatal("reconnect changed runtime identity or revived the withdrawn service")
+	if reconnected == provider || reconnected.Principal().ConnectorID != connectorID {
+		t.Fatal("reconnect changed runtime identity")
+	}
+	if _, err := reconnected.Open(ctx, connection.OpenRequest{Purpose: connection.PurposeServe, Resource: "demo", Revision: 7, Deadline: time.Now().Add(10 * time.Second)}); err == nil {
+		t.Fatal("reconnect revived the withdrawn service")
 	}
 }

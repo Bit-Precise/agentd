@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -31,17 +30,24 @@ import (
 )
 
 type Supervisor struct {
-	cfg         *config.Config
-	creds       *credentials.Credentials
-	manager     *orchestration.Manager
-	client      *http.Client
-	log         zerolog.Logger
-	mu          sync.Mutex
-	reloadMu    sync.Mutex
-	pending     *config.Config
-	access      *connection.Session
-	provider    *connection.Session
-	connectorID string
+	// cfg is the startup configuration: identity, transport and listeners only
+	// change on restart. applied tracks reloaded intent submitted to Control.
+	cfg          *config.Config
+	applied      *config.Config
+	creds        *credentials.Credentials
+	manager      *orchestration.Manager
+	proxy        *ingress.Proxy
+	client       *http.Client
+	log          zerolog.Logger
+	mu           sync.Mutex
+	reloadMu     sync.Mutex
+	pending      *config.Config
+	access       *connection.Session
+	provider     *connection.Session
+	providerWake chan struct{}
+	accessWake   chan struct{}
+	connectorID  string
+	pollInterval time.Duration
 }
 
 // Option supplies trusted embedding hooks; the standalone CLI uses none.
@@ -55,15 +61,10 @@ func New(cfg *config.Config, c *credentials.Credentials, log zerolog.Logger, opt
 	if c.ControlToken != "" && strings.TrimSuffix(c.ControlURL, "/") != strings.TrimSuffix(cfg.Instance, "/") {
 		return nil, errors.New("stored control credential belongs to a different instance")
 	}
-	data, err := json.Marshal(cfg)
+	cfg, err := detach(cfg)
 	if err != nil {
 		return nil, err
 	}
-	var detached config.Config
-	if err := json.Unmarshal(data, &detached); err != nil {
-		return nil, err
-	}
-	cfg = &detached
 	if c.Workspace != cfg.Workspace {
 		return nil, errors.New("credentials belong to a different workspace")
 	}
@@ -84,7 +85,9 @@ func New(cfg *config.Config, c *credentials.Credentials, log zerolog.Logger, opt
 	if _, err := rand.Read(id[:]); err != nil {
 		return nil, err
 	}
-	s := &Supervisor{cfg: cfg, creds: c, manager: orchestration.New(cfg, c.Approval), client: client, log: log, connectorID: hex.EncodeToString(id[:])}
+	s := &Supervisor{cfg: cfg, applied: cfg, creds: c, manager: orchestration.New(cfg, c.Effective), client: client, log: log,
+		providerWake: make(chan struct{}, 1), accessWake: make(chan struct{}, 1), connectorID: hex.EncodeToString(id[:]), pollInterval: 2 * time.Second}
+	s.proxy = ingress.NewProxy(cfg.Ingress.Routes, s.openAccess)
 	if c.ControlToken != "" {
 		s.pending = cfg
 	}
@@ -92,6 +95,19 @@ func New(cfg *config.Config, c *credentials.Credentials, log zerolog.Logger, opt
 		option(s)
 	}
 	return s, nil
+}
+
+// detach copies a config so later caller mutations cannot reach running state.
+func detach(cfg *config.Config) (*config.Config, error) {
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, err
+	}
+	var detached config.Config
+	if err := json.Unmarshal(data, &detached); err != nil {
+		return nil, err
+	}
+	return &detached, nil
 }
 
 func httpClient(caFile string) (*http.Client, error) {
@@ -114,7 +130,8 @@ func httpClient(caFile string) (*http.Client, error) {
 	return &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("transport redirects are forbidden") }}, nil
 }
 
-// Run blocks until canceled, the approval expires, or all configured roles fail.
+// Run blocks until canceled, the device credential is rejected, the effective
+// configuration expires without reaching Control, or all configured roles fail.
 func (s *Supervisor) Run(ctx context.Context) error {
 	unlock, err := credentials.Lock(s.cfg.Agent.StateDir)
 	if err != nil {
@@ -129,22 +146,21 @@ func (s *Supervisor) Run(ctx context.Context) error {
 		start(func() { s.pollControl(ctx, cancel) })
 	} else {
 		start(func() {
-			timer := time.NewTimer(time.Until(s.creds.Approval.ExpiresAt))
+			timer := time.NewTimer(time.Until(s.creds.Effective.ExpiresAt))
 			defer timer.Stop()
 			select {
 			case <-ctx.Done():
 			case <-timer.C:
-				cancel(errors.New("approval snapshot expired; obtain a new approval before restarting"))
+				cancel(errors.New("effective configuration snapshot expired; provision fresh credentials before restarting"))
 			}
 		})
 	}
-	if s.cfg.Serve.Enabled || s.cfg.Egress.Enabled {
+	if s.creds.ProviderToken != "" {
 		start(func() { s.connectLoop(ctx, connection.RoleProvider) })
 	}
 	if s.cfg.Ingress.Enabled {
 		start(func() { s.connectLoop(ctx, connection.RoleAccess) })
 	}
-	proxy := &ingress.Proxy{Routes: s.cfg.Ingress.Routes, Open: s.openAccess}
 	listeners := 0
 	if s.cfg.Ingress.Enabled && s.cfg.Ingress.HTTP.Enabled {
 		l, err := net.Listen("tcp", s.cfg.Ingress.HTTP.Listen)
@@ -152,7 +168,7 @@ func (s *Supervisor) Run(ctx context.Context) error {
 			s.log.Error().Err(err).Str("role", "ingress.http").Msg("listener failed")
 		} else {
 			listeners++
-			server := &http.Server{Handler: proxy.HTTPHandler(ctx), ReadHeaderTimeout: 10 * time.Second, MaxHeaderBytes: 16 << 10, BaseContext: func(net.Listener) context.Context { return ctx }}
+			server := &http.Server{Handler: s.proxy.HTTPHandler(ctx), ReadHeaderTimeout: 10 * time.Second, MaxHeaderBytes: 16 << 10, BaseContext: func(net.Listener) context.Context { return ctx }}
 			start(func() {
 				stop := context.AfterFunc(ctx, func() { _ = server.Close() })
 				defer stop()
@@ -170,7 +186,7 @@ func (s *Supervisor) Run(ctx context.Context) error {
 		} else {
 			listeners++
 			start(func() {
-				if err := proxy.ServeSOCKS(ctx, l); err != nil {
+				if err := s.proxy.ServeSOCKS(ctx, l); err != nil {
 					s.log.Error().Err(err).Msg("SOCKS ingress stopped")
 				}
 			})
@@ -191,9 +207,61 @@ func (s *Supervisor) Run(ctx context.Context) error {
 	return nil
 }
 
+// wanted reports whether a session role has anything to carry: local intent,
+// a credential and a nonempty effective configuration for that role.
+func (s *Supervisor) wanted(role connection.Role) bool {
+	creds := s.credentials()
+	if role == connection.RoleAccess {
+		return s.cfg.Ingress.Enabled && creds.AccessToken != "" && creds.Effective.Ingress
+	}
+	return creds.ProviderToken != "" && s.manager.Provides() && (len(creds.Effective.Services) > 0 || len(creds.Effective.Egress) > 0)
+}
+
+// reconcileSessions closes sessions that lost their purpose and wakes loops
+// that gained one. Individual flows are revoked by Manager, not by this.
+func (s *Supervisor) reconcileSessions() {
+	for _, role := range []connection.Role{connection.RoleProvider, connection.RoleAccess} {
+		wake := s.providerWake
+		s.mu.Lock()
+		session := s.provider
+		if role == connection.RoleAccess {
+			session, wake = s.access, s.accessWake
+		}
+		s.mu.Unlock()
+		if !s.wanted(role) {
+			if session != nil {
+				_ = session.Close()
+			}
+			continue
+		}
+		select {
+		case wake <- struct{}{}:
+		default:
+		}
+	}
+}
+
 func (s *Supervisor) connectLoop(ctx context.Context, role connection.Role) {
+	wake := s.providerWake
+	if role == connection.RoleAccess {
+		wake = s.accessWake
+	}
 	backoff := time.Second
+	idle := false
 	for ctx.Err() == nil {
+		if !s.wanted(role) {
+			if !idle {
+				s.log.Info().Str("role", string(role)).Msg("session idle: role disabled locally or absent from the effective configuration")
+				idle = true
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-wake:
+				continue
+			}
+		}
+		idle = false
 		started := time.Now()
 		err := s.connect(ctx, role)
 		if ctx.Err() != nil {
@@ -234,12 +302,10 @@ func (s *Supervisor) connect(ctx context.Context, role connection.Role) error {
 	if err != nil {
 		return fmt.Errorf("XHTTP connect: %w", err)
 	}
-	hello := connection.Hello{Version: connection.ProtocolVersion, Role: role, Workspace: s.cfg.Workspace, AgentID: creds.AgentID, Token: token, Revision: creds.Approval.Revision}
-	cc := connection.Config{SessionTTL: time.Until(creds.Approval.ExpiresAt)}
+	hello := connection.Hello{Version: connection.ProtocolVersion, Role: role, Workspace: s.cfg.Workspace, AgentID: creds.AgentID, Token: token}
+	cc := connection.Config{SessionTTL: time.Until(creds.Effective.ExpiresAt)}
 	if role == connection.RoleProvider {
 		hello.ConnectorID = s.connectorID
-		hello.Services = s.manager.Services()
-		hello.EgressEnabled = s.manager.EgressEnabled()
 		cc.AuthorizeOpen = s.manager.AuthorizeOpen
 	}
 	session, err := connection.Client(ctx, c, hello, cc)
@@ -269,7 +335,6 @@ func (s *Supervisor) connect(ctx context.Context, role connection.Role) error {
 	s.mu.Lock()
 	s.provider = session
 	s.mu.Unlock()
-	s.reconcileProvider()
 	defer func() {
 		s.mu.Lock()
 		if s.provider == session {
@@ -302,7 +367,7 @@ func (s *Supervisor) openAccess(ctx context.Context, domain string, port uint16)
 		return nil, errors.New("access session is offline")
 	}
 	creds := s.credentials()
-	return session.Open(ctx, connection.OpenRequest{Purpose: connection.PurposeAccess, Destination: connection.Destination{Host: domain, Port: port}, Protocol: "tls", Revision: creds.Approval.Revision, Deadline: minTime(session.Principal().ExpiresAt, creds.Approval.ExpiresAt)})
+	return session.Open(ctx, connection.OpenRequest{Purpose: connection.PurposeAccess, Destination: connection.Destination{Host: domain, Port: port}, Protocol: "tls", Revision: creds.Effective.Revision, Deadline: minTime(session.Principal().ExpiresAt, creds.Effective.ExpiresAt)})
 }
 
 func minTime(a, b time.Time) time.Time {
@@ -312,67 +377,58 @@ func minTime(a, b time.Time) time.Time {
 	return b
 }
 
-// Reload applies provider-side restrictions without renewing approval. Listener,
-// profile and transport settings currently require a process restart.
+// Reload applies what can change at runtime: serve and egress (narrowing at
+// once, widening once Control accepts it) and the local ingress routes. Other
+// changes are reported as needing a restart and never block those updates.
 func (s *Supervisor) Reload(next *config.Config) error {
 	s.reloadMu.Lock()
 	defer s.reloadMu.Unlock()
-	if !s.cfg.Serve.Enabled && !s.cfg.Egress.Enabled && (next.Serve.Enabled || next.Egress.Enabled) {
-		return errors.New("starting a provider role requires a restart")
-	}
-	// Detach the pending desired config from the caller's mutable slices.
-	data, err := json.Marshal(next)
+	desired, err := detach(next)
 	if err != nil {
 		return err
 	}
-	var desired config.Config
-	if err = json.Unmarshal(data, &desired); err != nil {
-		return err
+	var problems []error
+	if desired.Instance != s.cfg.Instance || desired.Workspace != s.cfg.Workspace || desired.Agent != s.cfg.Agent || desired.Transport != s.cfg.Transport {
+		problems = append(problems, errors.New("instance, workspace, agent and transport changes require a restart and were not applied"))
 	}
-	if err := s.manager.Reload(&desired); err != nil {
-		return err
+	listeners, routes := desired.Ingress, s.cfg.Ingress
+	listeners.Routes, routes.Routes = nil, nil
+	if !reflect.DeepEqual(listeners, routes) {
+		problems = append(problems, errors.New("ingress enablement and listener changes require a restart and were not applied"))
 	}
-	s.reconcileProvider()
 	creds := s.credentials()
-	if creds.ControlToken == "" {
-		return nil
+	if (desired.Serve.Enabled || desired.Egress.Enabled) && creds.ProviderToken == "" {
+		problems = append(problems, errors.New("serve/egress need a provider credential; enroll again with a key that permits them"))
 	}
-	s.pending = &desired
-	client, err := controlclient.New(s.cfg)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := client.Update(ctx, creds, &desired); err != nil {
-		return fmt.Errorf("local restrictions applied; control update queued for retry: %w", err)
-	}
-	s.pending = nil
-	return nil
-}
-
-// New capabilities need fresh admission even at the same approval revision.
-// Withdrawal is enforced per flow by Manager and control, without disrupting
-// unrelated streams sharing the provider connection.
-func (s *Supervisor) reconcileProvider() {
-	services, egress := s.manager.Services(), s.manager.EgressEnabled()
+	applied := *s.applied
+	applied.Serve, applied.Egress, applied.Ingress.Routes = desired.Serve, desired.Egress, desired.Ingress.Routes
+	s.manager.Reload(&applied)
+	s.proxy.SetRoutes(applied.Ingress.Routes)
 	s.mu.Lock()
-	p, revision := s.provider, s.creds.Approval.Revision
+	s.applied = &applied
 	s.mu.Unlock()
-	if p == nil {
-		return
-	}
-	principal := p.Principal()
-	expanded := egress && !principal.EgressEnabled
-	for _, service := range services {
-		if !slices.Contains(principal.Services, service) {
-			expanded = true
+	s.reconcileSessions()
+	if creds.ControlToken != "" {
+		s.pending = &applied
+		client, err := controlclient.New(s.cfg)
+		if err != nil {
+			return errors.Join(append(problems, err)...)
+		}
+		defer client.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, err = client.Update(ctx, creds, &applied)
+		switch {
+		case err == nil:
+			s.pending = nil
+		case controlclient.Rejected(err):
+			s.pending = nil
+			problems = append(problems, fmt.Errorf("control rejected the desired configuration; the previous effective configuration keeps running: %w", err))
+		default:
+			problems = append(problems, fmt.Errorf("local restrictions applied; control update queued for retry: %w", err))
 		}
 	}
-	if revision != principal.Revision || expanded {
-		_ = p.Close()
-	}
+	return errors.Join(problems...)
 }
 
 func (s *Supervisor) credentials() credentials.Credentials {
@@ -387,19 +443,28 @@ func (s *Supervisor) pollControl(ctx context.Context, stop context.CancelCauseFu
 		return
 	}
 	defer client.Close()
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(s.pollInterval)
 	defer ticker.Stop()
-	lastSuccess, lastSaved := time.Now(), time.Time{}
+	var lastSaved time.Time
+	unreachable, retrying := false, false
 	for {
 		previous := s.credentials()
 		// Keep reload and retries ordered, so an old POST cannot supersede new intent.
 		s.reloadMu.Lock()
 		if s.pending != nil {
 			requestCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			updateErr := client.Update(requestCtx, previous, s.pending)
+			_, updateErr := client.Update(requestCtx, previous, s.pending)
 			cancel()
-			if updateErr == nil {
-				s.pending = nil
+			switch {
+			case updateErr == nil:
+				s.pending, retrying = nil, false
+			case controlclient.Rejected(updateErr):
+				// Content errors are final; only a new local edit is resubmitted.
+				s.pending, retrying = nil, false
+				s.log.Error().Err(updateErr).Msg("control rejected the desired configuration; the previous effective configuration keeps running")
+			case !retrying && !controlclient.AuthenticationRejected(updateErr):
+				retrying = true
+				s.log.Warn().Err(updateErr).Msg("desired configuration update failed; retrying")
 			}
 		}
 		s.reloadMu.Unlock()
@@ -407,33 +472,48 @@ func (s *Supervisor) pollControl(ctx context.Context, stop context.CancelCauseFu
 		next, err := client.Refresh(requestCtx, previous)
 		cancel()
 		if err == nil {
-			err = s.manager.UpdateApproval(next.Approval)
+			err = s.manager.UpdateEffective(next.Effective)
 		}
-		if err == nil {
-			lastSuccess = time.Now()
+		switch {
+		case err == nil:
+			if unreachable {
+				s.log.Info().Msg("control reachable again")
+				unreachable = false
+			}
 			// A rolling expiry alone is saved at most once per minute. Capability
-			// changes are durable immediately, including narrowing at one revision.
-			oldApproval, newApproval := previous.Approval, next.Approval
-			oldApproval.ExpiresAt, newApproval.ExpiresAt = time.Time{}, time.Time{}
-			changed := !reflect.DeepEqual(oldApproval, newApproval)
+			// changes are durable immediately.
+			changed := previous.Effective.Revision != next.Effective.Revision || !previous.Effective.SameContent(next.Effective)
 			s.mu.Lock()
 			s.creds = &next
 			s.mu.Unlock()
-			s.reconcileProvider()
+			s.reconcileSessions()
 			if changed || time.Since(lastSaved) >= time.Minute {
 				if err := credentials.Save(s.cfg.Agent.StateDir, &next); err != nil {
-					s.log.Error().Err(err).Msg("could not persist refreshed approval")
+					s.log.Error().Err(err).Msg("could not persist the effective configuration")
 				} else {
 					lastSaved = time.Now()
 				}
 			}
-		} else if controlclient.AuthenticationRejected(err) || time.Since(lastSuccess) > 30*time.Second || !previous.Approval.ExpiresAt.After(time.Now()) {
+		case controlclient.AuthenticationRejected(err):
 			if ctx.Err() != nil {
 				return
 			}
-			s.log.Error().Err(err).Msg("control rejected identity, is unavailable, or approval expired; stopping roles")
-			stop(fmt.Errorf("control supervision stopped: %w", err))
+			s.log.Error().Err(err).Msg("control rejected this device credential; stopping roles")
+			stop(fmt.Errorf("device credential revoked or expired; run agentd enroll --replace to register again: %w", err))
 			return
+		default:
+			if ctx.Err() != nil {
+				return
+			}
+			if !previous.Effective.ExpiresAt.After(time.Now()) {
+				s.log.Error().Err(err).Msg("effective configuration expired while control was unreachable; stopping roles")
+				stop(fmt.Errorf("effective configuration expired without reaching control: %w", err))
+				return
+			}
+			if !unreachable {
+				s.log.Warn().Err(err).Time("effectiveUntil", previous.Effective.ExpiresAt).Msg("control unreachable; keeping the current effective configuration")
+				unreachable = true
+			}
 		}
 		select {
 		case <-ctx.Done():

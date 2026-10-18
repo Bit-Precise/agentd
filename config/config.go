@@ -9,13 +9,13 @@ import (
 	"io"
 	"net"
 	"net/netip"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 
+	"github.com/bit-precise/agentd/api"
 	"github.com/bit-precise/agentd/policy"
 	"gopkg.in/yaml.v3"
 )
@@ -230,15 +230,15 @@ func (c *Config) validate(baseDir string) error {
 	if c.APIVersion != "agents/v1alpha1" || c.Kind != "AgentConfig" {
 		return errors.New("apiVersion must be agents/v1alpha1 and kind must be AgentConfig")
 	}
-	u, err := validateURL(c.Instance, "instance", true, c.Transport.AllowHTTP)
+	u, err := api.ParseURL(c.Instance, "instance", true, false, c.Transport.AllowHTTP)
 	if err != nil {
 		return err
 	}
 	c.Instance = strings.TrimSuffix(u.String(), "/")
-	if c.Workspace, err = label(c.Workspace); err != nil {
+	if c.Workspace, err = policy.Label(c.Workspace); err != nil {
 		return fmt.Errorf("workspace: %w", err)
 	}
-	if c.Agent.Name, err = label(c.Agent.Name); err != nil {
+	if c.Agent.Name, err = policy.Label(c.Agent.Name); err != nil {
 		return fmt.Errorf("agent.name: %w", err)
 	}
 	if c.Agent.StateDir == "" {
@@ -256,7 +256,7 @@ func (c *Config) validate(baseDir string) error {
 	if c.Transport.Mode != "packet-up" {
 		return fmt.Errorf("transport.mode %q unsupported: only packet-up is implemented", c.Transport.Mode)
 	}
-	u, err = validateURL(c.Transport.Endpoint, "transport.endpoint", false, c.Transport.AllowHTTP)
+	u, err = api.ParseURL(c.Transport.Endpoint, "transport.endpoint", false, false, c.Transport.AllowHTTP)
 	if err != nil {
 		return err
 	}
@@ -300,30 +300,27 @@ func (c *Config) validate(baseDir string) error {
 	if err := validateRules(c.Ingress.Routes, true, "ingress.routes"); err != nil {
 		return err
 	}
-	if c.Serve.Enabled && len(c.Serve.Services) == 0 {
-		return errors.New("enabled serve requires nonempty services")
-	}
-	names := make(map[string]bool)
-	for i := range c.Serve.Services {
-		service := &c.Serve.Services[i]
-		service.Name, err = label(service.Name)
-		if err != nil {
-			return fmt.Errorf("serve.services[%d].name: %w", i, err)
-		}
-		if names[service.Name] || service.Name == c.Agent.Name {
-			return fmt.Errorf("service name %q conflicts with another service or agent name", service.Name)
-		}
-		names[service.Name] = true
-		u, err = validateURL(service.Origin, fmt.Sprintf("serve.services[%d].origin", i), true)
-		if err != nil {
-			return err
-		}
-		service.Origin = u.String()
-	}
-	if err := validateRules(c.Egress.Allow, true, "egress.allow"); err != nil {
+	spec := c.AgentSpec()
+	if err := spec.Normalize(c.Agent.Name); err != nil {
 		return err
 	}
-	return validateRules(c.Egress.Deny, false, "egress.deny")
+	for i, service := range spec.Serve.Services {
+		c.Serve.Services[i] = ServiceConfig(service)
+	}
+	c.Egress.Allow, c.Egress.Deny = spec.Egress.Allow, spec.Egress.Deny
+	return nil
+}
+
+// AgentSpec is the server-relevant subset of this local configuration. Paths,
+// listeners, transport details and ingress routes stay on the device.
+func (c *Config) AgentSpec() api.AgentSpec {
+	spec := api.AgentSpec{Ingress: api.IngressSpec{Enabled: c.Ingress.Enabled},
+		Serve:  api.ServeSpec{Enabled: c.Serve.Enabled},
+		Egress: api.EgressSpec{Enabled: c.Egress.Enabled, Allow: api.CloneRules(c.Egress.Allow), Deny: api.CloneRules(c.Egress.Deny)}}
+	for _, service := range c.Serve.Services {
+		spec.Serve.Services = append(spec.Serve.Services, api.ServiceSpec(service))
+	}
+	return spec
 }
 
 func validateRules(rules []policy.Rule, requirePorts bool, field string) error {
@@ -333,21 +330,6 @@ func validateRules(rules []policy.Rule, requirePorts bool, field string) error {
 		}
 	}
 	return nil
-}
-
-func label(s string) (string, error) {
-	// A DNS label may be entirely numeric even though a complete numeric
-	// destination is disallowed by the domain routing policy.
-	const suffix = ".agent-label.invalid"
-	canonical, err := policy.CanonicalDomain(s + suffix)
-	if err != nil {
-		return "", err
-	}
-	canonical = strings.TrimSuffix(canonical, suffix)
-	if strings.Contains(canonical, ".") {
-		return "", errors.New("must be a single DNS label")
-	}
-	return canonical, nil
 }
 
 func localPath(baseDir, path string) (string, error) {
@@ -369,60 +351,10 @@ func validateListener(listener *ListenerConfig) error {
 	if err != nil || !addr.IsLoopback() || addr.Zone() != "" {
 		return errors.New("listen must use a loopback IP; shared unauthenticated listeners are unsupported")
 	}
-	port, err := strictPort(portText)
+	port, err := api.StrictPort(portText)
 	if err != nil {
 		return err
 	}
 	listener.Listen = net.JoinHostPort(addr.Unmap().String(), strconv.Itoa(port))
 	return nil
-}
-
-func strictPort(s string) (int, error) {
-	if s == "" {
-		return 0, errors.New("port must be an integer between 1 and 65535")
-	}
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, errors.New("port must be an integer between 1 and 65535")
-		}
-	}
-	port, err := strconv.Atoi(s)
-	if err != nil || port < 1 || port > 65535 {
-		return 0, errors.New("port must be an integer between 1 and 65535")
-	}
-	return port, nil
-}
-
-func validateURL(raw, field string, rootOnly bool, allowHTTP ...bool) (*url.URL, error) {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return nil, fmt.Errorf("%s: invalid URL: %w", field, err)
-	}
-	isOrigin := strings.HasPrefix(field, "serve.services[")
-	localHTTP := len(allowHTTP) > 0 && allowHTTP[0] && u.Scheme == "http" && (u.Hostname() == "localhost" || net.ParseIP(u.Hostname()).IsLoopback())
-	if u.Scheme != "https" && !(isOrigin && u.Scheme == "http") && !localHTTP {
-		return nil, fmt.Errorf("%s: HTTPS required (serve origins also support HTTP)", field)
-	}
-	if u.Host == "" || u.Opaque != "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || strings.Contains(raw, "#") {
-		return nil, fmt.Errorf("%s: URL requires a host and must not include credentials, query or fragment", field)
-	}
-	if rootOnly && u.Path != "" && u.Path != "/" {
-		return nil, fmt.Errorf("%s: URL path must be empty or /", field)
-	}
-	host := u.Hostname()
-	if ip, parseErr := netip.ParseAddr(host); parseErr == nil {
-		if ip.Zone() != "" {
-			return nil, fmt.Errorf("%s: scoped IP addresses are unsupported", field)
-		}
-	} else if _, err := policy.CanonicalDomain(host); err != nil {
-		return nil, fmt.Errorf("%s: invalid host: %w", field, err)
-	}
-	if port := u.Port(); port != "" {
-		if _, err := strictPort(port); err != nil {
-			return nil, fmt.Errorf("%s: %w", field, err)
-		}
-	} else if strings.HasSuffix(u.Host, ":") {
-		return nil, fmt.Errorf("%s: empty port", field)
-	}
-	return u, nil
 }

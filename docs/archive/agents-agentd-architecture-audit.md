@@ -1,6 +1,6 @@
 # agents / agentd 架构审计
 
-历史审计说明：本文的行号与 Xray 集成建议对应审计时的架构快照。后续已确认改用 agents 自管认证、连接目录和业务流，XHTTP/WSS 只作承载；当前设计见 [架构方案](agents-agentd-architecture.md) 和 [本地配置](agentd-config.md)。
+历史审计说明：本文的行号与 Xray 集成建议对应审计时的架构快照。后续已确认改用 agents 自管认证、连接目录和业务流，XHTTP/WSS 只作承载；当前设计见 [架构方案](../agents-agentd-architecture.md) 和 [本地配置](../agentd-config.md)。
 
 日期：2026-10-17
 
@@ -14,7 +14,7 @@
 
 当前方案还不能作为实现基线。核心数据面建立在多个未经验证的 Xray 假设上，撤销和离线语义存在逻辑缺口，浏览器认证 broker、设备身份、配置应用状态机和数据结构约束还没有达到可以安全实现的精度。建议先把 P0 项全部变成可重复的实验和协议，再进入 P1 多租户实现；否则很容易得到“能转发流量但不能证明授权边界”的系统。
 
-首轮 Xray PoC 已执行，详见 [poc/xray-reverse/README.md](../poc/xray-reverse/README.md)：Xray 原生 Reverse 在 WS、XHTTP `stream-one` 和 WSS 上都能转发 HTTP；但 `RemoveUser` 不会关闭既有流或 Reverse worker，删除提供方用户后既有通道仍可继续承载请求；同一 Reverse 路径还能访问未配置的第二目标，说明 hostname/port/Workspace 授权不能放在原生 Reverse 中。真实 FrontDoor、XHTTP `stream-up`/`packet-up`、PolicyGate 和固定源码 commit 的严格复现仍未完成。
+首轮 Xray PoC 已执行，详见 [poc/xray-reverse/README.md](../../poc/xray-reverse/README.md)：Xray 原生 Reverse 在 WS、XHTTP `stream-one` 和 WSS 上都能转发 HTTP；但 `RemoveUser` 不会关闭既有流或 Reverse worker，删除提供方用户后既有通道仍可继续承载请求；同一 Reverse 路径还能访问未配置的第二目标，说明 hostname/port/Workspace 授权不能放在原生 Reverse 中。真实 FrontDoor、XHTTP `stream-up`/`packet-up`、PolicyGate 和固定源码 commit 的严格复现仍未完成。
 
 最近补充的 gateway/edge 分层和 P0 修复方案解决了设计表达上的歧义，但没有消除实现风险：`agents-gateway` 现在负责 Serve 的公网认证和 capability 签发，`agents-edge` 负责连接目录、域名选路和流转发；Exit 场景仍由访问方 agentd 直接接入 Edge。下表是当前状态：
 

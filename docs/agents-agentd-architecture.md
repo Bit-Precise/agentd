@@ -1,8 +1,8 @@
 # agents / agentd 架构设计草案
 
-日期：2026-10-18 修订。本文保留长期目标架构；独立 agents 仓库已交付 Control/Edge/Console、管理 REST、浏览器 OIDC 和 agentd/XHTTP v2 基础链路，Service Account 与 Hydra Device Flow 尚未实现。当前实际支持范围以两仓 README 为准，未来 Tunnel 分层、多节点及未验收时限不表示已交付承诺。身份模型与注册流程以 [User/SA 与 Hydra Device Flow 设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md) 为权威，优先于旧审查记录。
+日期：2026-10-18 修订。本文保留长期目标架构与设计原则；当前实现的实体、状态机、级联与时限以 agents 仓库的 [实体、状态机与关系](https://github.com/Bit-Precise/agents/blob/main/docs/model.md) 为准，本文第 4 节实体表与第 15 节时限是目标设计。独立 agents 仓库已交付 Control/Edge/Console、管理 REST、浏览器 OIDC 和 agentd/XHTTP v2 基础链路，Service Account 与 Hydra Device Flow 尚未实现。当前实际支持范围以两仓 README 为准，未来 Tunnel 分层、多节点及未验收时限不表示已交付承诺。身份模型与注册流程以 [User/SA 与 Hydra Device Flow 设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md) 为权威，优先于旧审查记录。
 
-本方案保留 cloudflared 的 Tunnel、Connector、Connection、Route 与源站规则分层，借鉴 Headscale 的持久注册身份、身份分离、注册鉴权和策略分发。agents 自管认证、连接目录、业务流与授权；XHTTP/WSS 只提供面向 HTTP/CDN 的承载，具体 CDN 兼容性需要验收，不要求 VLESS、Xray Reverse/Mux 或 core.Instance。当前 agents 会话与流协议已实现 v2，WSS 仍延后。完整证据与源码版本见 [调研记录](agents-agentd-research.md)，逐项对齐与有意差异见 [对齐审查](agents-agentd-alignment.md)。
+本方案保留 cloudflared 的 Tunnel、Connector、Connection、Route 与源站规则分层，借鉴 Headscale 的持久注册身份、身份分离、注册鉴权和策略分发。agents 自管认证、连接目录、业务流与授权；XHTTP/WSS 只提供面向 HTTP/CDN 的承载，具体 CDN 兼容性需要验收，不要求 VLESS、Xray Reverse/Mux 或 core.Instance。当前 agents 会话与流协议已实现 v3，WSS 仍延后。完整证据与源码版本见 [调研记录](archive/agents-agentd-research.md)，逐项对齐与有意差异见 [对齐审查](archive/agents-agentd-alignment.md)；二者为历史记录，部分内容基于已废弃的承载与审批模型。
 
 “对齐”指资源语义和架构原则，不表示 Cloudflare Tunnel、Tailscale/Headscale 的线协议、API 或配置文件兼容。Cloudflare 服务端未开源，本方案对其服务端行为的依据是官方公开文档和客户端可见的交互；agents 服务端是我们自己的实现。
 
@@ -164,6 +164,8 @@ Edge 不实现以下能力：任意端口代理、按网络地址选择路由、
 第一版可以将上述能力放在一个 Edge 进程内；逻辑上仍应拆为 transport front door、connection directory、domain inspector、policy gate、flow broker、capability verifier、revocation manager、quota 和 telemetry 模块。将来多 Edge 时，Connection owner、XHTTP 上下行粘性和 FlowLease 归属不能被普通负载均衡隐式改变。
 
 **4. 实体模型：保留 cfd 层次，增加明确的租户与策略实体**
+
+下表是目标实体模型。当前已实现的子集与命名对应（例如 AgentRegistration 对应代码 `Agent`，PublishedRoute 对应 `Service`，AccessGrant 对应 `Grant`，Tunnel、ServeAdmission、签名 FlowCapability 尚未实现）见 [model](https://github.com/Bit-Precise/agents/blob/main/docs/model.md)。
 
 | 实体 | 核心字段 | 生命周期 |
 |---|---|---|
@@ -479,7 +481,7 @@ TLS 元数据读取有明确的字节上限、超时、内存和并发预算，�
 
 **12. 本地 config.yaml 与三种运行角色**
 
-每个 Workspace profile 通过本地 `config.yaml` 声明 ingress、serve、egress，可单独启用，也可在同一 agentd 进程组合启用。配置格式与完整示例见 [本地配置设计](agentd-config.md) 和 [config.yaml](../examples/agentd/config.yaml)。这些文件描述拟定接口，不代表已有可运行 CLI。
+每个 Workspace profile 通过本地 `config.yaml` 声明 ingress、serve、egress，可单独启用，也可在同一 agentd 进程组合启用。配置格式与完整示例见 [本地配置设计](agentd-config.md) 和 [config.yaml](../examples/agentd/config.yaml)。`enroll`、`run` 与 `config validate` 已可运行；其中 TUN、Device Flow 等部分仍是拟定接口。
 
 | 角色 | 本地职责 | 服务端对应关系 |
 |---|---|---|

@@ -1,4 +1,5 @@
-// Package controlclient implements agent enrollment and approved-config polling.
+// Package controlclient implements agent enrollment, desired-config updates and
+// effective-config polling against Control.
 package controlclient
 
 import (
@@ -13,8 +14,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
-	types "github.com/bit-precise/agentd/api"
+	"github.com/bit-precise/agentd/api"
 	"github.com/bit-precise/agentd/config"
 	"github.com/bit-precise/agentd/credentials"
 )
@@ -24,15 +26,47 @@ type Client struct {
 	http *http.Client
 }
 
-// HTTPError deliberately omits the response body: it can contain private data.
-type HTTPError struct{ StatusCode int }
+// HTTPError keeps only Control's bounded error kind and message, never the raw
+// body. Control writes these messages itself and never includes secrets.
+type HTTPError struct {
+	StatusCode int
+	Kind       string
+	Message    string
+}
 
 func (e *HTTPError) Error() string {
-	return fmt.Sprintf("control rejected request (HTTP %d)", e.StatusCode)
+	if e.Kind == "" {
+		return fmt.Sprintf("control rejected request (HTTP %d)", e.StatusCode)
+	}
+	return fmt.Sprintf("control rejected request (HTTP %d %s): %s", e.StatusCode, e.Kind, e.Message)
 }
+
+// AuthenticationRejected means the device credential is revoked, expired or
+// unknown. Retrying cannot help; the profile must be enrolled again.
 func AuthenticationRejected(err error) bool {
 	var e *HTTPError
-	return errors.As(err, &e) && (e.StatusCode == http.StatusUnauthorized || e.StatusCode == http.StatusForbidden)
+	return errors.As(err, &e) && e.StatusCode == http.StatusUnauthorized
+}
+
+// Rejected means Control refused the request content: invalid configuration
+// (400), a policy or role violation (403) or a name/version conflict (409).
+// Retrying the same request cannot succeed.
+func Rejected(err error) bool {
+	var e *HTTPError
+	return errors.As(err, &e) && (e.StatusCode == http.StatusBadRequest || e.StatusCode == http.StatusForbidden || e.StatusCode == http.StatusConflict)
+}
+
+func boundedText(s string, limit int) string {
+	s = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, s)
+	if len(s) > limit {
+		s = s[:limit]
+	}
+	return s
 }
 
 func New(cfg *config.Config) (*Client, error) {
@@ -89,7 +123,17 @@ func (c *Client) request(ctx context.Context, method, path, token string, body, 
 		return errors.New("control response exceeds limit")
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return &HTTPError{StatusCode: resp.StatusCode}
+		failure := &HTTPError{StatusCode: resp.StatusCode}
+		var body struct {
+			Error struct {
+				Kind    string `json:"kind"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(data, &body) == nil {
+			failure.Kind, failure.Message = boundedText(body.Error.Kind, 32), boundedText(body.Error.Message, 256)
+		}
+		return failure
 	}
 	if out == nil {
 		return nil
@@ -99,9 +143,10 @@ func (c *Client) request(ctx context.Context, method, path, token string, body, 
 	}
 	return nil
 }
-func (c *Client) Enroll(ctx context.Context, key string) (types.EnrollResponse, error) {
-	var response types.EnrollResponse
-	err := c.request(ctx, "POST", "/api/v1/enroll", "", types.EnrollRequest{EnrollmentKey: key, Config: *c.cfg}, &response)
+func (c *Client) Enroll(ctx context.Context, key string) (api.EnrollResponse, error) {
+	var response api.EnrollResponse
+	request := api.EnrollRequest{EnrollmentKey: key, Instance: c.cfg.Instance, Endpoint: c.cfg.Transport.Endpoint, Workspace: c.cfg.Workspace, Name: c.cfg.Agent.Name, Desired: c.cfg.AgentSpec()}
+	err := c.request(ctx, "POST", "/api/v1/enroll", "", request, &response)
 	if err == nil {
 		err = c.validate(response.Credentials)
 		response.Credentials.ControlURL = c.cfg.Instance
@@ -109,11 +154,17 @@ func (c *Client) Enroll(ctx context.Context, key string) (types.EnrollResponse, 
 	return response, err
 }
 func (c *Client) validate(v credentials.Credentials) error {
-	if v.Version != 1 || v.AgentID == "" || v.Workspace != c.cfg.Workspace || v.Approval.Revision == 0 {
+	if v.Version != api.CredentialsVersion || v.AgentID == "" || v.Workspace != c.cfg.Workspace {
 		return errors.New("control response identity mismatch")
 	}
 	if v.ControlURL != "" && strings.TrimSuffix(v.ControlURL, "/") != strings.TrimSuffix(c.cfg.Instance, "/") {
 		return errors.New("control response origin mismatch")
+	}
+	if err := v.Effective.Validate(); err != nil {
+		return err
+	}
+	if !v.Effective.ExpiresAt.After(time.Now()) {
+		return errors.New("control returned an expired effective configuration")
 	}
 	return nil
 }
@@ -131,8 +182,8 @@ func (c *Client) Refresh(ctx context.Context, current credentials.Credentials) (
 	if err := c.validate(next); err != nil {
 		return next, err
 	}
-	if next.AgentID != current.AgentID || next.Approval.Revision < current.Approval.Revision {
-		return next, errors.New("stale or mismatched control approval")
+	if next.AgentID != current.AgentID || next.Effective.Revision < current.Effective.Revision {
+		return next, errors.New("stale or mismatched effective configuration")
 	}
 	next.ControlToken = current.ControlToken
 	next.ControlURL = c.cfg.Instance
@@ -144,9 +195,16 @@ func (c *Client) Refresh(ctx context.Context, current credentials.Credentials) (
 	}
 	return next, nil
 }
-func (c *Client) Update(ctx context.Context, current credentials.Credentials, cfg *config.Config) error {
+
+// Update submits the desired spec of cfg. Control validates it automatically
+// and either applies it, returning the Agent with its new effective
+// configuration, or rejects it (see Rejected) while the previous one remains.
+func (c *Client) Update(ctx context.Context, current credentials.Credentials, cfg *config.Config) (api.Agent, error) {
+	var agent api.Agent
 	if strings.TrimSuffix(current.ControlURL, "/") != strings.TrimSuffix(c.cfg.Instance, "/") {
-		return errors.New("stored control credential belongs to a different instance")
+		return agent, errors.New("stored control credential belongs to a different instance")
 	}
-	return c.request(ctx, "POST", "/api/v1/agent/config", current.ControlToken, cfg, nil)
+	update := api.ConfigUpdate{Workspace: cfg.Workspace, Name: cfg.Agent.Name, Desired: cfg.AgentSpec()}
+	err := c.request(ctx, "POST", "/api/v1/agent/config", current.ControlToken, update, &agent)
+	return agent, err
 }

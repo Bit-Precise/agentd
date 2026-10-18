@@ -1,4 +1,4 @@
-# agentd 配置；先 enroll 保存凭据，控制台批准后 run。
+# agentd 配置；先 enroll（Control 自动校验并保存凭据），再 run。
 # 说明：../../docs/agentd-config.md
 apiVersion: agents/v1alpha1
 kind: AgentConfig

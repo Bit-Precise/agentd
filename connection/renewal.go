@@ -19,6 +19,10 @@ func validLease(expiry, hard time.Time, maximum time.Duration) bool {
 	return expiry.After(now) && !expiry.After(hard) && !expiry.After(now.Add(maximum))
 }
 
+// peerLeaseCeiling bounds a lease stamped by the peer's clock. A lease this side
+// issues itself is always checked against the strict MaxLeaseDuration.
+func (c Config) peerLeaseCeiling() time.Duration { return c.MaxLeaseDuration + c.MaxClockSkew }
+
 // RenewLease is an Edge/server-only operation. It extends only the short lease
 // of an existing stream, never its immutable hard Deadline or routing scope.
 // An ACK must arrive before the old lease expires. Any failure closes this flow;
@@ -104,7 +108,7 @@ func (s *Stream) applyRenewal(sequence uint64, expiry time.Time) error {
 	if s.closed || s.leaseExpired || !current.After(time.Now()) {
 		return ErrExpired
 	}
-	if s.claims.LeaseExpiresAt.IsZero() || sequence != s.leaseSequence+1 || !expiry.After(current) || !validLease(expiry, earlier(s.request.Deadline, s.claims.Deadline), s.session.config.MaxLeaseDuration) {
+	if s.claims.LeaseExpiresAt.IsZero() || sequence != s.leaseSequence+1 || !expiry.After(current) || !validLease(expiry, earlier(s.request.Deadline, s.claims.Deadline), s.session.config.peerLeaseCeiling()) {
 		return ErrUnauthorized
 	}
 	s.claims.LeaseExpiresAt = expiry
@@ -135,7 +139,7 @@ func (s *Session) receiveRenewal(msg controlMessage) {
 	stream.mu.Lock()
 	if stream.closed || stream.leaseExpired || stream.remoteRenewing || msg.Sequence != stream.leaseSequence+1 ||
 		stream.claims.LeaseExpiresAt.IsZero() || !stream.leaseDeadline().After(time.Now()) || !msg.LeaseExpiresAt.After(stream.leaseDeadline()) ||
-		!validLease(msg.LeaseExpiresAt, earlier(stream.request.Deadline, stream.claims.Deadline), s.config.MaxLeaseDuration) {
+		!validLease(msg.LeaseExpiresAt, earlier(stream.request.Deadline, stream.claims.Deadline), s.config.peerLeaseCeiling()) {
 		stream.mu.Unlock()
 		deny()
 		_ = stream.close(false)
@@ -180,7 +184,7 @@ func (s *Session) receiveRenewal(msg controlMessage) {
 		unchanged := claims.FlowID == previous.FlowID && claims.Purpose == previous.Purpose && claims.Resource == previous.Resource &&
 			claims.Destination == previous.Destination && claims.Protocol == previous.Protocol && claims.Revision == previous.Revision && claims.Deadline.Equal(previous.Deadline)
 		if err != nil || ctx.Err() != nil || !unchanged || claims.LeaseExpiresAt.After(msg.LeaseExpiresAt) ||
-			!validLease(claims.LeaseExpiresAt, claims.Deadline, s.config.MaxLeaseDuration) || claims.LeaseExpiresAt.IsZero() {
+			!validLease(claims.LeaseExpiresAt, claims.Deadline, s.config.peerLeaseCeiling()) || claims.LeaseExpiresAt.IsZero() {
 			deny()
 			_ = stream.close(false)
 			return

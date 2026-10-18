@@ -1,4 +1,5 @@
-// Package credentials manages provisioned agent identities and approval snapshots.
+// Package credentials manages provisioned agent identities and the last synced
+// effective configuration in the private profile directory.
 package credentials
 
 import (
@@ -9,10 +10,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/bit-precise/agentd/api"
 	"github.com/bit-precise/agentd/policy"
 )
 
@@ -36,25 +39,39 @@ func (f *privateFile) Close() error {
 	return f.closeErr
 }
 
-// Credentials are provisioned by the operator/control plane, never inferred from
-// config.yaml. This first implementation consumes a fixed, expiring snapshot.
-type Credentials struct {
-	Version       int      `json:"version"`
-	Workspace     string   `json:"workspace"`
-	AgentID       string   `json:"agentId"`
-	ProviderToken string   `json:"providerToken,omitempty"`
-	AccessToken   string   `json:"accessToken,omitempty"`
-	ControlToken  string   `json:"controlToken,omitempty"`
-	ControlURL    string   `json:"controlUrl,omitempty"`
-	Approval      Approval `json:"approval"`
+// Credentials are provisioned by the control plane or an operator, never
+// inferred from config.yaml. Without a control token the effective snapshot is
+// fixed and stops authorizing flows at its expiry.
+type Credentials = api.Credentials
+
+// legacyCredentials is version 1 from the removed manual-approval model. It is
+// converted on load; the next control refresh replaces the converted snapshot.
+type legacyCredentials struct {
+	Version       int    `json:"version"`
+	Workspace     string `json:"workspace"`
+	AgentID       string `json:"agentId"`
+	ProviderToken string `json:"providerToken,omitempty"`
+	AccessToken   string `json:"accessToken,omitempty"`
+	ControlToken  string `json:"controlToken,omitempty"`
+	ControlURL    string `json:"controlUrl,omitempty"`
+	Approval      struct {
+		Revision  uint64            `json:"revision"`
+		ExpiresAt time.Time         `json:"expiresAt"`
+		Services  map[string]string `json:"services,omitempty"`
+		Egress    []policy.Rule     `json:"egress,omitempty"`
+		Deny      []policy.Rule     `json:"deny,omitempty"`
+	} `json:"approval"`
 }
 
-type Approval struct {
-	Revision  uint64            `json:"revision"`
-	ExpiresAt time.Time         `json:"expiresAt"`
-	Services  map[string]string `json:"services,omitempty"`
-	Egress    []policy.Rule     `json:"egress,omitempty"`
-	Deny      []policy.Rule     `json:"deny,omitempty"`
+func (l legacyCredentials) convert() Credentials {
+	c := Credentials{Version: api.CredentialsVersion, Workspace: l.Workspace, AgentID: l.AgentID, ProviderToken: l.ProviderToken,
+		AccessToken: l.AccessToken, ControlToken: l.ControlToken, ControlURL: l.ControlURL,
+		Effective: api.EffectiveConfig{Revision: l.Approval.Revision, ExpiresAt: l.Approval.ExpiresAt, Ingress: l.AccessToken != "", Egress: l.Approval.Egress, Deny: l.Approval.Deny}}
+	for name, origin := range l.Approval.Services {
+		c.Effective.Services = append(c.Effective.Services, api.EffectiveService{Name: name, Origin: origin})
+	}
+	slices.SortFunc(c.Effective.Services, func(a, b api.EffectiveService) int { return strings.Compare(a.Name, b.Name) })
+	return c
 }
 
 func Load(stateDir string) (*Credentials, error) {
@@ -84,35 +101,52 @@ func Load(stateDir string) (*Credentials, error) {
 	if err := uniqueJSON(json.NewDecoder(bytes.NewReader(data)), 0); err != nil {
 		return nil, errors.New("invalid or ambiguous credentials JSON")
 	}
-	var c Credentials
-	d := json.NewDecoder(bytes.NewReader(data))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&c); err != nil {
+	var probe struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
 		return nil, errors.New("invalid credentials JSON")
 	}
-	if err := d.Decode(new(any)); err != io.EOF {
-		return nil, errors.New("credentials must contain one JSON object")
+	var c Credentials
+	switch probe.Version {
+	case api.CredentialsVersion:
+		err = decodeStrict(data, &c)
+	case 1:
+		var legacy legacyCredentials
+		if err = decodeStrict(data, &legacy); err == nil {
+			c = legacy.convert()
+		}
+	default:
+		return nil, errors.New("credentials require version 2 (or legacy version 1)")
 	}
-	if c.Version != 1 || c.Workspace == "" || c.AgentID == "" {
-		return nil, errors.New("credentials require version 1, workspace and agentId")
+	if err != nil {
+		return nil, err
+	}
+	if c.Workspace == "" || c.AgentID == "" {
+		return nil, errors.New("credentials require workspace and agentId")
 	}
 	if c.ProviderToken == "" && c.AccessToken == "" && c.ControlToken == "" {
 		return nil, errors.New("credentials contain no session token")
 	}
-	if c.Approval.Revision == 0 || (!c.Approval.ExpiresAt.After(time.Now()) && (c.ControlToken == "" || c.ControlURL == "")) {
-		return nil, errors.New("approval snapshot is missing or expired")
+	if err := c.Effective.Validate(); err != nil {
+		return nil, err
 	}
-	for i := range c.Approval.Egress {
-		if err := c.Approval.Egress[i].Validate(true); err != nil {
-			return nil, errors.New("invalid approved egress rule")
-		}
-	}
-	for i := range c.Approval.Deny {
-		if err := c.Approval.Deny[i].Validate(false); err != nil {
-			return nil, errors.New("invalid approved deny rule")
-		}
+	if !c.Effective.ExpiresAt.After(time.Now()) && (c.ControlToken == "" || c.ControlURL == "") {
+		return nil, errors.New("effective configuration snapshot is expired and cannot be refreshed")
 	}
 	return &c, nil
+}
+
+func decodeStrict(data []byte, target any) error {
+	d := json.NewDecoder(bytes.NewReader(data))
+	d.DisallowUnknownFields()
+	if err := d.Decode(target); err != nil {
+		return errors.New("invalid credentials JSON")
+	}
+	if err := d.Decode(new(any)); err != io.EOF {
+		return errors.New("credentials must contain one JSON object")
+	}
+	return nil
 }
 
 func uniqueJSON(d *json.Decoder, depth int) error {

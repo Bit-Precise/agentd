@@ -37,10 +37,17 @@ func normalizedConfig(cfg Config) (Config, error) {
 	if cfg.MaxLeaseDuration == 0 {
 		cfg.MaxLeaseDuration = time.Minute
 	}
+	if cfg.MaxClockSkew == 0 {
+		cfg.MaxClockSkew = 30 * time.Second
+	}
+	if cfg.FlowTombstoneTTL == 0 {
+		cfg.FlowTombstoneTTL = 5 * time.Minute
+	}
 	if cfg.SessionTTL < 0 || cfg.HandshakeTimeout < 0 || cfg.OpenTimeout < 0 ||
-		cfg.MaxLeaseDuration <= 0 || cfg.MaxLeaseDuration > time.Minute ||
+		cfg.MaxLeaseDuration <= 0 || cfg.MaxLeaseDuration > time.Minute || cfg.MaxClockSkew < 0 || cfg.MaxClockSkew > 2*time.Minute ||
 		cfg.MaxStreams < 1 || cfg.MaxStreams > 4096 || cfg.MaxMetadataBytes < 256 ||
-		cfg.MaxMetadataBytes > 1024*1024 || cfg.MaxFlows < cfg.MaxStreams || cfg.MaxFlows > 1048576 {
+		cfg.MaxMetadataBytes > 1024*1024 || cfg.MaxFlows < cfg.MaxStreams || cfg.MaxFlows > 1048576 ||
+		cfg.FlowTombstoneTTL < 2*cfg.OpenTimeout || cfg.FlowTombstoneTTL < 2*cfg.MaxLeaseDuration {
 		return Config{}, fmt.Errorf("invalid connection configuration")
 	}
 	return cfg, nil
@@ -71,32 +78,14 @@ func validateHello(h Hello) error {
 	if h.Role == RoleProvider && !boundedName(h.ConnectorID) {
 		return ErrProtocol
 	}
-	if h.Role == RoleAccess && (h.ConnectorID != "" || len(h.Services) != 0 || h.EgressEnabled) {
+	if h.Role == RoleAccess && h.ConnectorID != "" {
 		return ErrRole
-	}
-	if len(h.Services) > 128 {
-		return ErrMetadataLimit
-	}
-	seen := make(map[string]struct{}, len(h.Services))
-	for _, service := range h.Services {
-		if !boundedName(service) {
-			return ErrProtocol
-		}
-		if _, ok := seen[service]; ok {
-			return ErrProtocol
-		}
-		seen[service] = struct{}{}
 	}
 	return nil
 }
 
 func identityMatches(h Hello, p Principal) bool {
 	return h.Role == p.Role && h.Workspace == p.Workspace && h.AgentID == p.AgentID && h.ConnectorID == p.ConnectorID && p.Generation != 0
-}
-
-func clonePrincipal(p Principal) Principal {
-	p.Services = append([]string(nil), p.Services...)
-	return p
 }
 
 func earlier(a, b time.Time) time.Time {
@@ -147,7 +136,6 @@ func Server(ctx context.Context, conn net.Conn, authenticate AuthenticateFunc, c
 		_ = writeFrame(conn, handshakeReply{Error: "authentication"}, cfg.MaxMetadataBytes)
 		return nil, ErrAuthentication
 	}
-	principal = clonePrincipal(principal)
 	principal.ExpiresAt = earlier(principal.ExpiresAt, time.Now().Add(cfg.SessionTTL))
 	if !principal.ExpiresAt.After(time.Now()) {
 		return nil, ErrExpired
@@ -211,7 +199,7 @@ func Client(ctx context.Context, conn net.Conn, hello Hello, cfg Config) (_ *Ses
 	if reply.Welcome == nil || reply.Welcome.Version != ProtocolVersion {
 		return nil, ErrProtocol
 	}
-	principal := clonePrincipal(reply.Welcome.Principal)
+	principal := reply.Welcome.Principal
 	if !identityMatches(hello, principal) || !boundedName(principal.SessionID) {
 		return nil, ErrAuthentication
 	}

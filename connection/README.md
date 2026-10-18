@@ -1,4 +1,4 @@
-# agents connection protocol v2
+# agents connection protocol v3
 
 This package accepts a `net.Conn` supplied by the transport adapter. It neither
 establishes TLS nor dials business destinations. The application must authenticate
@@ -9,9 +9,12 @@ The connection starts with a 4-byte big-endian length followed by bounded JSON:
 oversized metadata fail closed. The server must supply `AuthenticateFunc` and
 derive `Principal` from a trusted store. Claimed workspace/agent/connector/role
 must match that principal. Generation and session ID are assigned by the server.
-Provider service declarations in Hello are candidates; they are not approvals.
-Version 2 adds renewable authorization leases. Version 1 peers are rejected at
-handshake; rebuild agents and agentd together when upgrading.
+Version 3 removes the approval revision and provider declarations from Hello:
+each flow is authorized by content, from the Control-computed effective
+configuration and the receiver's local policy, so an unrelated configuration
+change never requires a new session. `OpenRequest.Revision` records the
+effective revision the opener decided on and is informational. Older peers are
+rejected at handshake; rebuild agents and agentd together when upgrading.
 
 Only after authentication do the peers start yamux. The client opens a reserved
 control stream; both sides finish its handshake before exposing `Session`.
@@ -23,8 +26,8 @@ callback rejects all streams. No capability signature scheme is implemented:
 | Session | Allowed business direction | Purpose |
 |---|---|---|
 | access | client to Edge | `access`: untrusted candidate TLS destination |
-| provider | Edge to agentd | `serve`: approved resource name, no arbitrary target |
-| provider | Edge to agentd | `egress`: approved TLS destination and resource |
+| provider | Edge to agentd | `serve`: authorized resource name, no arbitrary target |
+| provider | Edge to agentd | `egress`: authorized TLS destination and resource |
 
 `Open` returns after logical admission, not after a target socket has connected.
 The runtime owns dialing and application-level success/error responses. Its
@@ -41,7 +44,7 @@ Only the server/Edge side may call `Stream.RenewLease(ctx, expiresAt)`. RENEW an
 RENEW_ACK use a strictly increasing per-flow sequence on the authenticated control
 stream. The receiver cannot change resource, Agent/session, destination, protocol,
 revision, or hard Deadline. Provider receivers invoke the existing AuthorizeOpen
-callback again to check their current local/approved capabilities. Access clients
+callback again to check their current local and effective capabilities. Access clients
 accept only the already authenticated Edge's lease for their existing flow.
 
 An ACK must arrive before the previous lease expires. Missing/rejected ACK closes
@@ -50,7 +53,8 @@ ACK is lost may hold only the newly validated bounded lease and then expires
 locally, even if CANCEL also cannot arrive. Replayed sequences, closed/expired
 flows and late timer callbacks cannot resurrect a flow. Renewal preserves shorter
 caller-specified IO deadlines. Both endpoints enforce a configurable
-MaxLeaseDuration with a strict upper bound of 60 seconds.
+MaxLeaseDuration with a strict upper bound of 60 seconds for leases they issue,
+plus `MaxClockSkew` for leases stamped by the peer.
 
 `CloseWrite` sends yamux FIN and preserves response reads. `Close` also sends a
 bounded control `CANCEL`, cancels the peer stream's `Context`, and immediately
@@ -61,16 +65,20 @@ closed. Session expiry actively closes the transport and every stream; changing
 IO deadlines cannot extend a lease.
 
 Defaults: 5-minute maximum session lifetime, 10-second handshake/OPEN timeouts,
-128 active business streams, 16 KiB metadata, 65,536 distinct flow IDs per session.
-Closed flow IDs remain in a bounded replay ledger. Once exhausted, reconnect;
-flow IDs are never reused in a session. Session expiry itself is not renewed.
-The generic SDK still defaults to a 5-minute hard session; the agents runtime
-explicitly requests up to 24 hours, bounded by its identity and approval. The
-Edge's default flow hard limit is 12 hours, with a 55-second renewable lease.
-AuthorizeOpen callbacks must be safe for repeated renewal checks, honor their
-context, and never log secrets. Clock synchronization is required: the 55-second
-runtime default leaves 5 seconds below the receiver ceiling without extending
-any absolute grant or hard deadline.
+128 active business streams, 16 KiB metadata, and a replay ledger of 65,536
+active or recently closed flow IDs per session. A closed or cancelled flow ID
+stays in the ledger for `FlowTombstoneTTL` (5 minutes, at least twice the OPEN
+timeout and lease maximum) and is then forgotten, so a long-lived session keeps
+admitting flows; the ledger limit only bounds the rate. Session expiry itself is
+not renewed. The generic SDK still defaults to a 5-minute hard session; the
+agents runtime explicitly requests up to 24 hours, bounded by its identity and
+effective configuration. The Edge's default flow hard limit is 12 hours, with a
+55-second renewable lease. AuthorizeOpen callbacks must be safe for repeated
+renewal checks, honor their context, and never log secrets. A lease stamped by
+the peer's clock is accepted up to `MaxLeaseDuration + MaxClockSkew` (60 + 30
+seconds by default); a side never issues a lease beyond its own strict maximum.
+Clocks should still be synchronized: skew larger than the allowance rejects
+OPEN and renewal, and a fast receiver clock shortens its local view of a lease.
 
 Run `go test -mod=readonly -race ./connection`. Tests use real yamux sessions over
 `net.Pipe`, including concurrent large flows, invalid authentication, direction

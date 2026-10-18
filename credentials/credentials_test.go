@@ -7,12 +7,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bit-precise/agentd/api"
 )
 
 func validCredentials() Credentials {
 	return Credentials{
-		Version: 1, Workspace: "w1", AgentID: "agent-123", ProviderToken: "provider-secret",
-		Approval: Approval{Revision: 7, ExpiresAt: time.Now().Add(time.Hour), Services: map[string]string{"demo": "http://127.0.0.1:8080"}},
+		Version: api.CredentialsVersion, Workspace: "w1", AgentID: "agent-123", ProviderToken: "provider-secret",
+		Effective: api.EffectiveConfig{Revision: 7, ExpiresAt: time.Now().Add(time.Hour), Services: []api.EffectiveService{{Name: "demo", Origin: "http://127.0.0.1:8080", Hostname: "demo.w1.example.test"}}},
 	}
 }
 
@@ -48,22 +50,22 @@ func TestLoadProvisionedCredentials(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.AgentID != want.AgentID || got.ProviderToken != want.ProviderToken || got.AccessToken != want.AccessToken || got.Approval.Revision != 7 {
+			if got.AgentID != want.AgentID || got.ProviderToken != want.ProviderToken || got.AccessToken != want.AccessToken || got.Effective.Revision != 7 {
 				t.Fatal("loaded credentials differ from the provisioned identity")
 			}
 		})
 	}
 }
 
-func TestRejectInvalidCredentialsAndExpiredApprovals(t *testing.T) {
+func TestRejectInvalidCredentialsAndExpiredEffectiveConfig(t *testing.T) {
 	for name, modify := range map[string]func(*Credentials){
-		"wrong version":  func(c *Credentials) { c.Version = 2 },
+		"wrong version":  func(c *Credentials) { c.Version = 3 },
 		"no workspace":   func(c *Credentials) { c.Workspace = "" },
 		"no agent ID":    func(c *Credentials) { c.AgentID = "" },
 		"no token":       func(c *Credentials) { c.ProviderToken = "" },
-		"no revision":    func(c *Credentials) { c.Approval.Revision = 0 },
-		"missing expiry": func(c *Credentials) { c.Approval.ExpiresAt = time.Time{} },
-		"expired":        func(c *Credentials) { c.Approval.ExpiresAt = time.Now().Add(-time.Second) },
+		"no revision":    func(c *Credentials) { c.Effective.Revision = 0 },
+		"missing expiry": func(c *Credentials) { c.Effective.ExpiresAt = time.Time{} },
+		"expired":        func(c *Credentials) { c.Effective.ExpiresAt = time.Now().Add(-time.Second) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := privateTempDir(t)
@@ -71,9 +73,29 @@ func TestRejectInvalidCredentialsAndExpiredApprovals(t *testing.T) {
 			modify(&c)
 			writeCredentials(t, dir, c, 0600)
 			if _, err := Load(dir); err == nil {
-				t.Fatal("accepted invalid identity or approval")
+				t.Fatal("accepted invalid identity or effective configuration")
 			}
 		})
+	}
+}
+
+func TestLoadConvertsLegacyApprovalCredentials(t *testing.T) {
+	dir := privateTempDir(t)
+	legacy := map[string]any{"version": 1, "workspace": "w1", "agentId": "agent-123", "accessToken": "access-secret", "controlToken": "control-secret", "controlUrl": "https://control.test",
+		"approval": map[string]any{"revision": 9, "expiresAt": time.Now().Add(-time.Hour), "services": map[string]string{"b": "http://127.0.0.1:2", "a": "http://127.0.0.1:1"}}}
+	writeCredentials(t, dir, legacy, 0600)
+	got, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An expired legacy snapshot with a control token is refreshable, not trusted.
+	if got.Version != api.CredentialsVersion || got.Effective.Revision != 9 || !got.Effective.Ingress || len(got.Effective.Services) != 2 || got.Effective.Services[0].Name != "a" {
+		t.Fatalf("legacy approval was not converted deterministically: %+v", got.Effective)
+	}
+	legacy["unknown"] = true
+	writeCredentials(t, dir, legacy, 0600)
+	if _, err := Load(dir); err == nil {
+		t.Fatal("accepted unknown legacy credential fields")
 	}
 }
 

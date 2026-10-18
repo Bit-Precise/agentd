@@ -30,7 +30,7 @@ func main() {
 
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "--help" {
-		_, err := fmt.Fprintln(out, "agentd enroll --config config.yaml --key-file enrollment.key\nagentd run --config config.yaml\nagentd config validate --config config.yaml\nagentd version")
+		_, err := fmt.Fprintln(out, "agentd enroll --config config.yaml --key-file enrollment.key [--replace]\nagentd run --config config.yaml\nagentd config validate --config config.yaml\nagentd version")
 		return err
 	}
 	if args[0] == "version" || args[0] == "--version" {
@@ -53,6 +53,7 @@ func run(args []string, out io.Writer) error {
 	flags.SetOutput(out)
 	path := flags.String("config", "config.yaml", "path to the agent configuration")
 	keyFile := flags.String("key-file", "", "private enrollment key file (enroll only)")
+	replace := flags.Bool("replace", false, "enroll only: replace credentials that Control has revoked or that expired")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -80,9 +81,6 @@ func run(args []string, out io.Writer) error {
 			return err
 		}
 		defer unlock()
-		if _, err := os.Lstat(filepath.Join(cfg.Agent.StateDir, credentials.Filename)); !os.IsNotExist(err) {
-			return errors.New("profile already has credentials; refusing to replace its registration")
-		}
 		client, err := controlclient.New(cfg)
 		if err != nil {
 			return err
@@ -90,6 +88,14 @@ func run(args []string, out io.Writer) error {
 		defer client.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
+		if _, err := os.Lstat(filepath.Join(cfg.Agent.StateDir, credentials.Filename)); !os.IsNotExist(err) {
+			if !*replace {
+				return errors.New("profile already has credentials; use --replace only after the registration was revoked or expired")
+			}
+			if err := retireCredentials(ctx, client, cfg.Agent.StateDir, out); err != nil {
+				return err
+			}
+		}
 		response, err := client.Enroll(ctx, key)
 		if err != nil {
 			return err
@@ -104,6 +110,7 @@ func run(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
+	log := zerolog.New(os.Stderr).With().Timestamp().Logger()
 	if c.ControlToken != "" {
 		client, err := controlclient.New(cfg)
 		if err != nil {
@@ -113,12 +120,18 @@ func run(args []string, out io.Writer) error {
 		next, err := client.Refresh(ctx, *c)
 		cancel()
 		client.Close()
-		if err != nil {
-			return err
+		switch {
+		case err == nil:
+			c = &next
+		case controlclient.AuthenticationRejected(err):
+			return fmt.Errorf("device credential revoked or expired; run agentd enroll --replace to register again: %w", err)
+		case c.Effective.ExpiresAt.After(time.Now()):
+			// Supervision keeps retrying; the stored snapshot bounds offline operation.
+			log.Warn().Err(err).Time("effectiveUntil", c.Effective.ExpiresAt).Msg("control unreachable at startup; using the stored effective configuration")
+		default:
+			return fmt.Errorf("control unreachable and the stored effective configuration expired: %w", err)
 		}
-		c = &next
 	}
-	log := zerolog.New(os.Stderr).With().Timestamp().Logger()
 	s, err := supervisor.New(cfg, c, log)
 	if err != nil {
 		return err
@@ -142,12 +155,33 @@ func run(args []string, out io.Writer) error {
 					err = s.Reload(next)
 				}
 				if err != nil {
-					log.Error().Err(err).Msg("configuration reload incomplete; see error for applied local restrictions")
+					log.Error().Err(err).Msg("configuration reload incomplete; runtime-changeable sections were applied")
 				} else {
-					log.Info().Msg("provider configuration reloaded")
+					log.Info().Msg("configuration reloaded")
 				}
 			}
 		}
 	}()
 	return s.Run(ctx)
+}
+
+// retireCredentials allows re-enrollment only when Control no longer accepts
+// the stored registration. The old file is kept beside the new one for audit.
+func retireCredentials(ctx context.Context, client *controlclient.Client, stateDir string, out io.Writer) error {
+	current, err := credentials.Load(stateDir)
+	if err == nil && current.ControlToken != "" {
+		_, err = client.Refresh(ctx, *current)
+		if err == nil {
+			return errors.New("the stored registration is still active; revoke it in Control before replacing it")
+		}
+		if !controlclient.AuthenticationRejected(err) {
+			return fmt.Errorf("cannot confirm the stored registration was revoked: %w", err)
+		}
+	}
+	retired := filepath.Join(stateDir, credentials.Filename+".replaced-"+time.Now().UTC().Format("20060102T150405Z"))
+	if err := os.Rename(filepath.Join(stateDir, credentials.Filename), retired); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(out, "Retired previous credentials to %s\n", retired)
+	return err
 }

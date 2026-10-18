@@ -88,7 +88,7 @@ func waitHandled(t *testing.T, done <-chan error) error {
 }
 
 func TestReloadCancelsPendingDial(t *testing.T) {
-	m := New(testManagerConfig(), testApproval())
+	m := New(testManagerConfig(), testEffective())
 	started := make(chan struct{})
 	canceled := make(chan struct{})
 	m.SetDialer(func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -105,9 +105,7 @@ func TestReloadCancelsPendingDial(t *testing.T) {
 	}
 	next := testManagerConfig()
 	next.Egress.Allow = nil
-	if err := m.Reload(next); err != nil {
-		t.Fatal(err)
-	}
+	m.Reload(next)
 	waitSignal(t, canceled, "pending dial cancellation")
 	if err := waitHandled(t, done); err == nil {
 		t.Fatal("canceled dial returned success")
@@ -124,7 +122,7 @@ func TestReloadCancelsPendingDial(t *testing.T) {
 }
 
 func TestSuccessfulDialRacingCancellationClosesSocket(t *testing.T) {
-	m := New(testManagerConfig(), testApproval())
+	m := New(testManagerConfig(), testEffective())
 	started := make(chan struct{})
 	target, remote := net.Pipe()
 	t.Cleanup(func() { _ = target.Close(); _ = remote.Close() })
@@ -139,9 +137,7 @@ func TestSuccessfulDialRacingCancellationClosesSocket(t *testing.T) {
 	waitSignal(t, started, "dial before cancellation")
 	next := testManagerConfig()
 	next.Egress.Enabled = false
-	if err := m.Reload(next); err != nil {
-		t.Fatal(err)
-	}
+	m.Reload(next)
 	_ = waitHandled(t, done)
 	_ = remote.SetReadDeadline(time.Now().Add(time.Second))
 	if _, err := remote.Read(make([]byte, 1)); err != io.EOF {
@@ -176,9 +172,9 @@ func TestRemovingServiceCancelsOnlyItsFlow(t *testing.T) {
 	apiOrigin := origin(apiCanceled, apiMessages)
 	cfg := testManagerConfig()
 	cfg.Serve.Services[0].Origin, cfg.Serve.Services[1].Origin = demoOrigin.URL, apiOrigin.URL
-	approval := testApproval()
-	approval.Services["demo"], approval.Services["api"] = demoOrigin.URL, apiOrigin.URL
-	m := New(cfg, approval)
+	effective := testEffective()
+	effective.Services[0].Origin, effective.Services[1].Origin = demoOrigin.URL, apiOrigin.URL
+	m := New(cfg, effective)
 	provider, edge := managedSessions(t, m)
 	request := testOpen(connection.PurposeServe)
 	request.FlowID = "demo-flow"
@@ -212,9 +208,7 @@ func TestRemovingServiceCancelsOnlyItsFlow(t *testing.T) {
 	next := testManagerConfig()
 	next.Serve.Services = next.Serve.Services[1:]
 	next.Serve.Services[0].Origin = apiOrigin.URL
-	if err := m.Reload(next); err != nil {
-		t.Fatal(err)
-	}
+	m.Reload(next)
 	waitSignal(t, demoCanceled, "removed service origin cancellation")
 	_ = waitHandled(t, demoDone)
 	waitSignal(t, demo.Context().Done(), "removed service remote cancellation")
@@ -249,9 +243,9 @@ func TestServeStripsReservedIdentityAndCrossOriginCookies(t *testing.T) {
 	t.Cleanup(origin.Close)
 	cfg := testManagerConfig()
 	cfg.Serve.Services[0].Origin = origin.URL
-	approval := testApproval()
-	approval.Services["demo"] = origin.URL
-	m := New(cfg, approval)
+	effective := testEffective()
+	effective.Services[0].Origin = origin.URL
+	m := New(cfg, effective)
 	provider, edge := managedSessions(t, m)
 	peer, done := openManaged(t, m, provider, edge, testOpen(connection.PurposeServe))
 	_ = peer.SetDeadline(time.Now().Add(3 * time.Second))

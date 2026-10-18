@@ -420,6 +420,45 @@ func TestStreamLimitMetadataLimitAndReplay(t *testing.T) {
 	}
 }
 
+func TestFlowTombstonesExpireSoLongSessionsKeepAdmitting(t *testing.T) {
+	t.Parallel()
+	cfg := Config{OpenTimeout: 50 * time.Millisecond, MaxLeaseDuration: 100 * time.Millisecond, FlowTombstoneTTL: 300 * time.Millisecond, MaxStreams: 1, MaxFlows: 1}
+	providerCfg := cfg
+	providerCfg.AuthorizeOpen = approve
+	provider, edge := pair(t, RoleProvider, providerCfg, cfg)
+	first := serveRequest()
+	first.FlowID = "first"
+	a, b := exchange(t, edge, provider, first)
+	_ = a.Close()
+	<-b.Context().Done()
+	second := serveRequest()
+	second.FlowID = "second"
+	if _, err := edge.Open(t.Context(), second); !errors.Is(err, ErrStreamLimit) && !errors.Is(err, ErrDuplicateFlow) {
+		t.Fatalf("full replay ledger admitted a flow: %v", err)
+	}
+	if _, err := edge.Open(t.Context(), first); !errors.Is(err, ErrDuplicateFlow) && !errors.Is(err, ErrStreamLimit) {
+		t.Fatalf("recent flow ID was reused: %v", err)
+	}
+	time.Sleep(350 * time.Millisecond)
+	for edge.mux.NumStreams() > 1 {
+		time.Sleep(time.Millisecond)
+	}
+	exchange(t, edge, provider, second)
+}
+
+func TestPeerLeaseToleratesBoundedClockSkew(t *testing.T) {
+	t.Parallel()
+	provider, edge := pair(t, RoleProvider, Config{AuthorizeOpen: approve, MaxLeaseDuration: 20 * time.Second, MaxClockSkew: 10 * time.Second}, Config{})
+	r := serveRequest()
+	r.Deadline = time.Now().Add(time.Hour)
+	r.LeaseExpiresAt = time.Now().Add(25 * time.Second)
+	exchange(t, edge, provider, r)
+	r.FlowID, r.LeaseExpiresAt = "", time.Now().Add(40*time.Second)
+	if _, err := edge.Open(t.Context(), r); !errors.Is(err, ErrUnauthorized) {
+		t.Fatalf("lease beyond the skew allowance was accepted: %v", err)
+	}
+}
+
 func TestSessionCloseAndAcceptCancellation(t *testing.T) {
 	t.Parallel()
 	provider, edge := pair(t, RoleProvider, Config{AuthorizeOpen: approve}, Config{})

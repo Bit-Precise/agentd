@@ -59,4 +59,4 @@ bridge Xray (reverse bridge)
 3. Reverse 原生层不会执行 agents 的 hostname/port/Workspace 授权。未实现 PolicyGate 前，任何能通过 access-client 身份建立的目标都可能沿 bridge 的 `freedom` 继续拨号。
 4. WSS 在当前版本仍可用但已收到 deprecated 警告；首版应优先把 XHTTP 作为主传输，并单独验证真实 TLS FrontDoor。
 
-对应的修订方案见 [agents-agentd-p0-remediation.md](../../docs/agents-agentd-p0-remediation.md)。
+对应的修订方案见 [agents-agentd-p0-remediation.md](../../docs/archive/agents-agentd-p0-remediation.md)。

@@ -1,8 +1,8 @@
 # agentd 本地配置与三角色模型
 
-状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress，以及旧模型的 agents 注册/批准与配置轮询已实现；其余内容保留为目标规范。当前运行时的 `Approval`、`pendingApproval` 和 `expectedDesired` 人工审核属于待迁移旧模型；本文目标设计取消所有角色的人工审批，不表示运行时代码已经完成迁移。当前范围以 [运行说明](../README.md) 和 [本地联调](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md) 为准，TUN、WSS、agentd Device Flow 与多节点仍未交付。agents Console 的上游 OIDC 已实现。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
+状态：三角色配置解析、XHTTP packet-up、HTTP/SOCKS、Serve/Egress、agents 注册与配置自动校验、生效配置轮询已实现；其余内容保留为目标规范。所有角色都没有人工审批，旧模型的 `Approval`、`pendingApproval` 和 `expectedDesired` 已从代码中删除；当前实体与状态机见 [model](https://github.com/Bit-Precise/agents/blob/main/docs/model.md)。当前范围以 [运行说明](../README.md) 和 [本地联调](https://github.com/Bit-Precise/agents/blob/main/docs/local-development.md) 为准，TUN、WSS、agentd Device Flow 与多节点仍未交付。agents Console 的上游 OIDC 已实现。完整示例见 [config.yaml](../examples/agentd/config.yaml)，总体架构见 [架构方案](agents-agentd-architecture.md)。
 
-当前旧实现的接入为 `agentd enroll --config FILE --key-file PRIVATE_KEY_FILE`，按现有批准流程后执行 `agentd run --config FILE`；该人工步骤仅描述已交付行为，目标流程中身份与策略机器校验通过后直接注册、应用并运行。本机 HTTP 联调显式设置 `transport.allowHTTP: true` 且 instance/endpoint 都用 loopback；生产使用 HTTPS 与可选 `caFile`。见 [local.yaml](../examples/agentd/local.yaml)。凭据与轮询状态不放入 YAML。
+当前接入为 `agentd enroll --config FILE --key-file PRIVATE_KEY_FILE`：Control 校验身份、角色上限和配置后直接注册并返回生效配置，随后执行 `agentd run --config FILE`。注册被撤销或凭据过期后使用 `enroll --replace`，只有 Control 确认旧凭据失效时才替换。上报给 Control 的只是服务端相关的 desired spec（各角色启用状态、serve 服务名与 origin、egress allow/deny），`stateDir`、`caFile`、监听地址与 ingress routes 不离开本机。本机 HTTP 联调显式设置 `transport.allowHTTP: true` 且 instance/endpoint 都用 loopback；生产使用 HTTPS 与可选 `caFile`。见 [local.yaml](../examples/agentd/local.yaml)。凭据与轮询状态不放入 YAML。
 
 2026-10-18 目标身份修订见 [User/SA 与 Hydra Device Flow](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md)：一个 profile 固定一个 Workspace 和一个 User/SA 主体，三种运行角色共享该主体。拟议 `agentd login --config FILE` 使用标准 Device Flow，在浏览器选择 Workspace/本人或 SA，取得限定用途的 AT 后换取独立设备凭据；`enroll --key-file` 保留为 SA 无人值守路径。SA 固定属于一个 Workspace，选择与管理要求 maintainer+。浏览器中的人类操作记录为 `actorUserId`，用于授权操作的权限校验与审计，不是额外审批岗位；它不能替代 profile 的有效 User/SA 主体。三种角色均无需人工批准，身份、User Membership / SA 管理权限和 Workspace 策略由 Control 自动校验。这些命令/模型增量尚未实现。
 
@@ -226,4 +226,4 @@ ingress 使用独立的访问会话/承载连接；serve 与 egress 可复用 pr
 - 重载不改变授权截止时间，不抢占名称，不删除其他副本/管理员资源，不把校验失败或尚未同步的扩展提前上线。
 - 注册与三角色配置变更均不产生人工审批任务；校验通过自动应用，格式/权限/冲突分别明确返回 `400/403/409`，`pending_auth` 与 `syncing` 不被展示成“等待管理员批准”。
 
-这些是完整设计的验收条件；已实现子集及本机自动化测试见 [运行说明](../README.md)。当前重载仅支持 provider 的服务及出口限制，其他运行参数需重启；TUN、WSS、Service Account 与 Hydra Device Flow 仍待交付，当前注册/控制轮询及临近到期续期已实现。
+这些是完整设计的验收条件；已实现子集及本机自动化测试见 [运行说明](../README.md)。当前重载即时应用 serve、egress 与 ingress routes（收紧立即生效，扩展等 Control 接受），其他运行参数需重启且不阻止同次收紧；Control 不可达时继续使用已同步的生效配置直到其 24 小时有效期结束；TUN、WSS、Service Account 与 Hydra Device Flow 仍待交付，当前注册/控制轮询及临近到期续期已实现。

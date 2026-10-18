@@ -42,8 +42,18 @@ type Session struct {
 	slots     chan struct{}
 	mu        sync.Mutex
 	streams   map[string]*Stream
-	used      map[string]struct{}
-	renewals  map[string]*pendingRenewal
+	// used is the replay ledger: active IDs plus tombstones of closed or
+	// cancelled IDs. Tombstones are kept in release order and expire after
+	// FlowTombstoneTTL, so a long-lived session never exhausts its ledger.
+	used       map[string]struct{}
+	tombstones []tombstone
+	tombHead   int
+	renewals   map[string]*pendingRenewal
+}
+
+type tombstone struct {
+	id string
+	at time.Time
 }
 
 func newSession(ctx context.Context, conn net.Conn, principal Principal, cfg Config, server bool) (*Session, error) {
@@ -119,7 +129,7 @@ func newSession(ctx context.Context, conn net.Conn, principal Principal, cfg Con
 	return s, nil
 }
 
-func (s *Session) Principal() Principal  { return clonePrincipal(s.principal) }
+func (s *Session) Principal() Principal  { return s.principal }
 func (s *Session) Done() <-chan struct{} { return s.done }
 
 // Close terminates the transport and every logical stream, including blocked IO.
@@ -192,11 +202,17 @@ func (s *Session) readControls() {
 		// A cancel can race an OPEN on a different mux stream. Remember it so
 		// the delayed OPEN cannot resurrect a flow the sender has cancelled.
 		_, seen := s.used[msg.FlowID]
-		if !seen && len(s.used) >= s.config.MaxFlows {
-			s.mu.Unlock()
-			return
+		if !seen {
+			s.pruneLocked(time.Now())
+			if len(s.used) >= s.config.MaxFlows {
+				s.mu.Unlock()
+				return
+			}
+			s.used[msg.FlowID] = struct{}{}
+			if stream == nil {
+				s.tombstones = append(s.tombstones, tombstone{msg.FlowID, time.Now()})
+			}
 		}
-		s.used[msg.FlowID] = struct{}{}
 		s.mu.Unlock()
 		if stream != nil {
 			_ = stream.close(false)
@@ -270,6 +286,7 @@ func (s *Session) register(stream *Stream) error {
 		return ErrClosed
 	default:
 	}
+	s.pruneLocked(time.Now())
 	if _, exists := s.used[stream.request.FlowID]; exists {
 		return ErrDuplicateFlow
 	}
@@ -285,9 +302,27 @@ func (s *Session) release(stream *Stream) {
 	s.mu.Lock()
 	if s.streams[stream.request.FlowID] == stream {
 		delete(s.streams, stream.request.FlowID)
+		s.tombstones = append(s.tombstones, tombstone{stream.request.FlowID, time.Now()})
 	}
 	s.mu.Unlock()
 	<-s.slots
+}
+
+// pruneLocked forgets tombstones older than FlowTombstoneTTL. A delayed OPEN
+// or control message for such an ID cannot still be in flight.
+func (s *Session) pruneLocked(now time.Time) {
+	for s.tombHead < len(s.tombstones) && !now.Before(s.tombstones[s.tombHead].at.Add(s.config.FlowTombstoneTTL)) {
+		id := s.tombstones[s.tombHead].id
+		if _, active := s.streams[id]; !active {
+			delete(s.used, id)
+		}
+		s.tombstones[s.tombHead] = tombstone{}
+		s.tombHead++
+	}
+	if s.tombHead > 0 && s.tombHead >= len(s.tombstones)/2 {
+		s.tombstones = append(s.tombstones[:0], s.tombstones[s.tombHead:]...)
+		s.tombHead = 0
+	}
 }
 
 // Open waits for receiver authorization. OPEN_OK means logical admission only;
@@ -393,7 +428,7 @@ func (s *Session) Open(ctx context.Context, request OpenRequest) (*Stream, error
 		_ = stream.Close()
 		return nil, err
 	}
-	if !validLease(reply.Claims.LeaseExpiresAt, reply.Claims.Deadline, s.config.MaxLeaseDuration) {
+	if !validLease(reply.Claims.LeaseExpiresAt, reply.Claims.Deadline, s.config.peerLeaseCeiling()) {
 		_ = stream.Close()
 		return nil, ErrExpired
 	}
@@ -456,7 +491,7 @@ func (s *Session) admit(raw *yamux.Stream) {
 		<-s.slots
 		return
 	}
-	if err := validateOpen(request); err != nil || !validLease(request.LeaseExpiresAt, request.Deadline, s.config.MaxLeaseDuration) || !s.allowedPurpose(request.Purpose, false) || s.config.AuthorizeOpen == nil {
+	if err := validateOpen(request); err != nil || !validLease(request.LeaseExpiresAt, request.Deadline, s.config.peerLeaseCeiling()) || !s.allowedPurpose(request.Purpose, false) || s.config.AuthorizeOpen == nil {
 		_ = writeFrame(raw, openReply{Error: "denied"}, s.config.MaxMetadataBytes)
 		_ = raw.Close()
 		<-s.slots
@@ -481,7 +516,7 @@ func (s *Session) admit(raw *yamux.Stream) {
 		claims.LeaseExpiresAt = request.LeaseExpiresAt
 	}
 	claims.Deadline = earlier(claims.Deadline, s.principal.ExpiresAt)
-	if err != nil || ctx.Err() != nil || validateClaims(request, claims, s.principal.ExpiresAt) != nil || !validLease(claims.LeaseExpiresAt, claims.Deadline, s.config.MaxLeaseDuration) {
+	if err != nil || ctx.Err() != nil || validateClaims(request, claims, s.principal.ExpiresAt) != nil || !validLease(claims.LeaseExpiresAt, claims.Deadline, s.config.peerLeaseCeiling()) {
 		_ = writeFrame(raw, openReply{Error: "denied"}, s.config.MaxMetadataBytes)
 		_ = stream.close(false)
 		return

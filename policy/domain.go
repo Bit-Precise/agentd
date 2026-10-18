@@ -70,6 +70,22 @@ func CanonicalDomain(s string) (string, error) {
 	return ascii, nil
 }
 
+// Label canonicalizes one DNS label, such as an Agent, Workspace or service
+// name. A label may be entirely numeric even though a complete numeric name is
+// not a domain selector.
+func Label(s string) (string, error) {
+	const suffix = ".agent-label.invalid"
+	canonical, err := CanonicalDomain(s + suffix)
+	if err != nil {
+		return "", err
+	}
+	canonical = strings.TrimSuffix(canonical, suffix)
+	if canonical == "" || strings.Contains(canonical, ".") {
+		return "", fmt.Errorf("must be a single DNS label")
+	}
+	return canonical, nil
+}
+
 // Validate normalizes the selector and checks the rule. Allow and ingress rules
 // require ports. A deny rule can omit ports (nil) to cover every TLS port, but an
 // explicitly empty list is always invalid.

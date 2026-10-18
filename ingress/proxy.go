@@ -10,8 +10,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bit-precise/agentd/policy"
@@ -20,9 +22,26 @@ import (
 
 type OpenFunc func(context.Context, string, uint16) (net.Conn, error)
 
+// Proxy only selects which local connections enter agents. Its routes can be
+// replaced at runtime: Edge still authorizes every destination it receives.
 type Proxy struct {
-	Routes []policy.Rule
+	routes atomic.Pointer[[]policy.Rule]
 	Open   OpenFunc
+}
+
+func NewProxy(routes []policy.Rule, open OpenFunc) *Proxy {
+	p := &Proxy{Open: open}
+	p.SetRoutes(routes)
+	return p
+}
+
+// SetRoutes takes effect for every subsequent CONNECT or SOCKS request.
+func (p *Proxy) SetRoutes(routes []policy.Rule) {
+	routes = slices.Clone(routes)
+	for i := range routes {
+		routes[i].Ports = slices.Clone(routes[i].Ports)
+	}
+	p.routes.Store(&routes)
 }
 
 func (p *Proxy) target(host string, port uint16) (string, error) {
@@ -30,7 +49,11 @@ func (p *Proxy) target(host string, port uint16) (string, error) {
 	if err != nil || port == 0 {
 		return "", errors.New("a canonical domain and nonzero port are required")
 	}
-	if !policy.Allowed(p.Routes, nil, domain, int(port), "tls") {
+	var routes []policy.Rule
+	if current := p.routes.Load(); current != nil {
+		routes = *current
+	}
+	if !policy.Allowed(routes, nil, domain, int(port), "tls") {
 		return "", errors.New("destination outside local ingress routes")
 	}
 	return domain, nil
