@@ -4,7 +4,7 @@
 
 状态：设计走查，命令和输出为拟议接口，尚未实现。依据 [架构方案](agents-agentd-architecture.md) 与 [对齐审查（历史）](archive/agents-agentd-alignment.md)。
 
-2026-10-18 身份流程以 [Hydra Device Flow 与 User/SA 设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md) 为准：所有示例中的 `agentd login` 都表示同一二进制的标准 Device Flow；浏览器先认证人类，再选择 Workspace 和本人/该空间 SA，SA 仅 maintainer+ 可选择。服务器必须使用 SA，SA 可有多个 Agent 且不能登录 Console。下文若只写“用户身份”表示个人 profile，不涵盖服务器 profile；其他旧命令仍只是场景示意，不能当作已实现 CLI。
+2026-10-18 身份流程以 [Hydra Device Flow 与 User/SA 设计](https://github.com/Bit-Precise/agents/blob/main/docs/identity-and-device-flow.md) 为准：所有示例中的 `agentd login` 都表示同一二进制的标准 Device Flow；浏览器先认证人类，再选择 Workspace 和本人/该空间 SA，SA 仅 maintainer+ 可选择。团队长期运行的服务器应使用 SA（系统不强制识别服务器），SA 可有多个 Agent 且不能登录 Console。下文若只写“用户身份”表示以本人运行的个人设备；其他旧命令仍只是场景示意，不能当作已实现 CLI。
 
 注册和配置变更无需人工审批。下文旧案例中的“待批准”“通过 Workspace 审批”及开发者申请例外流程已废弃：有权限且通过策略校验即自动应用，无权限直接拒绝；连接、证书及配置同步等待只表示技术状态。业务 Grant 和公开/分享权限仍需独立校验，不能因取消审批而扩大访问范围。
 

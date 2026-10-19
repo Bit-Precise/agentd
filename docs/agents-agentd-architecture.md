@@ -11,7 +11,7 @@
 - 一个 agents 部署是一个 Instance，有固定域名，例如 `instance1.example.com`。
 - Instance 下有多个 Workspace。User 是实例级身份，可通过 Membership 同时加入多个 Workspace。
 - Service Account 固定且只能属于一个 Workspace，可以对应多个 Agent；不作为人类 User、不能登录 Console，只能由 maintainer 及以上管理/选用。
-- 每个 Agent 固定一个 Workspace 和一个 User/SA 运行主体；`createdBy`、登录操作人 `actorUserId` 与运行身份分开。个人设备可使用本人 User，服务器 profile 必须使用 SA。
+- 每个 Agent 固定一个 Workspace 和一个 User/SA 运行主体；`createdBy`、登录操作人 `actorUserId` 与运行身份分开。以本人 User 运行即个人设备，以 SA 运行即团队设备；系统不识别也不强制机器类型，团队长期运行的服务器应选择 SA。
 - agentd 同一二进制支持 Hydra OAuth Device Flow：人类 OIDC 登录后选择 Workspace 与本人/SA，再以限定用途的 AT 换每设备独立凭据；无人值守注册密钥绑定 SA。
 - agentd 注册接入及 Serve/Egress 配置变更不需要人工审批。身份、RBAC 和策略自动校验成功即提交生效，非法请求拒绝，名称、版本或资源冲突返回 409；EffectiveConfig、revision、ACK 和 ready 只描述策略计算与技术应用状态。
 - Workspace 角色为 owner、maintainer、developer、guest；另有实例级 instance admin，内部标识为 `instance_admin`。
@@ -242,13 +242,13 @@ Workspace 的资源与成员边界更接近 Cloudflare Account，而非 Zone 或
 
 **5. 角色与权限建议**
 
-控制面 RBAC 与业务流量 AccessPolicy 分开。能修改一个资源，不代表数据面可以跳过身份校验。默认成员策略包含 active guest；资源可以进一步限制为指定用户或角色，也可以显式共享给其他 Workspace 的用户。Web 服务的数据访问不以“必须先成为资源 Workspace 成员”为全局前提；具体由该服务的受众策略判断。
+授权分两层，互不读取对方的输入。**控制面 RBAC** 按 Workspace 角色决定谁能执行哪些管理操作（下表）；**数据面 Grant** 决定谁能使用哪个已发布的服务或出口路由，从不读取角色。能修改一个资源，不代表数据面可以跳过身份校验；角色对设备能力的影响由控制面算进生效配置，数据面只读生效配置。当前实现的权限矩阵与 Grant 规则以 [agents 授权模型](https://github.com/Bit-Precise/agents/blob/main/docs/authorization.md) 为准，本节保留远期设计。
+
+控制面（含远期操作）：
 
 | 操作 | owner | maintainer | developer | guest |
 |---|---|---|---|---|
 | 查看 Workspace 基本信息 | 是 | 是 | 是 | 是 |
-| 访问默认 member-only Web 服务 | 是 | 是 | 是 | 是 |
-| 使用 TLS 出口 | 必须命中访问策略 | 必须命中访问策略 | 必须命中访问策略 | 必须命中访问策略 |
 | 注册个人 agentd 作为访问客户端 | 是 | 是 | 是 | 是，仅 access 能力 |
 | 创建/管理本 Workspace SA 与 SA 注册密钥 | 是 | 是 | 否 | 否 |
 | Device Flow 中选择 SA 注册服务器设备 | 是 | 是 | 否 | 否 |
@@ -264,6 +264,8 @@ Workspace 的资源与成员边界更接近 Cloudflare Account，而非 Zone 或
 | 赋予/撤销 maintainer | 是 | 否 | 否 | 否 |
 | 转移 owner、删除 Workspace | 是 | 否 | 否 | 否 |
 | 查看 Workspace 审计 | 全部 | 全部 | 自己的资源 | 无管理审计 |
+
+数据面：Grant 的主体为匿名访问者、本实例所有已登录用户、指定用户、某个 Workspace 的人类成员或同 Workspace 的 Service Account；前两者与跨 Workspace、非成员用户属于对外分享，只能用于 Web 服务。服务首次发布时的默认成员授权覆盖所有角色的成员，包括 active guest；资源可以进一步限制为指定用户，也可以显式共享给其他 Workspace 的用户。Web 服务的数据访问不以“必须先成为资源 Workspace 成员”为全局前提，由该服务的 Grant 判断；TLS 出口只在本 Workspace 内使用，每条流都必须命中出口路由的 Grant。
 
 至少保留一个有效 Workspace owner 和一个 instance admin；禁止自助提升角色。角色变更在事务中提交并触发凭据/策略失效。
 
@@ -301,7 +303,7 @@ certificate worker 使用 DNS-01 申请证书。Workspace 创建经历 `pending_
 拟定流程：
 
 1. agentd 从可信 issuer discovery 获取 Device Authorization / Token endpoint，显示验证 URL 与 user_code，使用 `grant_type=urn:ietf:params:oauth:grant-type:device_code` 串行轮询并处理 slow_down。标准 `authorization_pending` 只表示等待用户完成本人的登录和身份选择，不表示等待管理员处理。
-2. 浏览器完成上游 OIDC 人类登录，选择有权限的 Workspace，再选择本人或有效的同 Workspace SA。选择 SA 是一项要求 maintainer+ 的操作权限，Control 自动检查；服务器 profile 必须选 SA。本人 User 不能改选为另一个人，instance admin 的跨空间 SA 选用必须显式进入管理视图并记录操作来源。
+2. 浏览器完成上游 OIDC 人类登录，选择有权限的 Workspace，再选择本人或有效的同 Workspace SA。选择 SA 是一项要求 maintainer+ 的操作权限，Control 自动检查。本人 User 不能改选为另一个人，instance admin 的跨空间 SA 选用必须显式进入管理视图并记录操作来源。
 3. Control 在调用 Hydra `AcceptLogin` 前固定 typed subject、Workspace 和 `actorUserId`，自动校验当前身份、Membership/SA 选用权限及角色上限。用户完成本人的选择授权后，Control 自动完成 `AcceptLogin` / `AcceptConsent`；consent 不能再替换 subject，不存在另一位审批人。每次 Device Flow 都重新确认本次选择，不能沿用其他设备的 remembered Workspace/SA；相关浏览器提交须绑定当前 OIDC 事务并校验同源与 CSRF。
 4. Hydra 向 agentd 返回仅用于本 Instance 设备注册兑换的短期 AT。AT 不能登录 Console 或直接接入 XHTTP；它证明本次 Workspace/主体选择及注册权限，不替代对具体 Desired 的自动策略校验。
 5. agentd 使用 AT 提交本地 Desired。Control introspect 并自动重检当前主体、Membership、SA 选用权限、角色上限、资源归属及能力策略；成功后在同一事务中一次消费授权、创建 AgentRegistration、EffectiveConfig revision 和每设备独立凭据。非法配置或越权请求直接拒绝，名称、版本或资源冲突返回 409，不创建待审核记录；客户端不能在请求体改写已选主体。SA EnrollmentKey 注册同样自动检查密钥、主体、角色上限和配置，不转入人工队列。
