@@ -87,7 +87,7 @@ func TestRoundTripConcurrentHTTPVersions(t *testing.T) {
 				observed.Store(int32(r.ProtoMajor))
 				return testAuth(r)
 			}})
-			cfg.PacketSize = 4096
+			cfg.MaxEachPostBytes = 4096
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			var echo sync.WaitGroup
@@ -183,7 +183,7 @@ func rawPOST(t *testing.T, client *http.Client, endpoint, id, seq, token string,
 
 func TestOrderingDuplicatesAndPrincipalIsolation(t *testing.T) {
 	var authCalls atomic.Int32
-	h, ts, _ := setup(t, true, ServerConfig{MaxReorderPackets: 2, Authorize: func(r *http.Request) (string, error) {
+	h, ts, _ := setup(t, true, ServerConfig{MaxBufferedPosts: 2, Authorize: func(r *http.Request) (string, error) {
 		authCalls.Add(1)
 		return testAuth(r)
 	}})
@@ -194,25 +194,26 @@ func TestOrderingDuplicatesAndPrincipalIsolation(t *testing.T) {
 	}
 	c := mustAccept(t, h)
 	c.SetReadDeadline(time.Now().Add(time.Second))
-	checks := []struct {
+	type check struct {
 		path, seq, token, data string
 		status                 int
-	}{
+	}
+	post := func(checks []check) {
+		t.Helper()
+		for _, v := range checks {
+			if got := rawPOST(t, ts.Client(), ts.URL+v.path, id, v.seq, v.token, []byte(v.data)); got != v.status {
+				t.Fatalf("POST %s/%s/%s status=%d want=%d", v.path, v.seq, v.token, got, v.status)
+			}
+		}
+	}
+	before := []check{
 		{"/agent", "0", "bob", "wrong", 404},
 		{"/different", "0", "alice", "wrong", 404},
 		{"/agent", "1", "alice", "world", 204},
 		{"/agent", "1", "alice", "world", 204},
-		{"/agent", "1", "alice", "changed", 409},
 		{"/agent", "0", "alice", "hello", 204},
-		{"/agent", "0", "alice", "hello", 204},
-		{"/agent", "1000", "alice", "too-far", 409},
-		{"/agent", "02", "alice", "invalid", 400},
 	}
-	for _, v := range checks {
-		if got := rawPOST(t, ts.Client(), ts.URL+v.path, id, v.seq, v.token, []byte(v.data)); got != v.status {
-			t.Fatalf("POST %s/%s/%s status=%d want=%d", v.path, v.seq, v.token, got, v.status)
-		}
-	}
+	post(before)
 	got := make([]byte, 10)
 	if _, err := io.ReadFull(c, got); err != nil {
 		t.Fatal(err)
@@ -220,16 +221,89 @@ func TestOrderingDuplicatesAndPrincipalIsolation(t *testing.T) {
 	if string(got) != "helloworld" {
 		t.Fatalf("got %q", got)
 	}
+	// As in Xray's upload queue, sequences already delivered are dropped, so
+	// a repeated POST (for example a retry by an intermediary) is harmless.
+	after := []check{
+		{"/agent", "1", "alice", "changed", 204},
+		{"/agent", "0", "alice", "hello", 204},
+		{"/agent", "1000", "alice", "too-far", 204},
+		{"/agent", "02", "alice", "invalid", 400},
+	}
+	post(after)
 	c.SetReadDeadline(time.Now().Add(30 * time.Millisecond))
 	_, err := c.Read(make([]byte, 1))
 	assertTimeout(t, err)
-	if authCalls.Load() != int32(len(checks)+1) {
+	if authCalls.Load() != int32(len(before)+len(after)+1) {
 		t.Fatal("not every request was authorized")
 	}
 }
 
+func TestReorderBacklogClosesSession(t *testing.T) {
+	h, ts, _ := setup(t, true, ServerConfig{MaxBufferedPosts: 2})
+	id := strings.Repeat("d", 32)
+	resp, _ := rawGET(t, ts.Client(), ts.URL, id, "alice")
+	if resp.StatusCode != 200 {
+		t.Fatal(resp.Status)
+	}
+	c := mustAccept(t, h)
+	// Sequence 0 never arrives, so every packet waits for reordering.
+	for seq := 1; seq <= 4; seq++ {
+		if got := rawPOST(t, ts.Client(), ts.URL, id, strconv.Itoa(seq), "alice", []byte("x")); got != 204 {
+			t.Fatalf("seq %d: %d", seq, got)
+		}
+	}
+	c.SetReadDeadline(time.Now().Add(time.Second))
+	_, err := c.Read(make([]byte, 1))
+	if err == nil || !strings.Contains(err.Error(), "packet queue is too large") {
+		t.Fatalf("backlog above MaxBufferedPosts kept the session: %v", err)
+	}
+	eventually(t, func() bool { return h.ActiveSessions() == 0 })
+	if got := rawPOST(t, ts.Client(), ts.URL, id, "5", "alice", []byte("x")); got != 404 {
+		t.Fatalf("closed session accepted upload: %d", got)
+	}
+}
+
+func TestServerAcceptsLegacyVersion(t *testing.T) {
+	h, ts, _ := setup(t, true, ServerConfig{})
+	get := func(id, version string) *http.Response {
+		r, _ := http.NewRequest(http.MethodGet, ts.URL+"?session="+id, nil)
+		r.Header.Set(VersionHeader, version)
+		r.Header.Set("Authorization", "Bearer alice")
+		resp, err := ts.Client().Do(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { resp.Body.Close() })
+		return resp
+	}
+	if resp := get(strings.Repeat("e", 32), "3"); resp.StatusCode != 400 || resp.Header.Get(VersionHeader) != Version {
+		t.Fatalf("unknown version: %d %q", resp.StatusCode, resp.Header.Get(VersionHeader))
+	}
+	id := strings.Repeat("f", 32)
+	if resp := get(id, legacyVersion); resp.StatusCode != 200 || resp.Header.Get(VersionHeader) != legacyVersion {
+		t.Fatalf("legacy GET: %d %q", resp.StatusCode, resp.Header.Get(VersionHeader))
+	}
+	peer := mustAccept(t, h)
+	r, _ := http.NewRequest(http.MethodPost, ts.URL+"?session="+id+"&seq=0", strings.NewReader("v1"))
+	r.Header.Set(VersionHeader, legacyVersion)
+	r.Header.Set("Authorization", "Bearer alice")
+	resp, err := ts.Client().Do(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 204 || resp.Header.Get(VersionHeader) != legacyVersion {
+		t.Fatalf("legacy POST: %d %q", resp.StatusCode, resp.Header.Get(VersionHeader))
+	}
+	peer.SetReadDeadline(time.Now().Add(time.Second))
+	got := make([]byte, 2)
+	if _, err := io.ReadFull(peer, got); err != nil || string(got) != "v1" {
+		t.Fatalf("legacy upload: %q %v", got, err)
+	}
+}
+
 func TestLimitsAndAuthorization(t *testing.T) {
-	h, ts, cfg := setup(t, false, ServerConfig{MaxSessions: 1, MaxPacketBytes: 4})
+	h, ts, cfg := setup(t, false, ServerConfig{MaxSessions: 1, MaxEachPostBytes: 4})
 	if _, err := NewHandler(ServerConfig{}); err == nil {
 		t.Fatal("missing authorizer accepted")
 	}
@@ -301,7 +375,7 @@ func TestReadDeadlineResetAndUpdate(t *testing.T) {
 	}
 }
 
-func TestWriteDeadlineCancelsPOST(t *testing.T) {
+func TestStalledPOSTClosesConnection(t *testing.T) {
 	h, err := NewHandler(ServerConfig{Authorize: testAuth})
 	if err != nil {
 		t.Fatal(err)
@@ -319,17 +393,99 @@ func TestWriteDeadlineCancelsPOST(t *testing.T) {
 	ts.EnableHTTP2 = true
 	ts.StartTLS()
 	t.Cleanup(func() { h.Close(); ts.Close() })
-	c := mustDial(t, ts.URL, ClientConfig{HTTPClient: ts.Client(), Headers: http.Header{"Authorization": {"Bearer alice"}}})
+	c := mustDial(t, ts.URL, ClientConfig{HTTPClient: ts.Client(), Headers: http.Header{"Authorization": {"Bearer alice"}}, PostTimeout: 100 * time.Millisecond})
 	mustAccept(t, h)
-	c.SetWriteDeadline(time.Now().Add(50 * time.Millisecond))
-	_, err = c.Write([]byte("blocked"))
-	assertTimeout(t, err)
+	// Write only buffers, as in Xray; delivery failure surfaces afterwards.
+	if _, err := c.Write([]byte("blocked")); err != nil {
+		t.Fatal(err)
+	}
+	c.SetReadDeadline(time.Now().Add(2 * time.Second))
+	start := time.Now()
+	if _, err := c.Read(make([]byte, 1)); err == nil {
+		t.Fatal("stalled upload left the connection open")
+	}
+	if time.Since(start) > time.Second {
+		t.Fatal("PostTimeout did not bound the stalled POST")
+	}
 	select {
 	case <-postCancelled:
 	case <-time.After(time.Second):
 		t.Fatal("POST context not cancelled")
 	}
 	eventually(t, func() bool { return h.ActiveSessions() == 0 })
+}
+
+func TestWriteDeadlineBoundsUploadBuffer(t *testing.T) {
+	c := newConn(context.Background(), 1, 4)
+	defer c.Close()
+	pipe := newUploadPipe(4)
+	c.writePacket = func(p []byte) error { return pipe.put(c, p) }
+	c.SetWriteDeadline(time.Now().Add(30 * time.Millisecond))
+	n, err := c.Write([]byte("12345678"))
+	assertTimeout(t, err)
+	if n != 4 {
+		t.Fatalf("buffered %d bytes, want one full POST", n)
+	}
+	select {
+	case <-c.done:
+		t.Fatal("a buffer timeout closed the connection")
+	default:
+	}
+	if data, ok := pipe.take(c.done); !ok || string(data) != "1234" {
+		t.Fatalf("took %q", data)
+	}
+	c.SetWriteDeadline(time.Time{})
+	if _, err := c.Write([]byte("5678")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUploadsArePipelinedAndCoalesced(t *testing.T) {
+	h, err := NewHandler(ServerConfig{Authorize: testAuth})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var posts, inflight, peak atomic.Int32
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			posts.Add(1)
+			n := inflight.Add(1)
+			for p := peak.Load(); n > p && !peak.CompareAndSwap(p, n); p = peak.Load() {
+			}
+			time.Sleep(50 * time.Millisecond) // one emulated round trip per POST
+			defer inflight.Add(-1)
+		}
+		h.ServeHTTP(w, r)
+	}))
+	ts.EnableHTTP2 = true
+	ts.StartTLS()
+	t.Cleanup(func() { h.Close(); ts.Close() })
+	// The default 30 ms MinPostsInterval lets writes arriving meanwhile coalesce.
+	c := mustDial(t, ts.URL, ClientConfig{HTTPClient: ts.Client(), Headers: http.Header{"Authorization": {"Bearer alice"}}})
+	peer := mustAccept(t, h)
+	const writes = 200
+	go func() {
+		for i := 0; i < writes; i++ {
+			c.Write([]byte{byte(i)})
+			time.Sleep(time.Millisecond)
+		}
+	}()
+	peer.SetReadDeadline(time.Now().Add(5 * time.Second))
+	got := make([]byte, writes)
+	if _, err := io.ReadFull(peer, got); err != nil {
+		t.Fatal(err)
+	}
+	for i := range got {
+		if got[i] != byte(i) {
+			t.Fatalf("byte %d out of order", i)
+		}
+	}
+	if peak.Load() < 2 {
+		t.Fatalf("POSTs were not pipelined (peak %d)", peak.Load())
+	}
+	if posts.Load() >= writes/2 {
+		t.Fatalf("%d writes produced %d POSTs; small writes were not coalesced", writes, posts.Load())
+	}
 }
 
 func TestServerWriteDeadlineBoundsUnconsumedQueue(t *testing.T) {
@@ -438,39 +594,19 @@ func TestHTTPExplicitLoopbackAndIdleCleanup(t *testing.T) {
 	eventually(t, func() bool { return h.ActiveSessions() == 0 })
 }
 
-func TestReorderMemoryIsBounded(t *testing.T) {
-	c := newConn(context.Background(), 1, 8)
-	defer c.Close()
-	s := &serverSession{c: c, packets: make(map[uint64][]byte), recent: make(map[uint64][32]byte), ready: make(chan struct{}, 1)}
-	for i := uint64(1); i < 100; i++ {
-		status := s.receive(i, []byte(strconv.FormatUint(i, 10)), 2)
-		if i <= 2 && status != 204 {
-			t.Fatal(status)
-		}
-		if i > 2 && status != 409 {
-			t.Fatal(status)
-		}
-	}
-	if len(s.packets) != 2 {
-		t.Fatal("reorder window is not bounded")
-	}
-}
-
-func TestSequentialUploadBackpressure(t *testing.T) {
+func TestUploadWaitsForSlowReader(t *testing.T) {
 	for _, h2 := range []bool{false, true} {
 		t.Run(fmt.Sprintf("h2=%v", h2), func(t *testing.T) {
-			h, ts, cfg := setup(t, h2, ServerConfig{MaxPacketBytes: 4, MaxQueuedPackets: 1, MaxReorderPackets: 1})
-			cfg.PacketSize = 4
+			// Two session slots force most POSTs to wait instead of failing.
+			h, ts, cfg := setup(t, h2, ServerConfig{MaxEachPostBytes: 4, MaxQueuedPackets: 1, MaxPostsPerSession: 2})
+			cfg.MaxEachPostBytes = 4
+			cfg.MinPostsInterval = time.Millisecond
 			c := mustDial(t, ts.URL, cfg)
 			peer := mustAccept(t, h)
 			payload := bytes.Repeat([]byte("abcd"), 32)
 			written := make(chan error, 1)
 			go func() { _, err := c.Write(payload); written <- err }()
-			select {
-			case err := <-written:
-				t.Fatalf("upload did not apply backpressure: %v", err)
-			case <-time.After(75 * time.Millisecond):
-			}
+			time.Sleep(200 * time.Millisecond)
 			peer.SetReadDeadline(time.Now().Add(2 * time.Second))
 			got := make([]byte, len(payload))
 			if _, err := io.ReadFull(peer, got); err != nil {
@@ -480,7 +616,7 @@ func TestSequentialUploadBackpressure(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !bytes.Equal(got, payload) {
-				t.Fatal("bytes lost after backpressure")
+				t.Fatal("bytes lost or reordered while the reader was slow")
 			}
 		})
 	}

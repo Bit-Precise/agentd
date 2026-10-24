@@ -2,8 +2,8 @@
 package xhttp
 
 import (
+	"container/heap"
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -19,10 +19,21 @@ import (
 
 const (
 	VersionHeader = "X-Agents-XHTTP-Version"
-	Version       = "1"
+	// Version 2 clients follow Xray's packet-up upload: many POSTs may be in
+	// flight at once. Servers still accept version 1, whose clients upload one
+	// packet at a time and are therefore a special case of version 2.
+	Version       = "2"
+	legacyVersion = "1"
 	SessionQuery  = "session"
 	SequenceQuery = "seq"
-	defaultPacket = 32 << 10
+	// downloadChunk bounds one download read or response write. Upload sizes
+	// are governed by MaxEachPostBytes instead.
+	downloadChunk = 32 << 10
+	// Xray-core splithttp defaults: scMaxEachPostBytes, scMinPostsIntervalMs
+	// and scMaxBufferedPosts.
+	defaultMaxEachPostBytes = 1000000
+	defaultMinPostsInterval = 30 * time.Millisecond
+	defaultMaxBufferedPosts = 30
 )
 
 // ServerConfig bounds allocations before handing connections to the caller.
@@ -34,14 +45,23 @@ type ServerConfig struct {
 	TLSOffload              bool // trusted TLS ingress terminates HTTPS before this listener
 	MaxSessions             int
 	MaxSessionsPerPrincipal int
-	MaxPacketBytes          int
-	MaxQueuedPackets        int
-	MaxReorderPackets       int
-	MaxConcurrentPosts      int
-	MaxPostsPerSession      int
-	SessionIdleTimeout      time.Duration
-	PostTimeout             time.Duration
-	WriteTimeout            time.Duration
+	// MaxEachPostBytes is Xray's scMaxEachPostBytes: the largest upload body.
+	// Clients must not be configured with a larger value.
+	MaxEachPostBytes int
+	// MaxBufferedPosts is Xray's scMaxBufferedPosts. It sizes the queue of
+	// received packets; a session whose out-of-order backlog exceeds it is
+	// closed instead of buffering without bound.
+	MaxBufferedPosts int
+	// MaxQueuedPackets bounds download packets waiting for the GET response.
+	MaxQueuedPackets int
+	// MaxConcurrentPosts bounds POST bodies being read across all sessions and
+	// MaxPostsPerSession the POSTs one session may have inside the handler.
+	// Excess POSTs wait (up to PostTimeout) instead of being rejected.
+	MaxConcurrentPosts int
+	MaxPostsPerSession int
+	SessionIdleTimeout time.Duration
+	PostTimeout        time.Duration
+	WriteTimeout       time.Duration
 }
 
 type Handler struct {
@@ -57,21 +77,21 @@ type Handler struct {
 }
 
 type serverSession struct {
-	c            *conn
-	id           string
-	principal    string
-	path         string
-	out          chan *outPacket
-	activity     chan struct{}
-	posts        chan struct{}
-	mu           sync.Mutex
-	next         uint64
-	acceptedNext uint64
-	packets      map[uint64][]byte
-	recent       map[uint64][32]byte
-	history      []uint64
-	ready        chan struct{}
-	capacity     chan struct{}
+	c         *conn
+	id        string
+	principal string
+	path      string
+	out       chan *outPacket
+	activity  chan struct{}
+	posts     chan struct{}
+	// pushed is Xray's uploadQueue.pushedPackets: a full queue blocks POST
+	// handlers, which is the upload backpressure.
+	pushed chan uploadPacket
+}
+
+type uploadPacket struct {
+	seq     uint64
+	payload []byte
 }
 
 type outPacket struct {
@@ -83,13 +103,16 @@ func NewHandler(cfg ServerConfig) (*Handler, error) {
 	if cfg.Authorize == nil {
 		return nil, errors.New("xhttp: Authorize is required")
 	}
+	if cfg.MaxPostsPerSession == 0 {
+		cfg.MaxPostsPerSession = max(cfg.MaxBufferedPosts, 0)
+	}
 	defaults := []struct {
 		p          *int
 		value, max int
 	}{
-		{&cfg.MaxSessions, 64, 65536}, {&cfg.MaxPacketBytes, defaultPacket, 4 << 20},
-		{&cfg.MaxQueuedPackets, 8, 1024}, {&cfg.MaxReorderPackets, 8, 1024},
-		{&cfg.MaxConcurrentPosts, 64, 4096}, {&cfg.MaxPostsPerSession, 4, 128},
+		{&cfg.MaxSessions, 64, 65536}, {&cfg.MaxEachPostBytes, defaultMaxEachPostBytes, 16 << 20},
+		{&cfg.MaxBufferedPosts, defaultMaxBufferedPosts, 1024}, {&cfg.MaxQueuedPackets, 8, 1024},
+		{&cfg.MaxConcurrentPosts, 256, 65536}, {&cfg.MaxPostsPerSession, defaultMaxBufferedPosts, 1024},
 	}
 	for _, d := range defaults {
 		if *d.p == 0 {
@@ -154,7 +177,13 @@ func singleQuery(r *http.Request, name string) (string, bool) {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store, no-transform")
-	w.Header().Set(VersionHeader, Version)
+	version := r.Header.Get(VersionHeader)
+	supported := version == Version || version == legacyVersion
+	if supported {
+		w.Header().Set(VersionHeader, version)
+	} else {
+		w.Header().Set(VersionHeader, Version)
+	}
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		w.Header().Set("Allow", "GET, POST")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -172,7 +201,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if r.Header.Get(VersionHeader) != Version {
+	if !supported {
 		http.Error(w, "unsupported transport version", http.StatusBadRequest)
 		return
 	}
@@ -200,7 +229,9 @@ func (h *Handler) serveDown(w http.ResponseWriter, r *http.Request, id, principa
 		return
 	}
 	rc := http.NewResponseController(w)
-	c := newConn(r.Context(), h.cfg.MaxQueuedPackets, h.cfg.MaxPacketBytes)
+	// The uploaded byte queue is the reorder queue; the conn holds at most one
+	// delivered packet that its reader has not consumed yet.
+	c := newConn(r.Context(), 1, downloadChunk)
 	c.principal = principal
 	// A response write deadline also runs while an HTTP/2 stream is idle. Keep
 	// it scoped to Write/Flush and serialize resets against Close's forced
@@ -222,8 +253,7 @@ func (h *Handler) serveDown(w http.ResponseWriter, r *http.Request, id, principa
 	}
 	s := &serverSession{c: c, id: id, principal: principal, path: r.URL.EscapedPath(),
 		out: make(chan *outPacket, h.cfg.MaxQueuedPackets), activity: make(chan struct{}, 1),
-		posts: make(chan struct{}, h.cfg.MaxPostsPerSession), packets: make(map[uint64][]byte),
-		recent: make(map[uint64][32]byte), ready: make(chan struct{}, 1), capacity: make(chan struct{}, 1)}
+		posts: make(chan struct{}, h.cfg.MaxPostsPerSession), pushed: make(chan uploadPacket, h.cfg.MaxBufferedPosts)}
 	c.writePacket = func(p []byte) error {
 		if err := s.send(p); err != nil {
 			return err
@@ -287,7 +317,7 @@ func (h *Handler) serveDown(w http.ResponseWriter, r *http.Request, id, principa
 		h.wake()
 	}
 	h.mu.Unlock()
-	go s.pump(h.cfg.MaxQueuedPackets + h.cfg.MaxReorderPackets + 1)
+	go s.reorder(h.cfg.MaxBufferedPosts)
 	go s.watchIdle(h.cfg.SessionIdleTimeout)
 	for {
 		select {
@@ -381,28 +411,35 @@ func (h *Handler) serveUp(w http.ResponseWriter, r *http.Request, id, principal 
 		http.Error(w, "invalid sequence", http.StatusBadRequest)
 		return
 	}
-	if r.ContentLength > int64(h.cfg.MaxPacketBytes) {
+	if r.ContentLength > int64(h.cfg.MaxEachPostBytes) {
 		http.Error(w, "packet too large", http.StatusRequestEntityTooLarge)
 		return
 	}
-	select {
-	case h.postSlots <- struct{}{}:
-		defer func() { <-h.postSlots }()
-	default:
-		http.Error(w, "upload limit", http.StatusTooManyRequests)
-		return
-	}
-	select {
-	case s.posts <- struct{}{}:
-		defer func() { <-s.posts }()
-	default:
-		http.Error(w, "session upload limit", http.StatusTooManyRequests)
-		return
-	}
-	rc := http.NewResponseController(w)
 	postCtx, cancel := context.WithTimeout(r.Context(), h.cfg.PostTimeout)
 	defer cancel()
-	if err := rc.SetReadDeadline(time.Now().Add(h.cfg.PostTimeout)); err != nil {
+	// Excess POSTs wait for a slot instead of failing: a pipelined client treats
+	// any failed POST as a lost byte range and closes the whole connection. The
+	// session slot comes first so a stalled session cannot hold global slots.
+	if status := s.acquire(postCtx, s.posts, h.closed); status != 0 {
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+	defer func() { <-s.posts }()
+	if status := s.acquire(postCtx, h.postSlots, h.closed); status != 0 {
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+	holdingGlobal := true
+	releaseGlobal := func() {
+		if holdingGlobal {
+			holdingGlobal = false
+			<-h.postSlots
+		}
+	}
+	defer releaseGlobal()
+	rc := http.NewResponseController(w)
+	deadline, _ := postCtx.Deadline()
+	if err := rc.SetReadDeadline(deadline); err != nil {
 		http.Error(w, "read deadline unavailable", http.StatusInternalServerError)
 		return
 	}
@@ -423,7 +460,7 @@ func (h *Handler) serveUp(w http.ResponseWriter, r *http.Request, id, principal 
 		return
 	default:
 	}
-	packet, err := io.ReadAll(io.LimitReader(r.Body, int64(h.cfg.MaxPacketBytes)+1))
+	packet, err := io.ReadAll(io.LimitReader(r.Body, int64(h.cfg.MaxEachPostBytes)+1))
 	if err != nil {
 		http.Error(w, "invalid upload", http.StatusBadRequest)
 		return
@@ -432,114 +469,89 @@ func (h *Handler) serveUp(w http.ResponseWriter, r *http.Request, id, principal 
 		http.Error(w, "empty packet", http.StatusBadRequest)
 		return
 	}
-	if len(packet) > h.cfg.MaxPacketBytes {
+	if len(packet) > h.cfg.MaxEachPostBytes {
 		http.Error(w, "packet too large", http.StatusRequestEntityTooLarge)
 		return
 	}
-	status := s.receiveWait(postCtx, seq, packet, h.cfg.MaxReorderPackets)
-	if status != http.StatusNoContent {
-		http.Error(w, http.StatusText(status), status)
+	// The global slot bounds concurrent body reads. Waiting for this session's
+	// queue below must not starve other sessions.
+	releaseGlobal()
+	select {
+	case s.pushed <- uploadPacket{seq: seq, payload: packet}:
+	case <-postCtx.Done():
+		http.Error(w, "upload queue timeout", http.StatusRequestTimeout)
+		return
+	case <-s.c.done:
+		http.Error(w, "session closed", http.StatusGone)
 		return
 	}
 	s.touch()
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *serverSession) receiveWait(ctx context.Context, seq uint64, packet []byte, window int) int {
-	for {
-		status := s.receive(seq, packet, window)
-		if status != http.StatusTooManyRequests {
-			return status
-		}
-		select {
-		case <-s.capacity:
-		case <-ctx.Done():
-			return http.StatusRequestTimeout
-		case <-s.c.done:
-			return http.StatusGone
-		}
-	}
-}
-
-func (s *serverSession) receive(seq uint64, packet []byte, window int) int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *serverSession) acquire(ctx context.Context, slots chan struct{}, closed <-chan struct{}) int {
 	select {
+	case slots <- struct{}{}:
+		return 0
+	case <-ctx.Done():
+		return http.StatusRequestTimeout
 	case <-s.c.done:
 		return http.StatusGone
-	default:
+	case <-closed:
+		return http.StatusServiceUnavailable
 	}
-	digest := sha256.Sum256(packet)
-	if seq < s.next {
-		if old, ok := s.recent[seq]; ok && old == digest {
-			return http.StatusNoContent
-		}
-		return http.StatusConflict
-	}
-	if old, ok := s.packets[seq]; ok {
-		if sha256.Sum256(old) == digest {
-			return http.StatusNoContent
-		}
-		return http.StatusConflict
-	}
-	if seq-s.next > uint64(window) {
-		if seq == s.acceptedNext {
-			return http.StatusTooManyRequests
-		}
-		return http.StatusConflict
-	}
-	if len(s.packets) >= window+1 {
-		return http.StatusTooManyRequests
-	}
-	s.packets[seq] = packet
-	for {
-		_, pending := s.packets[s.acceptedNext]
-		_, delivered := s.recent[s.acceptedNext]
-		if !pending && !delivered {
-			break
-		}
-		s.acceptedNext++
-	}
-	select {
-	case s.ready <- struct{}{}:
-	default:
-	}
-	return http.StatusNoContent
 }
 
-func (s *serverSession) pump(historyLimit int) {
+// reorder is Xray's uploadQueue.Read run as a pump. It delivers packets in
+// sequence order and drops packets older than the next sequence, so duplicate
+// POSTs are idempotent. More than maxPackets out-of-order packets close the
+// session instead of buffering without bound. Delivery blocks until the reader
+// consumes, which fills pushed and holds new POSTs: that is the backpressure.
+func (s *serverSession) reorder(maxPackets int) {
+	var waiting uploadHeap
+	var next uint64
 	for {
-		s.mu.Lock()
-		packet, ok := s.packets[s.next]
-		if ok {
-			delete(s.packets, s.next)
-			s.recent[s.next] = sha256.Sum256(packet)
-			s.history = append(s.history, s.next)
-			if len(s.history) > historyLimit {
-				delete(s.recent, s.history[0])
-				s.history = s.history[1:]
+		for waiting.Len() > 0 {
+			p := heap.Pop(&waiting).(uploadPacket)
+			if p.seq < next {
+				continue
 			}
-			s.next++
-			select {
-			case s.capacity <- struct{}{}:
-			default:
+			if p.seq == next {
+				select {
+				case s.c.in <- p.payload:
+				case <-s.c.done:
+					return
+				}
+				next++
+				continue
 			}
-		}
-		s.mu.Unlock()
-		if ok {
-			select {
-			case s.c.in <- packet:
-			case <-s.c.done:
+			if waiting.Len() > maxPackets {
+				s.c.closeWithError(errors.New("xhttp: packet queue is too large"))
 				return
 			}
-			continue
+			heap.Push(&waiting, p)
+			break
 		}
 		select {
-		case <-s.ready:
+		case p := <-s.pushed:
+			heap.Push(&waiting, p)
 		case <-s.c.done:
 			return
 		}
 	}
+}
+
+type uploadHeap []uploadPacket
+
+func (h uploadHeap) Len() int           { return len(h) }
+func (h uploadHeap) Less(i, j int) bool { return h[i].seq < h[j].seq }
+func (h uploadHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *uploadHeap) Push(x any)        { *h = append(*h, x.(uploadPacket)) }
+func (h *uploadHeap) Pop() any {
+	old := *h
+	x := old[len(old)-1]
+	*h = old[:len(old)-1]
+	return x
 }
 
 func (s *serverSession) touch() {

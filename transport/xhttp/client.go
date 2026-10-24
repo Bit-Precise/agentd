@@ -12,8 +12,10 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -22,17 +24,28 @@ type ClientConfig struct {
 	// because the GET response lasts for the connection lifetime. Redirects are
 	// disabled regardless of its CheckRedirect setting. Clients must support at
 	// least two connections to the origin for HTTP/1.1.
-	HTTPClient       *http.Client
-	Headers          http.Header
-	AllowHTTP        bool // explicit loopback-only development exception
-	PacketSize       int
+	HTTPClient *http.Client
+	Headers    http.Header
+	AllowHTTP  bool // explicit loopback-only development exception
+	// MaxEachPostBytes is Xray's scMaxEachPostBytes: the largest POST body and
+	// the size of the upload buffer. It must not exceed the server's value.
+	MaxEachPostBytes int
+	// MinPostsInterval is Xray's scMinPostsIntervalMs: the minimum time between
+	// the starts of two POSTs. It bounds the request rate seen by a CDN.
+	MinPostsInterval time.Duration
+	// MaxQueuedPackets bounds received download chunks not yet read.
 	MaxQueuedPackets int
 	HandshakeTimeout time.Duration
 	PostTimeout      time.Duration
 }
 
-// Dial establishes a modified agents packet-up connection. ctx controls BOTH
+// Dial establishes an agents packet-up connection. ctx controls BOTH
 // establishment and connection lifetime. Cancelling it closes the connection.
+//
+// Uploads follow Xray-core's packet-up client: Write only buffers bytes, an
+// uploader takes everything buffered at once (so small writes coalesce), and
+// each POST runs concurrently, the next one starting as soon as the previous
+// request has been written. A failed POST closes the connection.
 func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Host == "" || u.User != nil || u.Fragment != "" {
@@ -45,8 +58,11 @@ func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, err
 	if err != nil || query.Has(SessionQuery) || query.Has(SequenceQuery) {
 		return nil, errors.New("xhttp: invalid or reserved endpoint query")
 	}
-	if cfg.PacketSize == 0 {
-		cfg.PacketSize = defaultPacket
+	if cfg.MaxEachPostBytes == 0 {
+		cfg.MaxEachPostBytes = defaultMaxEachPostBytes
+	}
+	if cfg.MinPostsInterval == 0 {
+		cfg.MinPostsInterval = defaultMinPostsInterval
 	}
 	if cfg.MaxQueuedPackets == 0 {
 		cfg.MaxQueuedPackets = 8
@@ -57,7 +73,8 @@ func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, err
 	if cfg.PostTimeout == 0 {
 		cfg.PostTimeout = 15 * time.Second
 	}
-	if cfg.PacketSize < 1 || cfg.PacketSize > 4<<20 || cfg.MaxQueuedPackets < 1 || cfg.MaxQueuedPackets > 1024 || cfg.HandshakeTimeout < 0 || cfg.PostTimeout < 0 {
+	if cfg.MaxEachPostBytes < 1 || cfg.MaxEachPostBytes > 16<<20 || cfg.MinPostsInterval < 0 || cfg.MinPostsInterval > time.Minute ||
+		cfg.MaxQueuedPackets < 1 || cfg.MaxQueuedPackets > 1024 || cfg.HandshakeTimeout < 0 || cfg.PostTimeout < 0 {
 		return nil, errors.New("xhttp: invalid client limit")
 	}
 	client := http.Client{}
@@ -91,7 +108,7 @@ func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, err
 	}
 	query.Set(SessionQuery, hex.EncodeToString(idBytes))
 	u.RawQuery = query.Encode()
-	c := newConn(ctx, cfg.MaxQueuedPackets, cfg.PacketSize)
+	c := newConn(ctx, cfg.MaxQueuedPackets, cfg.MaxEachPostBytes)
 	c.remote = address(u.Host)
 	c.local = address("xhttp-client")
 	request, err := http.NewRequestWithContext(c.ctx, http.MethodGet, u.String(), nil)
@@ -122,7 +139,7 @@ func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, err
 		if ownedTransport != nil {
 			ownedTransport.CloseIdleConnections()
 		}
-		return nil, fmt.Errorf("xhttp: GET rejected (status %d or version mismatch)", response.StatusCode)
+		return nil, fmt.Errorf("xhttp: GET rejected (status %d or transport version %q, want %q)", response.StatusCode, response.Header.Get(VersionHeader), Version)
 	}
 	c.onClose = func() {
 		response.Body.Close()
@@ -136,20 +153,16 @@ func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, err
 		return nil, c.closedError()
 	default:
 	}
-	var seq uint64
-	c.writePacket = func(packet []byte) error {
-		if seq == math.MaxUint64 {
-			c.Close()
-			return errors.New("xhttp: sequence exhausted")
-		}
+	post := func(seq uint64, packet []byte, wrote func()) error {
 		postURL := *u
 		q := postURL.Query()
 		q.Set(SequenceQuery, strconv.FormatUint(seq, 10))
 		postURL.RawQuery = q.Encode()
-		opCtx, cancel := context.WithCancelCause(c.ctx)
-		finished := make(chan struct{})
-		go watchWriteDeadline(opCtx, c.wd, cfg.PostTimeout, finished, cancel)
-		defer func() { close(finished); cancel(context.Canceled) }()
+		// Closing the connection cancels its in-flight POSTs. PostTimeout bounds
+		// a POST that never completes, which then closes the connection.
+		opCtx, cancel := context.WithTimeout(c.ctx, cfg.PostTimeout)
+		defer cancel()
+		opCtx = httptrace.WithClientTrace(opCtx, &httptrace.ClientTrace{WroteRequest: func(httptrace.WroteRequestInfo) { wrote() }})
 		req, err := http.NewRequestWithContext(opCtx, http.MethodPost, postURL.String(), bytes.NewReader(packet))
 		if err != nil {
 			return err
@@ -157,32 +170,73 @@ func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, err
 		req.Header = headers.Clone()
 		req.Header.Set("Content-Type", "application/octet-stream")
 		resp, err := client.Do(req)
-		if err == nil {
-			// The protocol response is empty. Bound draining even for a broken peer.
-			_, drainErr := io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
-			resp.Body.Close()
-			if resp.StatusCode != http.StatusNoContent || resp.Header.Get(VersionHeader) != Version {
-				err = fmt.Errorf("xhttp: POST rejected (status %d or version mismatch)", resp.StatusCode)
-			} else {
-				err = drainErr
-			}
-		}
 		if err != nil {
-			if cause := context.Cause(opCtx); cause != nil {
-				err = cause
-			}
-			// Delivery is uncertain after a failed POST. Never retry or continue with
-			// a gap in the byte stream; close this logical connection instead.
-			c.closeWithError(err)
-			return err
+			return fmt.Errorf("xhttp: upload failed: %w", err)
 		}
-		seq++
-		return nil
+		// The protocol response is empty. Bound draining even for a broken peer.
+		_, drainErr := io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNoContent || resp.Header.Get(VersionHeader) != Version {
+			return fmt.Errorf("xhttp: POST rejected (status %d or version mismatch)", resp.StatusCode)
+		}
+		return drainErr
 	}
+	upload := newUploadPipe(cfg.MaxEachPostBytes)
+	c.writePacket = func(packet []byte) error { return upload.put(c, packet) }
 	c.startContextWatch()
 	go func() {
+		var seq uint64
+		var lastPost time.Time
 		for {
-			packet := make([]byte, cfg.PacketSize)
+			// Everything buffered since the previous POST goes out together.
+			data, ok := upload.take(c.done)
+			if !ok {
+				return
+			}
+			for len(data) > 0 {
+				chunk := data[:min(len(data), cfg.MaxEachPostBytes)]
+				data = data[len(chunk):]
+				if seq == math.MaxUint64 {
+					c.closeWithError(errors.New("xhttp: sequence exhausted"))
+					return
+				}
+				current := seq
+				seq++
+				if wait := cfg.MinPostsInterval - time.Since(lastPost); wait > 0 {
+					timer := time.NewTimer(wait)
+					select {
+					case <-timer.C:
+					case <-c.done:
+						timer.Stop()
+						return
+					}
+				}
+				lastPost = time.Now()
+				wrote := make(chan struct{})
+				var once sync.Once
+				markWrote := func() { once.Do(func() { close(wrote) }) }
+				go func() {
+					err := post(current, chunk, markWrote)
+					markWrote()
+					if err != nil {
+						// Delivery is uncertain after a failed POST. Never continue
+						// with a gap in the byte stream; close this connection.
+						c.closeWithError(err)
+					}
+				}()
+				// Start the next POST once this request is on the wire, not after
+				// its response, so uploads are not limited to one per round trip.
+				select {
+				case <-wrote:
+				case <-c.done:
+					return
+				}
+			}
+		}
+	}()
+	go func() {
+		for {
+			packet := make([]byte, downloadChunk)
 			n, err := response.Body.Read(packet)
 			if n > 0 {
 				select {
@@ -200,27 +254,78 @@ func Dial(ctx context.Context, endpoint string, cfg ClientConfig) (net.Conn, err
 	return c, nil
 }
 
-func watchWriteDeadline(ctx context.Context, d *deadline, maxDuration time.Duration, finished <-chan struct{}, cancel context.CancelCauseFunc) {
-	limit := time.Now().Add(maxDuration)
+// uploadPipe mirrors Xray's size-limited upload pipe. Write returns once its
+// bytes are buffered and blocks while a full POST's worth is waiting; the
+// uploader removes everything buffered at once.
+type uploadPipe struct {
+	mu    sync.Mutex
+	buf   []byte
+	limit int
+	data  chan struct{}
+	space chan struct{}
+}
+
+func newUploadPipe(limit int) *uploadPipe {
+	return &uploadPipe{limit: limit, data: make(chan struct{}, 1), space: make(chan struct{}, 1)}
+}
+
+// put runs under the connection's write lock, so it has a single caller. The
+// write deadline bounds only the wait for buffer space.
+func (p *uploadPipe) put(c *conn, chunk []byte) error {
 	for {
-		at, changed := d.watch()
-		if at.IsZero() || limit.Before(at) {
-			at = limit
+		select {
+		case <-c.done:
+			return c.closedError()
+		default:
+		}
+		p.mu.Lock()
+		if len(p.buf) == 0 || len(p.buf)+len(chunk) <= p.limit {
+			p.buf = append(p.buf, chunk...)
+			p.mu.Unlock()
+			select {
+			case p.data <- struct{}{}:
+			default:
+			}
+			return nil
+		}
+		p.mu.Unlock()
+		at, changed := c.wd.watch()
+		if !at.IsZero() && !time.Now().Before(at) {
+			return &timeoutError{"write"}
 		}
 		tick, stop := timerFor(at)
 		select {
+		case <-p.space:
+		case <-changed:
 		case <-tick:
 			stop()
-			cancel(&timeoutError{"write"})
-			return
-		case <-changed:
-		case <-finished:
+			return &timeoutError{"write"}
+		case <-c.done:
 			stop()
-			return
-		case <-ctx.Done():
-			stop()
-			return
+			return c.closedError()
 		}
 		stop()
+	}
+}
+
+func (p *uploadPipe) take(done <-chan struct{}) ([]byte, bool) {
+	for {
+		p.mu.Lock()
+		if len(p.buf) > 0 {
+			data := p.buf
+			p.buf = nil
+			p.mu.Unlock()
+			select {
+			case p.space <- struct{}{}:
+			default:
+			}
+			return data, true
+		}
+		p.mu.Unlock()
+		select {
+		case <-p.data:
+		case <-done:
+			return nil, false
+		}
 	}
 }

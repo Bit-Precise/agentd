@@ -5,6 +5,13 @@ Protocol/design reference:
   https://github.com/XTLS/Xray-core/tree/0f127f934c6d7c10e4bb6acbe98033db9e5fd922/transport/internet/splithttp
   Upstream license: Mozilla Public License 2.0 (see LICENSE in this directory).
 
+Packet-up upload design (buffered coalescing writes, concurrent POSTs started
+once the previous request is written, minimum POST interval, sequence-ordered
+upload queue that drops stale packets and closes on an oversized backlog, and
+the scMaxEachPostBytes/scMaxBufferedPosts/scMinPostsIntervalMs defaults):
+  XTLS/Xray-core, transport/internet/splithttp/dialer.go and upload_queue.go
+  https://github.com/XTLS/Xray-core/tree/7da5dae6502b787fc6d903863e9a6c5043d107a2/transport/internet/splithttp
+
 This directory implements a rewritten, modified packet-up transport in Go's
 standard library. It follows the upstream split HTTP idea (long GET download,
 sequenced bounded POST upload and bounded reordering), with a different wire

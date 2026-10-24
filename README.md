@@ -52,7 +52,7 @@ make race
 python3 -m unittest discover -s scripts -p 'test_*.py' -v
 ```
 
-协议 v3 支持有界短租约续期，凭据文件为 v2；取消审批后需与 agents 服务端同时升级，不能与旧版本混用。详见 [connection](connection/README.md) 与 [XHTTP](transport/xhttp/README.md)。
+协议 v3 支持有界短租约续期，凭据文件为 v2；取消审批后需与 agents 服务端同时升级，不能与旧版本混用。XHTTP 传输为版本 2，上行沿用 Xray packet-up 的合并写入与并发 POST；Edge 仍接受版本 1 客户端，因此先升级 Edge 再升级 agentd。详见 [connection](connection/README.md) 与 [XHTTP](transport/xhttp/README.md)。
 
 当前实现 HTTP CONNECT/SOCKS 与 TLS 域名出口；TUN 运行时明确拒绝，WSS 尚未实现。个人设备用 `agentd login` 接入（OAuth Device Flow，在浏览器确认 Workspace 与本人/服务账号身份）；无人值守设备用服务账号的注册密钥执行 `agentd enroll`。
 
