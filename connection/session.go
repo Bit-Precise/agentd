@@ -67,10 +67,11 @@ func newSession(ctx context.Context, conn net.Conn, principal Principal, cfg Con
 	ycfg.LogOutput = io.Discard // The caller owns structured, credential-safe logs.
 	var mux *yamux.Session
 	var err error
+	framed := &frameWriter{Conn: conn}
 	if server {
-		mux, err = yamux.Server(conn, ycfg)
+		mux, err = yamux.Server(framed, ycfg)
 	} else {
-		mux, err = yamux.Client(conn, ycfg)
+		mux, err = yamux.Client(framed, ycfg)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("start multiplexer: %w", err)
