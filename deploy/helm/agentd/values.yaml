@@ -2,7 +2,7 @@
 image:
   registry: ghcr.io
   repository: bit-precise/agentd
-  tag: ""                 # defaults to the chart appVersion
+  tag: ""                 # defaults to the chart appVersion (edge in the repository, the version in releases)
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 

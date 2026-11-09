@@ -197,6 +197,7 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=sha,format=short
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/v2' }}
       - uses: docker/build-push-action@v6
         with:
           context: .

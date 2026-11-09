@@ -3,5 +3,7 @@ name: agentd
 description: agentd control plane (agentserver with its web console), data plane relays (agentrelay) and an optional PostgreSQL
 type: application
 version: 0.1.0
-appVersion: "0.1.0"
+# The chart in the repository runs the latest CI images (tag edge); the
+# release workflow packages it with the release version instead.
+appVersion: "edge"
 keywords: [agentd, relay, zero-trust, mcp]
