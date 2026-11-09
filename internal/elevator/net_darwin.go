@@ -92,29 +92,31 @@ func scutilArray(out, key string) []string {
 	return vals
 }
 
-type darwinDNS struct {
-	service string
+// dnsDict is the part of a DNS dictionary we save and restore.
+type dnsDict struct {
+	exists  bool
 	servers []string
 	search  []string
 	domain  string
 }
 
-func readDNS() (darwinDNS, error) {
-	svc := scutilScalar(scutilShow("State:/Network/Global/IPv4"), "PrimaryService")
-	if svc == "" {
-		return darwinDNS{}, errors.New("no primary network service")
+func readDict(key string) dnsDict {
+	out := scutilShow(key)
+	if !strings.Contains(out, "<dictionary>") {
+		return dnsDict{}
 	}
-	out := scutilShow("State:/Network/Service/" + svc + "/DNS")
-	return darwinDNS{service: svc, servers: scutilArray(out, "ServerAddresses"), search: scutilArray(out, "SearchDomains"), domain: scutilScalar(out, "DomainName")}, nil
+	return dnsDict{exists: true, servers: scutilArray(out, "ServerAddresses"), search: scutilArray(out, "SearchDomains"), domain: scutilScalar(out, "DomainName")}
 }
 
-func writeDNS(d darwinDNS, servers []string) error {
-	key := "State:/Network/Service/" + d.service + "/DNS"
-	if len(servers) == 0 {
+func writeDict(key string, d dnsDict) error {
+	if !d.exists {
 		_, err := runIn("open\nremove "+key+"\nquit\n", "scutil")
 		return err
 	}
-	script := "open\nd.init\nd.add ServerAddresses * " + strings.Join(servers, " ") + "\n"
+	script := "open\nd.init\n"
+	if len(d.servers) > 0 {
+		script += "d.add ServerAddresses * " + strings.Join(d.servers, " ") + "\n"
+	}
 	if len(d.search) > 0 {
 		script += "d.add SearchDomains * " + strings.Join(d.search, " ") + "\n"
 	}
@@ -123,9 +125,64 @@ func writeDNS(d darwinDNS, servers []string) error {
 	}
 	script += "set " + key + "\nquit\n"
 	_, err := runIn(script, "scutil")
+	return err
+}
+
+// darwinDNS is the primary service's DNS as found before the takeover. A
+// manually configured service (Setup:) wins over the dynamic one (State:),
+// so both keys are overridden and both are restored exactly. The Setup:
+// override lives only in the dynamic store: a reboot or a preferences apply
+// resets it even if the elevator dies.
+type darwinDNS struct {
+	service string
+	state   dnsDict
+	setup   dnsDict
+}
+
+func (d darwinDNS) upstream() []string {
+	if d.setup.exists && len(d.setup.servers) > 0 {
+		return d.setup.servers
+	}
+	return d.state.servers
+}
+
+func readDNS() (darwinDNS, error) {
+	svc := scutilScalar(scutilShow("State:/Network/Global/IPv4"), "PrimaryService")
+	if svc == "" {
+		return darwinDNS{}, errors.New("no primary network service")
+	}
+	return darwinDNS{service: svc, state: readDict("State:/Network/Service/" + svc + "/DNS"), setup: readDict("Setup:/Network/Service/" + svc + "/DNS")}, nil
+}
+
+func flushDNS() {
 	_, _ = run("dscacheutil", "-flushcache")
 	_, _ = run("killall", "-HUP", "mDNSResponder")
+}
+
+// takeOverDNS points the primary service at the built-in DNS.
+func takeOverDNS(d darwinDNS) error {
+	ours := []string{"198.18.0.2"}
+	st := d.state
+	st.exists, st.servers = true, ours
+	err := writeDict("State:/Network/Service/"+d.service+"/DNS", st)
+	if d.setup.exists && len(d.setup.servers) > 0 {
+		su := d.setup
+		su.servers = ours
+		if e := writeDict("Setup:/Network/Service/"+d.service+"/DNS", su); e != nil && err == nil {
+			err = e
+		}
+	}
+	flushDNS()
 	return err
+}
+
+// restoreDNS writes back what readDNS found.
+func restoreDNS(d darwinDNS) {
+	_ = writeDict("State:/Network/Service/"+d.service+"/DNS", d.state)
+	if d.setup.exists && len(d.setup.servers) > 0 {
+		_ = writeDict("Setup:/Network/Service/"+d.service+"/DNS", d.setup)
+	}
+	flushDNS()
 }
 
 func setup(mtu int, overrideDNS, fakeOnly bool, log *slog.Logger) (*session, error) {
@@ -137,7 +194,7 @@ func setup(mtu int, overrideDNS, fakeOnly bool, log *slog.Logger) (*session, err
 	if err != nil {
 		return nil, err
 	}
-	upstream := saved.servers
+	upstream := saved.upstream()
 	if len(upstream) == 0 && phys.Gateway != "" {
 		upstream = []string{phys.Gateway}
 	}
@@ -191,10 +248,10 @@ func setup(mtu int, overrideDNS, fakeOnly bool, log *slog.Logger) (*session, err
 	}
 	dnsState := saved
 	if overrideDNS {
-		if err := writeDNS(saved, []string{"198.18.0.2"}); err != nil {
+		if err := takeOverDNS(saved); err != nil {
 			log.Warn("override system DNS", "err", err)
 		}
-		undo = append(undo, func() { _ = writeDNS(dnsState, dnsState.servers) })
+		undo = append(undo, func() { restoreDNS(dnsState) })
 	}
 	cur := phys
 	return &session{file: f, name: name, physical: phys, dns: upstream, cleanup: cleanup,
@@ -204,16 +261,16 @@ func setup(mtu int, overrideDNS, fakeOnly bool, log *slog.Logger) (*session, err
 				return cur, upstream, false
 			}
 			// A new primary service: give the old one its DNS back and take over the new one.
-			if overrideDNS {
-				_ = writeDNS(dnsState, dnsState.servers)
-			}
-			if d, err := readDNS(); err == nil {
+			if d, err := readDNS(); err == nil && d.service != dnsState.service {
+				if overrideDNS {
+					restoreDNS(dnsState)
+				}
 				dnsState = d
-				if len(d.servers) > 0 && d.servers[0] != "198.18.0.2" {
-					upstream = d.servers
+				if up := d.upstream(); len(up) > 0 && up[0] != "198.18.0.2" {
+					upstream = up
 				}
 				if overrideDNS {
-					_ = writeDNS(d, []string{"198.18.0.2"})
+					_ = takeOverDNS(d)
 				}
 			}
 			cur = p

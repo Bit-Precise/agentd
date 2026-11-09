@@ -61,11 +61,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - { os: ubuntu-latest, override_dns: "1" }
+          - { os: macos-latest, override_dns: "1" }
+          - { os: windows-latest, override_dns: "0" }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
       AGENTD_TUN_E2E: "1"
+      AGENTD_TUN_OVERRIDE_DNS: ${{ matrix.override_dns }}
       AGENTD_REQUIRE_POSTGRES: "1"
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +83,7 @@ jobs:
           curl -sSL -o wintun.zip https://www.wintun.net/builds/wintun-0.14.1.zip
           echo "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51  wintun.zip" | sha256sum -c -
           unzip -q wintun.zip
-          echo "AGENTD_WINTUN_DLL=$PWD/wintun/bin/amd64/wintun.dll" >> "$GITHUB_ENV"
+          echo "AGENTD_WINTUN_DLL=$(pwd -W)/wintun/bin/amd64/wintun.dll" >> "$GITHUB_ENV"
       - name: tun end-to-end
         run: go test -count=1 -run TestTUNEndToEnd -v ./internal/sim/
 

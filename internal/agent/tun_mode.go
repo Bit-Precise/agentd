@@ -175,16 +175,18 @@ func (a *Agent) startTUN(ctx context.Context, cfg *Config) error {
 		}
 		// The elevator went away: it has restored routes and DNS.
 		a.tunDial.Store(nil)
-		t.st.Close()
 		sess.Close()
+		t.st.Close()
 		if ctx.Err() == nil {
 			a.log.Error("lost the elevator; TUN mode stopped (proxy entry points keep working)")
 		}
 	}()
 	go func() {
 		<-ctx.Done()
-		t.st.Close()
+		// Release the device first: the elevator restores routes and DNS as
+		// soon as the session ends, whatever the stack teardown does.
 		sess.Close()
+		t.st.Close()
 	}()
 	return nil
 }

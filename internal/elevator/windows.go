@@ -74,6 +74,8 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() { <-ctx.Done(); ln.Close() }()
 	s.Log.Info("elevator listening", "socket", s.Socket, "sid", s.AllowSID)
 	busy := make(chan struct{}, 1)
+	var wg sync.WaitGroup
+	defer wg.Wait() // sessions remove the adapter when they end
 	for {
 		c, err := ln.Accept()
 		if err != nil {
@@ -82,7 +84,11 @@ func (s *Server) Run(ctx context.Context) error {
 			}
 			return err
 		}
-		go s.handle(ctx, c, busy)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.handle(ctx, c, busy)
+		}()
 	}
 }
 

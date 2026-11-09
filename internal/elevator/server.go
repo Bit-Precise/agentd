@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -53,6 +54,10 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() { <-ctx.Done(); ln.Close() }()
 	s.Log.Info("elevator listening", "socket", s.Socket, "uid", s.AllowUID)
 	busy := make(chan struct{}, 1)
+	// Sessions restore routes and DNS when they end; wait for that before
+	// exiting on SIGTERM.
+	var wg sync.WaitGroup
+	defer wg.Wait()
 	for {
 		c, err := ln.AcceptUnix()
 		if err != nil {
@@ -61,7 +66,11 @@ func (s *Server) Run(ctx context.Context) error {
 			}
 			return err
 		}
-		go s.handle(ctx, c, busy)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.handle(ctx, c, busy)
+		}()
 	}
 }
 

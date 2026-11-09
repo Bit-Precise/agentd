@@ -70,6 +70,14 @@ func TestTUNEndToEnd(t *testing.T) {
 	sock := filepath.Join(os.TempDir(), fmt.Sprintf("agentd-e2e-%d.sock", os.Getpid()))
 	startElevator(t, exe, sock)
 	t.Setenv("AGENTD_ELEVATOR_SOCKET", sock)
+	override := os.Getenv("AGENTD_TUN_OVERRIDE_DNS") == "1"
+	if override {
+		// Runs after the laptop stops (cleanups are LIFO): the elevator
+		// must have given the system its DNS back.
+		t.Cleanup(func() {
+			s.eventually("system DNS restored", func() bool { return !systemDNSIsOurs() })
+		})
+	}
 	laptop := s.join("home", "laptop", `
   ingress:
     enabled: true
@@ -78,7 +86,7 @@ func TestTUNEndToEnd(t *testing.T) {
       enabled: true
       capture: `+capture+`
       dns:
-        override_system: false
+        override_system: `+strconv.FormatBool(override)+`
 `)
 	s.eventually("tun mode on", func() bool { _, ok := laptop.a.Status()["tun"]; return ok })
 	s.eventually("the route reaches the laptop", func() bool { return len(laptop.a.Routes().Routes) == 1 })
@@ -98,6 +106,17 @@ func TestTUNEndToEnd(t *testing.T) {
 		fake = addrs[0].Unmap()
 		return netip.MustParsePrefix("198.18.0.0/15").Contains(fake)
 	})
+	if override && runtime.GOOS != "windows" {
+		if !systemDNSIsOurs() {
+			t.Fatal("the system resolver does not point at the built-in DNS")
+		}
+		// The platform resolver (not Go's) must return the fake address.
+		sys := &net.Resolver{PreferGo: false}
+		s.eventually("the system resolver returns the fake address", func() bool {
+			addrs, err := sys.LookupNetIP(ctx, "ip4", "web.campus.test")
+			return err == nil && len(addrs) > 0 && addrs[0].Unmap() == fake
+		})
+	}
 	c, err := net.DialTimeout("tcp", netip.AddrPortFrom(fake, 443).String(), 10*time.Second)
 	if err != nil {
 		t.Fatalf("connect to the fake address: %v", err)
@@ -197,4 +216,19 @@ func startElevator(t *testing.T, exe, sock string) {
 	logf.Seek(0, 0)
 	b, _ := io.ReadAll(logf)
 	t.Fatalf("the elevator did not come up:\n%s", b)
+}
+
+// systemDNSIsOurs reports whether the system resolver points at the built-in
+// DNS (198.18.0.2).
+func systemDNSIsOurs() bool {
+	switch runtime.GOOS {
+	case "darwin":
+		out, _ := exec.Command("scutil", "--dns").Output()
+		return strings.Contains(string(out), "198.18.0.2")
+	case "linux":
+		out, _ := exec.Command("resolvectl", "dns").CombinedOutput()
+		b, _ := os.ReadFile("/etc/resolv.conf")
+		return strings.Contains(string(out), "198.18.0.2") || strings.Contains(string(b), "198.18.0.2")
+	}
+	return false
 }
