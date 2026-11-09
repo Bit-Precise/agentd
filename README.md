@@ -70,20 +70,20 @@ make helm-lint
 
 `internal/sim` 在一个进程里跑 agentserver、agentrelay 与多个 agentd，覆盖加入、经出口的 TLS、策略拒绝、远程任务、MCP 与经 edge 的 HTTP 服务。
 
-## TUN 模式（macOS、Linux）
+## TUN 模式（macOS、Linux、Windows）
 
 浏览器和 ssh 不做任何代理配置即可走分流：
 
 ```sh
-sudo agentd elevator install      # 每台设备一次：特权助手，只服务当前用户
+sudo agentd elevator install      # macOS、Linux：每台设备一次，特权助手只服务当前用户
+agentd elevator install           # Windows：在管理员 shell 里运行，注册系统服务并取得 wintun.dll
 # 在实例配置里打开 roles.ingress.tun.enabled: true，然后重启 agentd
 agentd status                     # tun 一节显示设备、物理接口、DNS 计数
 ```
 
-elevator 创建 TUN 设备、接管默认路由与系统 DNS，把设备交给非特权的 agentd；分流表判为交给 relay 的域名与服务域名由内置 DNS 答 fake-IP（198.18.0.0/15、2001:2::/48），其他流量按 SNI 嗅探后直连或转发，QUIC 对这些域名丢弃以回退 TCP。agentd 退出时 elevator 恢复路由与 DNS。Linux 上已在容器里端到端验证；macOS 的实现（utun、route、scutil）需要 root，未在自动化测试里运行。
+elevator 创建 TUN 设备（Linux 的 `agentd0`、macOS 的 utun、Windows 的 wintun 适配器）、接管路由与系统 DNS，把设备交给非特权的 agentd（Windows 上由 elevator 转发数据包）。分流表判为交给 relay 的域名与服务域名由内置 DNS 答 fake-IP（198.18.0.0/15、2001:2::/48），其他流量按 SNI 嗅探后直连或转发，QUIC 对这些域名丢弃以回退 TCP。`tun.capture: fakeip` 只接管 fake-IP 段、不碰默认路由。agentd 退出时 elevator 恢复路由与 DNS。三个平台都由 CI 在 GitHub 的 runner 上用真实设备做端到端测试。
 
 ## 尚未实现
 
-- Windows 的 TUN 模式（wintun，设计文档阶段 4）：Windows 上用 SOCKS5 / HTTP 代理或 `agentd connect`。
 - P2P 直连：协议 v1 只预留了编号（协议 2.6），报文格式需要先在协议里定下来（设计文档阶段 5）。
 - 边缘登录（`user:` / `usergroup:` 主语）与多个 agentserver 副本（阶段 5）。

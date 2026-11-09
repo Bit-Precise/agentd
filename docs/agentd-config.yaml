@@ -85,6 +85,9 @@ roles:
                                    # 在这些端口上跑 TLS 的 via 服务要从列表里删掉该端口
     tun:                           # TUN 模式。设备级资源：一台设备同一时刻只能有一个实例开启，需要先 `agentd elevator install`
       enabled: false               # [默认 false][重启生效]
+      capture: all                 # [默认 all][重启生效] all：接管默认路由（0.0.0.0/1 + 128.0.0.0/1），所有连接都进 TUN，真实 IP 的连接按 SNI 嗅探分流；
+                                   # fakeip：只把 fake-IP 段（198.18.0.0/15、2001:2::/48）路由进 TUN，即只接管经内置 DNS 解析到 fake-IP 的服务域名与 via 域名，
+                                   # 其他流量完全不经过 agentd（类似 split DNS，不嗅探真实 IP 的连接）
       dns:                         # 内置 DNS，只在 TUN 模式存在。它不做任何按 IP 的分流，作用是把域名分流提前到解析阶段：
                                    # 服务域名和分流表判为 via 的域名一律答 fake-IP（198.18.0.0/15、2001:2::/48，按域名哈希固定），
                                    # 这样校外解析不到的内网域名也能建立连接进入 TUN，SSH 这种没有 SNI 的协议也能从 fake-IP 映射拿到域名；
