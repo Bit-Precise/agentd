@@ -1,0 +1,211 @@
+# agentd 实例配置参考（对应设计文档 v0.14、协议规范 v0.5）
+#
+# 位置：实例目录下的 config.yaml。默认实例是 ~/.agentd/config.yaml，其他实例是
+# ~/.agentd/instances/<实例名>/config.yaml（agentd -i <实例名>）。一个实例只属于一个 workspace。
+#
+# 结构约定：
+#   - 监听地址、目标地址一律写成对象 { address | host, port }，不用 "host:port" 字符串，便于以后加字段。
+#   - 同类条目一律写成对象数组（policies、service.servers），不用「名字 → 值」的 map。
+#   - 每个角色有 enabled 开关；整段不写等于 enabled: false。
+#   - 权限只由各提供侧角色的 policies 控制，每条规则是 (public_key, action, target)：
+#       public_key  一把 Ed25519 公钥（节点、组或 workspace 的，base64url 43 字符，可带 agentd:// 前缀），
+#                   或 "*"（任何人：对 egress、executor 与 ssh 服务就是任何成员，对 HTTP 服务还包括未经 ingress 的公网访问者）。
+#                   一条规则一把公钥，多把就多写几条；没有别名，没有 peers 表；公钥用 `agentd peers` 查看目录后复制。
+#       action      allow | deny。显式 deny 优先，其余取 allow 的并集，默认拒绝。
+#       target      按角色：egress 是 proto + domains [+ ports]；executor 是 argv 前缀 [+ stdin / shell]；service 是服务名。
+#   - 每个提供侧角色各自有 policy_source：local 用本角色的 policies；server 用 agentserver 渲染下发的策略，
+#     此时本地 policies 里的 allow 被忽略并告警，deny 仍生效（设备持有者的刹车）。
+#   - 相对路径相对实例目录。
+#
+# 标记约定：
+#   [必填]        缺失则拒绝启动（角色内的「必填」指该角色启用时）
+#   [join 写入]   由 `agentd join <链接>` 写入，一般不手改
+#   [默认 x]      可省略，省略时的取值
+#   [重启生效]    改动后要重启守护进程；未标记的字段 `agentd reload`（或 SIGHUP）即生效
+#   [仅 local]    只在该角色 policy_source: local 时作为授权依据
+#
+# 本文件把五个角色都写出来只是为了展示全部字段；实际节点通常只启用一两个角色。
+# 本机环境类字段（端口、workdir、target 等）永远是本地的，不属于策略。
+
+apiVersion: agentd/v1              # [必填] 配置格式版本，k8s 风格的 <group>/<version>；不认识的值拒绝启动
+kind: AgentdConfiguration          # [必填] 本文件的种类。另外三种：AgentserverConfiguration、AgentrelayConfiguration、Workspace（设计文档 9.1）
+
+# ---------------------------------------------------------------------------
+# 1. metadata：本实例是谁（k8s 风格，name 就是实例名）
+# ---------------------------------------------------------------------------
+metadata:
+  name: laptop                     # [必填][join 写入] 实例名：RFC 1123 label，小写，≤ 63 字符，建议 ≤ 32。
+                                   # 加入时由令牌指定、--name 指定或取清洗后的 hostname；agentserver 改名时自动改写。
+                                   # 私钥不在配置里：固定在实例目录的 node.key（0600），不存在则首次运行生成；换密钥等于换实例，要重新 join
+
+# ---------------------------------------------------------------------------
+# 2. workspace：属于谁、信任谁、经哪个 relay 接入
+# ---------------------------------------------------------------------------
+workspace:
+  domain: home.agentsrv.example.com   # [必填][join 写入] workspace 的基础域名（加入链接的 authority）。
+                                      # 短名（home）是它的第一段；服务域名是 <服务名>.<基础域名>
+  public_key: "Rt7aB…"             # [必填][join 写入] 本 workspace 的 Ed25519 公钥，base64url 43 字符，本实例唯一的信任根：
+                                   # 用它验 relay 证书、每条控制消息（Welcome / Update / PolicyUpdate / Notice）和 workspace 成员证书的签名；
+                                   # 不用于握手。私钥由 agentserver 保管并代签。与加入链接里的 key 相同，不一致时 agentd join 拒绝写入。
+                                   # 节点不需要知道 agentserver 自己的公钥
+  relay:                         # relay 归属 workspace：由 agentserver 为该 workspace 指派，加入链接里给出第一个
+    url: https://relay-hk.agentsrv.example.com   # [必填][join 写入] 当前 relay 的 HTTPS 基础 URL（加入链接的 relay 参数）。
+                                                 # 各 transport 的具体路径取自 relay 证书里的 urls；其他候选 relay 与证书来自
+                                                 # Welcome.relays，缓存在 state/relays.json，不写在这里
+    transport:
+      type: ws                       # [默认 ws][重启生效] ws | xhttp | httpupgrade | auto。
+                                     # auto：按 ws、xhttp、httpupgrade 顺序，当前 transport 连续 3 次在握手完成前失败就换下一种
+      sessions: 1                    # [默认 1][重启生效] 到 relay 的会话条数；>1 时流在会话间分配。MVP 只实现 1
+                                     # 所有 transport 都是 TLS，relay 域名按标准 WebPKI 校验，没有跳过校验的开关；Noise 握手再认证 relay 身份
+
+# ---------------------------------------------------------------------------
+# 3. 角色。启用的角色必须在 agentserver 给的角色上限内，否则该角色停用并告警。
+# ---------------------------------------------------------------------------
+roles:
+
+  # ---- 消费侧 ------------------------------------------------------------
+  ingress:                         # 只判断「直连还是交给 relay」，不知道出口是谁
+    enabled: true                  # [默认 false]
+    http:                          # HTTP 代理（CONNECT）
+      enabled: true                # [默认 false][重启生效]
+      address: 127.0.0.1           # [默认 127.0.0.1][重启生效] 同机多个实例要错开端口
+      port: 7890                   # [必填][重启生效]
+    socks5:                        # SOCKS5 代理（CONNECT）；不支持 UDP ASSOCIATE
+      enabled: true                # [默认 false][重启生效]
+      address: 127.0.0.1           # [默认 127.0.0.1][重启生效]
+      port: 7891                   # [必填][重启生效]
+                                   # 第三种入口 `agentd connect <host> <port>`（ssh ProxyCommand 用）经实例的 unix socket，无需配置
+    fallback: direct               # [默认 direct] direct | reject。relay 回 TARGET_OFFLINE、NO_RULE、CONTROL_NOT_READY 时：
+                                   # direct 直连原始地址并回放首段数据；reject 本地 RST。目的地是服务域名或 fake-IP 时从不回退
+    sniffing:
+      skip_ports: [22, 25, 110, 143, 3306]
+                                   # [默认 如左] 目的地是真实 IP 且目的端口在此列表的连接跳过嗅探直接直连：SMTP / POP3 / IMAP / MySQL 是服务端先说话，
+                                   # 嗅探只会白等 200 ms；SSH 的字节里没有域名，到真实 IP 的 SSH 不论嗅不嗅探都只能直连。到真实 IP 的其他端口仍然嗅探，
+                                   # 因为 DoH、应用自带解析器或 hosts 文件都会让 via 域名拿到真实 IP，只有 SNI 能认出它们。
+                                   # 在这些端口上跑 TLS 的 via 服务要从列表里删掉该端口
+    tun:                           # TUN 模式。设备级资源：一台设备同一时刻只能有一个实例开启，需要先 `agentd elevator install`
+      enabled: false               # [默认 false][重启生效]
+      dns:                         # 内置 DNS，只在 TUN 模式存在。它不做任何按 IP 的分流，作用是把域名分流提前到解析阶段：
+                                   # 服务域名和分流表判为 via 的域名一律答 fake-IP（198.18.0.0/15、2001:2::/48，按域名哈希固定），
+                                   # 这样校外解析不到的内网域名也能建立连接进入 TUN，SSH 这种没有 SNI 的协议也能从 fake-IP 映射拿到域名；
+                                   # 其他域名转发上游、返回真实地址。代理模式（HTTP / SOCKS5 / agentd connect）自带域名，不需要它
+        override_system: true      # [默认 true] 接管系统 DNS：elevator 把系统解析器指向内置 DNS，并把发往任意地址 53 端口的查询（UDP 与 TCP）重定向过来
+        upstream: []               # [默认 空=接管前系统原有的解析器] 其他域名的上游，{ address, port } 列表；查询从物理接口发出，不进 TUN
+                                   # 例：[{ address: 1.1.1.1, port: 53 }, { address: 8.8.8.8, port: 53 }]
+        strip_https_records: true  # [默认 true] 剥离应答里的 HTTPS（类型 65）与 SVCB 记录，使浏览器拿不到 ECH 配置
+        firefox_canary: true       # [默认 true] 对 use-application-dns.net 返回 NXDOMAIN，让 Firefox 关闭默认 DoH
+      doh_block:                   # 对已知公共 DoH 端点的 SNI 本地 RST，让浏览器回退明文 DNS
+        enabled: true              # [默认 true]
+        domains:                   # [默认 如左]
+          - dns.google
+          - cloudflare-dns.com
+          - mozilla.cloudflare-dns.com
+
+  submitter:                       # 给本机 AI agent 与 CLI 下发任务的入口
+    enabled: true                  # [默认 false]
+    mcp:                           # 内置 MCP server（本机 HTTP）；`agentd mcp` 是它的 stdio 桥接。动态工具名 <executor>__<tool>
+      address: 127.0.0.1           # [默认 127.0.0.1][重启生效]
+      port: 7900                   # [必填][重启生效]
+
+  # ---- 提供侧：先验签，再校验发起者与动作是否符合策略，最后执行 ----------
+  egress:
+    enabled: true                  # [默认 false]
+    policy_source: local           # [默认 local] local | server（见文件头的说明）
+    policies:                      # [仅 local] 每条 (public_key, action, proto, domains[, ports])；一条规则一个协议
+      - public_key: "QmX9v…"       # [必填] 一把公钥或 "*"。这里是 pc 组的公钥：持有该组成员证书的节点都命中
+        action: allow              # [必填] allow | deny
+        proto: tls                 # [默认 tls] tls | ssh，单个值；同一组域名要同时放行两种协议就写两条
+        domains:                   # [必填] 域名模式对象列表：kind 是 domain（精确）或 suffix（本身及所有子域），value 是域名。没有 IP / CIDR，也没有集合
+          - { kind: suffix, value: ucas.edu.cn }
+          - { kind: suffix, value: ucas.ac.cn }
+        ports: [443]               # [默认 tls 443、ssh 22] 允许的目的端口
+      - public_key: "QmX9v…"
+        action: allow
+        proto: ssh
+        domains: [{ kind: suffix, value: ucas.edu.cn }, { kind: suffix, value: ucas.ac.cn }]
+      - public_key: "*"
+        action: deny
+        proto: tls
+        domains: [{ kind: domain, value: login.ucas.edu.cn }]
+
+  service:
+    enabled: true                  # [默认 false]
+    policy_source: local           # [默认 local] local | server
+    servers:                       # 每项一个服务，域名 <name>.<workspace 基础域名>；name 与实例名共用 workspace 内的名字空间
+      - name: nas                  # [必填] RFC 1123 label
+        proto: http                # [默认 http] http | ssh。http：relay 的边缘终结 TLS 后以 HTTP/1.1 反向代理到本节点，本节点再
+                                   # 反向代理到 target；ssh：不经边缘，只能经成员 ingress 访问，本节点验签后按字节接到 target
+        target:                    # [必填] 本地目标；http 服务的目标是明文 HTTP，转发时保留原始 Host 并加 X-Forwarded-*，没有别的开关
+          host: 127.0.0.1          # [必填]
+          port: 8080               # [必填]
+      - name: homepc               # 与实例同名的 ssh 服务 = 用 SSH 登录这台机器本身
+        proto: ssh
+        target: { host: 127.0.0.1, port: 22 }
+      - name: grafana
+        target: { host: 127.0.0.1, port: 3000 }
+    policies:                      # [仅 local] 每条 (public_key, action, service)。谁能访问哪个服务
+      - public_key: "hC3Qm…"       # laptop 的公钥
+        action: allow
+        service: nas               # [必填] servers 里的服务名
+      - public_key: "hC3Qm…"
+        action: allow
+        service: homepc
+      - public_key: "*"            # 任何人，含未经 ingress 的公网访问者：relay 的边缘放行公网 443 的直接访问（需要 workspace 开启
+        action: allow              # publish_dns），由应用自己做登录。对 ssh 服务 "*" 只是任何成员。没有 "*" 规则的服务，公网直连得到说明页
+        service: grafana
+
+  executor:
+    enabled: true                  # [默认 false]
+    policy_source: local           # [默认 local] local | server
+    description: 公司机器，已登录 lark-cli   # [可选，≤ 512 字节] 上报给 agentserver，submitter 放进工具描述并标注来源节点
+    policies:                      # [仅 local] 每条 (public_key, action, argv 前缀[, stdin][, shell])；只写 allow，不要指望 deny 挡住参数重排。
+                                   # 能执行的程序就是 allow 规则里出现过的 argv[0]：写裸名（守护进程启动时在自己的 PATH 里解析并固定）或绝对路径；
+                                   # 调用方 cmd 里的 argv[0] 只按 basename 与规则比较，实际执行的路径永远取自规则，调用方指定不了
+      - public_key: "QmX9v…"       # pc 组的公钥
+        action: allow
+        argv: ["lark-cli", "msg"]  # 前缀匹配：放行 `lark-cli msg send …`，不放行 `lark-cli --json msg …`
+      - public_key: "QmX9v…"
+        action: allow
+        argv: ["lark-cli", "doc"]
+        stdin: true                # [默认 false] 允许该调用方对这条命令的会话 write_stdin；默认进程 stdin 直接关闭
+      - public_key: "hC3Qm…"       # laptop 的公钥
+        action: allow
+        argv: ["git", "status"]
+      - public_key: "*"
+        action: deny
+        shell: true                # 刹车：对任何人都不开完整 shell（policy_source: server 时本地 deny 仍生效）
+    shell:
+      path: /bin/zsh               # [默认 /bin/sh] 策略项带 shell: true 时用来执行 cmd 的解释器；没有这样的 allow 时不会被用到
+    workdir: /Users/me/work        # [必填] 允许的工作目录根；调用方传来的 workdir 必须在它之下，不传则用它
+    env:
+      passthrough: [HOME, PATH, LANG, TERM]   # [默认 如左] 透传给子进程的环境变量白名单，其余不透传
+    limits:
+      max_sessions: 4              # [默认 4] 同时存活的 unified exec 会话数；超出回 BUSY
+      default_yield_ms: 10000      # [默认 10000] 调用方未指定 yield_time_ms 时的等待时间；范围 250 到 30000
+      max_output_bytes: 1048576    # [默认 1 MiB] 单次输出的字节上限（与 Codex 相同），超出截断并在输出里标注
+      session_idle: 10m            # [默认 10m] 进程已退出或长时间无读写的会话多久回收
+
+# ---------------------------------------------------------------------------
+# 4. P2P 直连（阶段 5 实现，字段先占位）
+# ---------------------------------------------------------------------------
+p2p:
+  enabled: false                   # [默认 false] 加入 P2P 发现：上报候选地址、接受邀请、需要时发起直连。两端都开启才会尝试
+  listen:
+    address: 0.0.0.0               # [默认 0.0.0.0][重启生效]
+    port: 0                        # [默认 0=随机][重启生效] QUIC 用的 UDP 端口
+  stun:                            # [默认 当前 relay 的 3478] 反射地址来源；relay 藏在 CDN 后时换成公共 STUN
+    - { host: relay-hk.agentsrv.example.com, port: 3478 }
+
+# ---------------------------------------------------------------------------
+# 5. 日志
+# ---------------------------------------------------------------------------
+log:
+  level: info                      # [默认 info] debug | info | warn | error
+  path: logs/agentd.log            # [默认 logs/agentd.log][重启生效] 守护进程日志；空串表示只写标准错误
+  decision:                        # 决策日志：每条连接 / 每次 tool call 一条结构化记录（域名来源、协议、分流表判定、实际服务的节点、
+                                   # 动作、状态码、耗时）；这是调试「为什么这条连接直连了」的唯一手段
+    enabled: true                  # [默认 true]
+    path: decision.log        # [默认 decision.log][重启生效] 空串表示并入 file
+  audit:                           # 审计日志：executor 执行过的每条命令（发起方公钥与名字、call_id、argv、起止时间、退出码），追加写入
+    enabled: true                  # [默认 true] 启用了 executor 时不建议关
+    path: audit.log                # [默认 audit.log][重启生效]

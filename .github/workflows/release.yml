@@ -1,0 +1,42 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: azure/setup-helm@v4
+      - name: web console (embedded into agentserver)
+        run: make web
+      - name: cross-compile
+        run: make dist VERSION=${GITHUB_REF_NAME}
+      - name: checksums
+        run: cd dist && sha256sum * > SHA256SUMS
+      - name: helm package
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          helm package deploy/helm/agentd --version "$v" --app-version "$v" -d dist
+          owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm push "dist/agentd-$v.tgz" "oci://ghcr.io/$owner/charts"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

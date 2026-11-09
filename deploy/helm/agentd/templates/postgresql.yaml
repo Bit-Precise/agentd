@@ -1,0 +1,52 @@
+{{- if .Values.postgresql.enabled }}
+{{- $full := include "agentd.fullname" . -}}
+{{- $pg := printf "%s-postgresql" $full }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $pg }}
+  labels: {{- include "agentd.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  serviceName: {{ $pg }}
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: postgresql }
+  template:
+    metadata:
+      labels: {{- include "agentd.labels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+    spec:
+      securityContext: { fsGroup: 70 }
+      containers:
+        - name: postgres
+          image: {{ .Values.postgresql.image }}
+          env:
+            - { name: POSTGRES_USER, value: agentd }
+            - { name: POSTGRES_DB, value: agentd }
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: {{ $pg }}, key: password } } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports: [{ name: postgres, containerPort: 5432 }]
+          readinessProbe: { exec: { command: ["pg_isready", "-U", "agentd", "-d", "agentd"] }, periodSeconds: 5 }
+          livenessProbe: { exec: { command: ["pg_isready", "-U", "agentd", "-d", "agentd"] }, initialDelaySeconds: 20, periodSeconds: 20 }
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+          resources: {{- toYaml .Values.postgresql.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.postgresql.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources: { requests: { storage: {{ .Values.postgresql.storage }} } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $pg }}
+  labels: {{- include "agentd.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  selector: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: postgresql }
+  ports: [{ name: postgres, port: 5432, targetPort: postgres }]
+{{- end }}

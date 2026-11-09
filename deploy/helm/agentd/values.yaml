@@ -1,0 +1,78 @@
+# Images: <registry>/<repository>/<component>:<tag>
+image:
+  registry: ghcr.io
+  repository: bit-precise/agentd
+  tag: ""                 # defaults to the chart appVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# agentserver's own domain; workspaces default to <name>.<domain>.
+domain: agentsrv.example.com
+
+agentserver:
+  # Secrets are generated on install and kept on upgrade. Set existingSecret to
+  # manage them yourself (keys: admin-token, state-key, relay-join-token).
+  existingSecret: ""
+  adminToken: ""
+  stateKey: ""
+  relayJoinToken: ""
+  # Workspace wildcard certificates: "selfsigned" (dev; nodes need the CA via
+  # AGENTD_EXTRA_ROOTS) or the name of a dnsProviders entry.
+  defaultDnsProvider: selfsigned
+  dnsProviders: {}
+  #  cf-main:
+  #    provider: cloudflare
+  #    email: ops@example.com
+  #    tokenSecret: { name: cloudflare-api, key: token }
+  relayCertTTL: 720h
+  log: { level: info, format: json }
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    relayPort: 8443        # relay sessions (TLS, chart-generated CA)
+    adminPort: 7800        # admin API and web console (plain HTTP; keep it private)
+  # Exposes the admin API and console. Protect it (VPN, IP allowlist, auth proxy).
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: console.agentsrv.example.com
+    tls: []
+
+# One entry per relay. Each relay gets a stable key (Secret), registers itself
+# with the bootstrap token and is reachable by nodes at https://<domain>.
+relays:
+  - name: relay-1
+    domain: relay-1.agentsrv.example.com
+    # tls.mode: selfsigned (dev), acme (TLS-ALPN-01; the Service must receive
+    # :443 for the domain), or file (secretName of a kubernetes.io/tls Secret,
+    # e.g. from cert-manager).
+    tls:
+      mode: selfsigned
+      email: ""
+      secretName: ""
+    service:
+      type: LoadBalancer
+      port: 443
+      annotations: {}
+      loadBalancerIP: ""
+    stun:
+      enabled: false
+      port: 3478
+    resources: {}
+
+postgresql:
+  enabled: true
+  image: postgres:17-alpine
+  password: ""             # generated when empty
+  storage: 8Gi
+  storageClass: ""
+  resources: {}
+
+# Used when postgresql.enabled is false.
+externalDatabase:
+  url: ""                  # postgres://user:pass@host:5432/db?sslmode=require
+  existingSecret: ""       # Secret with key "url"

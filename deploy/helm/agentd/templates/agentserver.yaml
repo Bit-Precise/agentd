@@ -1,0 +1,131 @@
+{{- $full := include "agentd.fullname" . -}}
+{{- $s := .Values.agentserver -}}
+{{- $dbSecret := ternary (printf "%s-postgresql" $full) (default (printf "%s-database" $full) .Values.externalDatabase.existingSecret) .Values.postgresql.enabled -}}
+{{- if and (not .Values.postgresql.enabled) (not .Values.externalDatabase.url) (not .Values.externalDatabase.existingSecret) -}}
+{{- fail "set postgresql.enabled, externalDatabase.url or externalDatabase.existingSecret" -}}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $full }}-agentserver
+  labels: {{- include "agentd.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    apiVersion: agentd/v1
+    kind: AgentserverConfiguration
+    domain: {{ .Values.domain }}
+    listen: ":8443"
+    admin_listen: ":7800"
+    admin_token_env: AGENTSERVER_ADMIN_TOKEN
+    database: { url_env: AGENTSERVER_DATABASE_URL }
+    state_key_env: AGENTSERVER_STATE_KEY
+    relay_join_token_env: AGENTSERVER_RELAY_TOKEN
+    relay_cert_ttl: {{ $s.relayCertTTL }}
+    tls: { mode: file, cert_file: /etc/agentserver/tls/tls.crt, key_file: /etc/agentserver/tls/tls.key }
+    selfsigned_ca: { cert_file: /etc/agentserver/tls/ca.crt, key_file: /etc/agentserver/tls/ca.key }
+    default_dns_provider: {{ $s.defaultDnsProvider }}
+    {{- if $s.dnsProviders }}
+    dns_providers:
+      {{- range $name, $p := $s.dnsProviders }}
+      {{ $name }}: { provider: {{ $p.provider }}{{ if $p.tokenSecret }}, token_env: {{ printf "DNS_TOKEN_%s" ($name | upper | replace "-" "_") }}{{ end }}{{ if $p.email }}, email: {{ $p.email }}{{ end }} }
+      {{- end }}
+    {{- end }}
+    log: { level: {{ $s.log.level }}, format: {{ $s.log.format }} }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}-agentserver
+  labels: {{- include "agentd.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agentserver
+spec:
+  replicas: 1   # live relay sessions are held in memory: run exactly one
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: agentserver }
+  template:
+    metadata:
+      labels: {{- include "agentd.labels" . | nindent 8 }}
+        app.kubernetes.io/component: agentserver
+      annotations:
+        checksum/config: {{ printf "%v" $s | sha256sum | trunc 16 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: { runAsNonRoot: true, runAsUser: 65532, fsGroup: 65532 }
+      containers:
+        - name: agentserver
+          image: {{ include "agentd.image" (list . "agentserver") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["run", "-c", "/etc/agentserver/config.yaml"]
+          env:
+            - { name: AGENTSERVER_ADMIN_TOKEN, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" . }}, key: admin-token } } }
+            - { name: AGENTSERVER_STATE_KEY, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" . }}, key: state-key } } }
+            - { name: AGENTSERVER_RELAY_TOKEN, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" . }}, key: relay-join-token } } }
+            - { name: AGENTSERVER_DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $dbSecret }}, key: url } } }
+            {{- range $name, $p := $s.dnsProviders }}
+            {{- if $p.tokenSecret }}
+            - { name: {{ printf "DNS_TOKEN_%s" ($name | upper | replace "-" "_") }}, valueFrom: { secretKeyRef: { name: {{ $p.tokenSecret.name }}, key: {{ $p.tokenSecret.key }} } } }
+            {{- end }}
+            {{- end }}
+          ports:
+            - { name: relay, containerPort: 8443 }
+            - { name: admin, containerPort: 7800 }
+          readinessProbe: { httpGet: { path: /healthz, port: admin }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /healthz, port: admin }, initialDelaySeconds: 10, periodSeconds: 20 }
+          volumeMounts:
+            - { name: config, mountPath: /etc/agentserver/config.yaml, subPath: config.yaml }
+            - { name: tls, mountPath: /etc/agentserver/tls, readOnly: true }
+          resources: {{- toYaml $s.resources | nindent 12 }}
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+      volumes:
+        - { name: config, configMap: { name: {{ $full }}-agentserver } }
+        - { name: tls, secret: { secretName: {{ $full }}-agentserver-tls } }
+      {{- with $s.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $s.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $s.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agentd.serverSvc" . }}
+  labels: {{- include "agentd.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agentserver
+spec:
+  type: {{ $s.service.type }}
+  selector: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: agentserver }
+  ports:
+    - { name: relay, port: {{ $s.service.relayPort }}, targetPort: relay }
+    - { name: admin, port: {{ $s.service.adminPort }}, targetPort: admin }
+{{- if $s.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $full }}-console
+  labels: {{- include "agentd.labels" . | nindent 4 }}
+  {{- with $s.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $s.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with $s.ingress.tls }}
+  tls: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ $s.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: {{ include "agentd.serverSvc" . }}, port: { name: admin } } }
+{{- end }}

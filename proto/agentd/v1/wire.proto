@@ -1,0 +1,700 @@
+// agentd 线上协议 v1。权威说明见 docs/protocol.md。
+//
+// 约定：
+// - 所有 bytes 类型的公钥都是 32 字节 Ed25519 公钥（文本形式为 base64url 无填充，43 字符）。
+// - 时间戳：uint64 为 Unix 秒；bytes 的 TAI64N 为 12 字节（8 字节大端秒 + 2^62，4 字节大端纳秒）。
+// - 被签名的消息都采用「信封」形态：body 是序列化后的字节，sig 是对 body 字节的 Ed25519ctx 签名；
+//   接收方先对收到的 body 字节验签，再解码。字段只增不改，弃用字段保留编号。
+
+syntax = "proto3";
+
+package agentd.v1;
+
+option go_package = "agentd/internal/wire/pb;pb";
+
+// ---------------------------------------------------------------------------
+// 公共枚举
+// ---------------------------------------------------------------------------
+
+// 状态码。ServerHello 与 Ack 共用；分段编号便于归类，见 docs/protocol.md 第 9 节。
+enum Status {
+  OK = 0;
+
+  // 1-19：会话握手
+  VERSION_MISMATCH = 1;      // 协议版本区间无交集
+  NOT_A_MEMBER = 2;          // 公钥不在任何目录中且没有加入令牌
+  TOKEN_INVALID = 3;         // 令牌不存在、与 workspace 不符或已作废
+  TOKEN_USED = 4;
+  TOKEN_EXPIRED = 5;
+  NAME_TAKEN = 6;            // 名字已被节点或服务占用
+  IDENTITY_IN_USE = 7;       // 公钥已属于其他实例
+  TIMESTAMP_OLD = 8;         // 握手时间戳不大于上次
+  IDENTITY_MISMATCH = 9;     // 载荷里的身份公钥派生结果与握手静态公钥不符
+  SERVER_BUSY = 10;          // 过载或正在关闭，稍后重试
+  BAD_NAME = 11;             // 名字不符合主机名规则
+
+  // 20-39：relay 对开流的校验（清单 A；选路与预检的结果来自控制面的 RelayAnswer）
+  BAD_SIGNATURE = 20;
+  FROM_MISMATCH = 21;        // body.from 与会话身份不一致
+  TIMESTAMP_OUT_OF_WINDOW = 22;
+  REPLAY = 23;               // (from, nonce) 已见过
+  ROLE_NOT_ALLOWED = 24;     // 发起方或目标没有对应角色
+  NO_RULE = 25;              // 路由表里该发起方、协议、域名没有出口（direct、reject 或无匹配）且不是服务域名；Ack.rules_version 供发起方判断分流表是否过旧
+  reserved 26, 27;           // 曾为 RULE_TARGET_MISMATCH 与 RULES_STALE，已删除：ingress 不再选出口，出口由控制面在 relay 查询时选出
+  TARGET_OFFLINE = 28;
+  reserved 29;               // 曾为 NOT_ACCEPTED，已删除：没有接受名单，自管节点上报的策略同样由控制面预检，统一用 ACL_DENIED
+  ACL_DENIED = 30;           // 控制面预检：目的节点的策略（受管为中央渲染的，自管为上报的生效策略）不允许发起方；或 HTTP 服务对公网访问者没有 public_key = *（空）的 allow 规则
+  SERVICE_NOT_READY = 31;
+  SERVICE_UNKNOWN = 32;
+  CONTROL_NOT_READY = 33;    // relay：后端不可达且无缓存答案；握手与 Ack 都可能出现，发起方退避重试
+  BAD_REQUEST = 34;          // 字段缺失、kind 未知、大小超限等
+  WORKSPACE_MISMATCH = 35;
+
+  // 40-59：提供侧节点对开流的校验与执行
+  UNKNOWN_PEER = 40;         // 没有规则的 public_key 等于 from 或其证书签发者，也没有 * 规则
+  POLICY_DENIED = 41;
+  PROTOCOL_MISMATCH = 42;    // 首段数据与声明的协议不符（SNI 不一致、不是 SSH）
+  PORT_NOT_ALLOWED = 43;
+  UNSUPPORTED_TOOL = 44;
+  DIAL_FAILED = 45;
+  RESOLVE_FAILED = 46;
+  TIMEOUT = 47;
+  BUSY = 48;                 // 并发上限
+  INVALID_ARGUMENTS = 49;    // tool call 参数不合法
+  SESSION_NOT_FOUND = 50;    // write_stdin 的 session_id 不存在或不属于发起方
+
+  // 60-69：预留给 P2P 直连：60 P2P_DISABLED、61 P2P_NOT_ALLOWED、62 P2P_NO_CANDIDATES、63 P2P_PUNCH_FAILED（docs/protocol.md 2.6）
+  reserved 60 to 69;
+
+  // 70-79：控制面与 relay 的部署
+  WRONG_RELAY = 70;          // 节点的 workspace 未指派给该 relay
+  RELAY_UNAVAILABLE = 71;    // workspace 当前没有可用 relay
+  reserved 72 to 79;
+}
+
+// 会话的种类，由 ClientHello 声明；响应方不服务该种类时回 BAD_REQUEST。
+enum SessionKind {
+  SESSION_NODE = 0;          // 节点 → relay：流 1 是控制流（在 relay 终结），其余是 tcp / task 流；首次加入时握手载荷带令牌
+  reserved 1;                // 曾为 SESSION_CONTROL（隧道内的内层握手），已删除：控制流在 relay 终结
+  SESSION_RELAY = 2;         // relay → agentserver：只有一条流，跑 RelayLookup / RelayAnswer / NodeMessage / Deliver 等
+}
+
+enum Kind {
+  KIND_CONTROL = 0;
+  KIND_TCP = 1;
+  KIND_TASK = 2;
+}
+
+enum Proto {
+  PROTO_UNSPECIFIED = 0;
+  PROTO_TLS = 1;
+  PROTO_SSH = 2;
+  PROTO_HTTP = 3;   // 仅 edge → service 节点
+}
+
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_INGRESS = 1;
+  ROLE_EGRESS = 2;
+  ROLE_SERVICE = 3;
+  ROLE_SUBMITTER = 4;
+  ROLE_EXECUTOR = 5;
+}
+
+enum ServiceState {
+  STATE_REGISTERED = 0;
+  STATE_CERT_PENDING = 1;
+  STATE_READY = 2;
+}
+
+// ---------------------------------------------------------------------------
+// 会话握手载荷（Noise_IK 消息 1 / 消息 2 的 payload）
+// ---------------------------------------------------------------------------
+
+message ClientHello {
+  uint32 min_version = 1;        // 支持的最小次版本（主版本由 prologue 固定为 1）
+  uint32 max_version = 2;        // 支持的最大次版本
+  bytes identity = 3;            // 节点 Ed25519 公钥；其派生的 X25519 公钥必须等于握手里的静态公钥
+  bytes timestamp = 4;           // TAI64N，防重放
+  string join_token = 5;         // 仅首次加入；relay 装进 JoinLookup 转给后端校验
+  string proposed_name = 6;      // 仅首次加入且令牌未指定名字
+  string workspace = 7;          // 加入时必填：加入链接里的 workspace 基础域名
+  string client_version = 8;     // 诊断用，如 "agentd 0.1.0 darwin/arm64"
+  SessionKind session_kind = 9;  // 会话种类
+  RelayRegistration relay = 10;  // 仅 relay 会话：relay 的名字与对节点公布的端点；公钥未登记时 join_token 是 relay 注册令牌
+}
+
+// relay 每次连接 agentserver 时报告的自身信息（protocol 5.8）。agentserver 据此登记或更新 relay，并写进 relay 证书。
+message RelayRegistration {
+  string name = 1;                       // relay 名（RFC 1123 label）
+  string url = 2;                        // 节点连接用的 https 基础 URL，如 https://relay-hk.agentsrv.example.com
+  map<string, string> transports = 3;    // transport 名 → 路径，如 "ws" → "/ws"
+  string stun = 4;                       // host:port，可空
+}
+
+message ServerHello {
+  Status status = 1;             // 非 OK 时服务端随后关闭连接
+  uint32 version = 2;            // 协商出的次版本
+  bytes session_id = 3;          // 16 字节，仅用于日志与追踪
+  string workspace = 4;          // 基础域名
+  string name = 5;               // 实例名
+  repeated Role role_caps = 6;   // 角色上限
+  bytes server_identity = 7;     // 响应方的 Ed25519 公钥：节点会话为 relay，relay 会话为 agentserver
+  uint64 server_time = 8;        // Unix 秒，供节点检查时钟偏差
+  string message = 9;            // 人类可读的错误说明
+  uint32 retry_after_seconds = 10; // SERVER_BUSY 时的建议重试间隔
+  RelayCert assigned_relay = 11;   // WRONG_RELAY 时（后端答复、relay 转交）：该 workspace 当前指派的 relay，节点换它重连
+}
+
+// ---------------------------------------------------------------------------
+// 流的第一帧
+// ---------------------------------------------------------------------------
+
+// 每条 yamux 流的第一条消息。发起方只填 open；relay 转发时原样保留 open，并填 relay。
+message StreamOpen {
+  Open open = 1;
+  RelayInfo relay = 2;
+  repeated MembershipCert certs = 3;   // 发起方持有的成员证书，最多 16 份；不在 open 的签名内，relay 原样转发
+}
+
+// 信封：sig = Ed25519ctx(私钥 = body.from 对应的私钥, context = "agentd/open/v1", message = body)。
+// kind == KIND_CONTROL 时 sig 为空（会话已认证）：节点开控制流时 to 是 relay；relay 会话上 relay 开流时 to 是 agentserver。
+message Open {
+  bytes body = 1;   // 序列化后的 OpenBody
+  bytes sig = 2;    // 64 字节
+}
+
+message OpenBody {
+  Kind kind = 1;
+  string workspace = 2;          // 基础域名
+  bytes from = 3;                // 发起节点公钥；edge 发起时为 relay 公钥
+  bytes to = 4;                  // 下一跳：这条流所在会话对端的公钥。节点在会话上开流时是 relay，P2P 直连时是对端节点，
+                                 // edge → 服务节点时是服务节点。不是最终目的地：出口由控制面按路由表选，服务节点由 TcpOpen.domain 经服务表决定，
+                                 // executor 在 TaskOpen.executor。relay 不改写它；提供侧要求它等于自己所连的 relay 或自己
+  uint64 issued_at = 5;          // Unix 秒；接收方只接受 ±300 秒
+  bytes nonce = 6;               // 16 字节随机数
+  TcpOpen tcp = 10;              // kind == KIND_TCP
+  TaskOpen task = 11;            // kind == KIND_TASK
+  reserved 7, 12;                // 曾为 e2e 与 rules_version，已删除
+}
+
+message TcpOpen {
+  Proto proto = 1;               // TLS / SSH；edge → 节点为 HTTP
+  string domain = 2;             // 小写、无末尾点
+  uint32 port = 3;               // TLS 默认 443，SSH 默认 22；edge → 节点时忽略
+  HttpPeer http_peer = 4;        // 仅 edge → 节点：真实访问者身份；公网访问时为空
+}
+
+message HttpPeer {
+  bytes identity = 1;
+  string name = 2;
+  string user = 3;               // 边缘登录身份（后续：邮箱等）；公网匿名访问时为空
+}
+
+message TaskOpen {
+  FunctionCall call = 1;
+  bytes executor = 2;            // 目标 executor 的公钥；控制面据此选路，executor 要求它等于自己
+}
+
+// 与 Codex 的 ResponseItem::FunctionCall 对应。
+message FunctionCall {
+  string call_id = 1;
+  string name = 2;               // "exec_command" / "write_stdin" / 将来的工具名
+  string arguments = 3;          // JSON 字符串
+}
+
+// relay 转发时附加，不在签名内；P2P 直连时不存在，接收方不得依赖它。
+message RelayInfo {
+  string from_name = 1;          // 发起方的名字（来自握手时后端的答案），仅作提示
+  uint64 rules_version = 2;      // 控制面选路时使用的路由表版本（来自 RelayAnswer）
+  bytes trace_id = 3;            // 16 字节，贯穿两条流的日志
+  uint64 relayed_at = 4;         // Unix 毫秒
+}
+
+// 每条流的第一条回复。status != OK 时发送方随后 RESET 该流。
+message Ack {
+  Status status = 1;
+  string message = 2;
+  uint64 rules_version = 3;      // relay 产生的 Ack：控制面选路所用的路由表版本；NO_RULE 时发起方据此判断自己的分流表是否过旧
+  bytes trace_id = 4;
+  bytes responder = 5;           // 回 Ack 的目的节点的身份；relay 自己产生的 Ack 里为空。发起方只用于决策日志与 P2P 的流放置，不做授权判断
+}
+
+// ---------------------------------------------------------------------------
+// 任务结果（executor → submitter，task 流上 Ack 之后的唯一一条消息）
+// ---------------------------------------------------------------------------
+
+// 信封：sig = Ed25519ctx(executor 私钥, context = "agentd/task-result/v1", body)。
+message TaskResult {
+  bytes body = 1;   // 序列化后的 TaskResultBody
+  bytes sig = 2;
+}
+
+message TaskResultBody {
+  string call_id = 1;
+  bytes from = 2;                // executor 公钥
+  bytes to = 3;                  // submitter 公钥
+  uint64 issued_at = 4;
+  FunctionCallOutput output = 5;
+  bool final = 6;                // v1 恒为 true；预留给将来的分块输出
+}
+
+// 对应 Codex 的 unified_exec_output_schema，另加 output_text 与错误字段。
+message FunctionCallOutput {
+  string output_text = 1;        // 已按 Codex 文本格式渲染的 output（Wall time / Process exited… / Output:）
+  string output = 2;             // 原始输出正文（截断后）
+  double wall_time_seconds = 3;
+  optional int32 exit_code = 4;
+  optional int64 session_id = 5;
+  optional string chunk_id = 6;
+  optional int64 original_token_count = 7;
+  bool is_error = 8;             // 执行层错误（启动失败等），对应 MCP 的 isError
+  string error_message = 9;
+}
+
+// ---------------------------------------------------------------------------
+// 控制通道（节点会话的流 1 与 relay 会话的流 1：Ack 之后双向的 [u32 长度][ControlMessage] 序列；agentserver 发给节点的都在 Signed 里）
+// ---------------------------------------------------------------------------
+
+message ControlMessage {
+  uint64 seq = 1;                // 每个方向从 1 递增，仅用于日志
+  oneof msg {
+    Welcome welcome = 10;
+    Update update = 11;
+    Advertise advertise = 12;
+    AdvertiseResult advertise_result = 13;
+    Pull pull = 14;
+    Notice notice = 15;
+    PolicyUpdate policy_update = 16;
+    PolicyApplied policy_applied = 17;
+    RelayReport relay_report = 22;        // 节点 → agentserver（经 relay 转交）
+    RelayLookup relay_lookup = 23;        // relay → agentserver
+    RelayAnswer relay_answer = 24;        // agentserver → relay
+    WorkspaceCerts workspace_certs = 25;  // agentserver → relay
+    NodeMessage node_message = 26;        // relay → agentserver：转交节点在控制流上发的消息
+    RelayInvalidate relay_invalidate = 27; // agentserver → relay
+    RelayCert relay_cert = 28;            // agentserver → relay：relay 在某个 workspace 的身份证书
+    Deliver deliver = 29;                 // agentserver → relay：发给某节点的签名消息
+    RelayPresence relay_presence = 30;    // relay → agentserver
+    Signed signed = 31;                   // agentserver → 节点（relay 写进控制流）：发给节点的控制消息都在这里
+  }
+  reserved 18 to 21;             // 预留给 P2P 信令：18 P2PCandidates、19 P2PConnect、20 P2PInvite、21 P2PResult（docs/protocol.md 2.6）
+}
+
+// agentserver → 节点（在 Signed 信封里，经 relay 送达）：全量。按节点的角色上限裁剪：routes（分流表）只给有 ingress 上限的节点，
+// executors 只给有 submitter 上限的节点，directory 与 services 给所有节点。
+message Welcome {
+  Directory directory = 1;
+  IngressRoutes routes = 2;      // 分流表，按本节点渲染，不含出口节点
+  repeated Service services = 3;
+  repeated ExecutorInfo executors = 4;
+  Self self = 5;
+  PolicyUpdate policy = 6;       // 仅有提供侧角色上限的节点：渲染好的全量策略
+  repeated MembershipCert memberships = 7;   // 本节点当前持有的成员证书
+  repeated RelayCert relays = 8;             // 该 workspace 可用 relay 的证书
+  bytes assigned_relay = 9;                  // 当前指派的 relay 公钥，节点只连它
+}
+
+message Self {
+  bytes identity = 1;
+  string name = 2;
+  string workspace = 3;
+  repeated Role role_caps = 4;
+}
+
+message Directory {
+  uint64 version = 1;
+  repeated Member members = 2;
+  repeated Group groups = 3;
+  bytes workspace_identity = 4;  // workspace 的 Ed25519 公钥
+}
+
+message Group {
+  bytes identity = 1;            // 组的 Ed25519 公钥
+  string name = 2;
+  repeated bytes members = 3;    // 成员公钥
+}
+
+message Member {
+  bytes identity = 1;
+  string name = 2;
+  repeated Role role_caps = 3;
+  bool online = 4;
+  uint64 joined_at = 5;
+}
+
+// 域名模式。线上只出现 DOMAIN 与 SUFFIX；SET（域名集合）第一期不做，位置保留。
+message Match {
+  enum MatchKind {
+    DOMAIN = 0;                  // 精确
+    SUFFIX = 1;                  // 本身及所有子域
+    SET = 2;                     // 保留：域名集合，第一期不做，线上不出现
+  }
+  MatchKind kind = 1;
+  string value = 2;
+}
+
+// agentserver → ingress 节点：分流表，按节点从 workspace 的路由表渲染：只取源包含该节点的路由，目的只保留种类、丢掉出口节点。
+// ingress 按「最具体的匹配赢」判定：VIA 交给会话上的 relay（出口由控制面在 relay 查询时选出），DIRECT 本地直连，REJECT 本地 RST。
+// 路由表本身不在线上传输：它只在 agentserver 上，用来回答 relay 的 StreamLookup。
+message IngressRoutes {
+  uint64 version = 1;            // 等于渲染它的路由表版本，与 Ack.rules_version 同源
+  repeated IngressRoute routes = 2;   // 书写顺序即同等具体时的优先顺序
+  RouteAction default = 3;
+}
+
+message IngressRoute {
+  Match match = 1;               // 只允许 DOMAIN / SUFFIX
+  repeated Proto protos = 2;     // TLS / SSH；空表示两者
+  RouteAction action = 3;
+}
+
+enum RouteAction {
+  ROUTE_DIRECT = 0;
+  ROUTE_VIA = 1;                 // 交给下一跳（relay）
+  ROUTE_REJECT = 2;
+}
+
+message Service {
+  string name = 1;
+  string fqdn = 2;
+  Proto proto = 3;               // HTTP / SSH
+  reserved 4;                    // 曾为 mode（http / tcp 透传），已删除：服务只有 http 与 ssh
+  bytes node_identity = 5;
+  reserved 6, 7;                 // 曾为 access 与 allow_from，已删除：访问控制只有策略，公网可访问性是 service 规则的 public_key = *
+  ServiceState state = 8;
+  uint32 port = 9;               // 成员访问时的端口：HTTP 443，SSH 22
+}
+
+message ExecutorInfo {
+  bytes identity = 1;
+  string description = 2;        // 限长 512 字节，submitter 展示时加「来自节点 <name>」前缀
+  repeated ToolInfo tools = 3;
+  bool online = 4;
+}
+
+message ToolInfo {
+  string name = 1;               // "exec_command" / "write_stdin" / …
+  string description = 2;        // 可选，限长 512 字节；为空时 submitter 用内置描述
+}
+
+// 节点 → agentserver：声明本机的提供侧能力与接受名单。可重复发送，整体替换上一次。
+message Advertise {
+  repeated ServiceDecl services = 1;
+  ExecutorDecl executor = 2;     // 未启用 executor 时不填
+  reserved 3;                    // 曾为 EgressDecl（accept_from），已删除：策略是唯一的授权抽象
+  reserved 4;                    // 曾为单个 policy_source，已改为按角色的 policy_sources
+  bool p2p_enabled = 5;          // 是否加入 P2P 发现；v1 恒为 false（docs/protocol.md 2.6）
+  Policy policy = 6;             // 来源为 LOCAL 的角色上报的生效策略（只填对应的组），供控制面预检与边缘判定
+  PolicySources policy_sources = 7;   // 各提供侧角色的策略来源
+}
+
+message ServiceDecl {
+  string name = 1;
+  Proto proto = 2;
+  reserved 3;                    // 曾为 mode，已删除
+  reserved 4, 5;                 // 曾为 access 与 allow_from，已删除：写成 Policy.services 里的规则（public_key = * 表示任何人）
+}
+
+message ExecutorDecl {
+  string description = 1;
+  repeated ToolInfo tools = 2;
+  reserved 3;                    // 曾为 accept_from，已删除
+}
+
+// 各提供侧角色的策略来源；未启用的角色填 POLICY_SOURCE_LOCAL 即可。
+message PolicySources {
+  PolicySource egress = 1;
+  PolicySource service = 2;
+  PolicySource executor = 3;
+}
+
+message AdvertiseResult {
+  Status status = 1;             // OK、ROLE_NOT_ALLOWED、NAME_TAKEN、BAD_REQUEST
+  string message = 2;
+  repeated string rejected_services = 3;
+  repeated Service services = 4; // 已登记的服务及其状态（fqdn、state）
+}
+
+// agentserver → 节点：增量。每个部分可选；routes 变更时整体替换。
+message Update {
+  uint64 directory_version = 1;
+  repeated Member upsert_members = 2;
+  repeated bytes removed_members = 3;
+  IngressRoutes routes = 4;
+  repeated Service upsert_services = 5;
+  repeated string removed_services = 6;   // fqdn
+  repeated ExecutorInfo upsert_executors = 7;
+  repeated bytes removed_executors = 8;
+  repeated Presence presence = 9;
+  repeated MembershipCert memberships = 10;            // 续发或新增的成员证书
+  repeated MembershipRevocation revoked_memberships = 11;
+  bytes assigned_relay = 12;                            // 改派；为空表示不变
+  repeated RelayCert relays = 13;                       // relay 证书列表的全量替换；为空表示不变
+}
+
+message Presence {
+  bytes identity = 1;
+  bool online = 2;
+}
+
+// 节点 → agentserver：请求重发全量 Welcome（分流表或目录版本过旧时）。
+message Pull {
+  uint64 have_routes_version = 1;
+  uint64 have_directory_version = 2;
+}
+
+message Notice {
+  enum NoticeKind {
+    SHUTDOWN = 0;                // agentserver 即将关闭或本会话被新会话替换，随后关闭连接
+    REMOVED = 1;                 // 本节点已被移出 workspace，停止重连
+    RENAMED = 2;                 // 本节点被改名，见 new_name
+    ROLES_CHANGED = 3;           // 角色上限变化，见 role_caps
+    MESSAGE = 4;                 // 仅供显示
+  }
+  NoticeKind kind = 1;
+  string message = 2;
+  string new_name = 3;
+  repeated Role role_caps = 4;
+  uint32 retry_after_seconds = 5;
+}
+
+// ---------------------------------------------------------------------------
+// 策略下发（docs/protocol.md 5.6，docs/design.md 6.6 到 6.8）
+// ---------------------------------------------------------------------------
+
+enum PolicySource {
+  POLICY_SOURCE_LOCAL = 0;       // 节点用本地配置，忽略下发
+  POLICY_SOURCE_SERVER = 1;      // 节点用 agentserver 渲染下发的策略，本地 deny 仍生效
+}
+
+enum Action {
+  ACTION_ALLOW = 0;
+  ACTION_DENY = 1;
+}
+
+// agentserver → 节点：为该节点渲染好的全量策略。version 按节点单调递增，内容不变不重发。
+message PolicyUpdate {
+  uint64 version = 1;
+  Policy policy = 2;
+}
+
+// 节点实际执行的形态：(public_key, action, target)。public_key 为空表示 *（任何人：对 egress、executor 与 ssh 服务即任何成员，对 HTTP 服务还含公网访问者）。判定：任一 deny 命中即拒绝；否则任一 allow 命中即允许；否则拒绝。
+message Policy {
+  repeated EgressRule egress = 1;
+  repeated ExecRule exec = 2;
+  repeated ServiceRule services = 3;
+}
+
+message EgressRule {
+  bytes public_key = 1;          // 一把公钥（节点、组或 workspace 的）；空表示 *
+  Action action = 2;
+  Proto proto = 3;               // 单个协议；PROTO_UNSPECIFIED 按 TLS 处理。同一组域名要放行两种协议就写两条
+  repeated Match domains = 4;    // 只允许 DOMAIN / SUFFIX，集合已由 agentserver 展开
+  repeated uint32 ports = 5;     // 为空表示按协议默认（443 / 22）
+}
+
+message ExecRule {
+  bytes public_key = 1;          // 同 EgressRule
+  Action action = 2;
+  repeated string argv = 3;      // argv 前缀；为空表示任意命令（只应出现在 deny 规则里）
+  bool stdin = 4;                // 仅 allow 有意义：允许 write_stdin
+  bool shell = 5;                // 仅 allow 有意义：允许完整 shell；deny 时表示禁止开 shell
+}
+
+message ServiceRule {
+  bytes public_key = 1;          // 同 EgressRule
+  Action action = 2;
+  string name = 3;               // 服务名
+}
+
+// 节点 → agentserver：至少一个角色应用了它（applied = true），或所有提供侧角色都是 local 而忽略（applied = false）。
+message PolicyApplied {
+  uint64 version = 1;
+  bool applied = 2;
+  string message = 3;
+}
+
+// ---------------------------------------------------------------------------
+// 成员证书（docs/protocol.md 5.7，docs/design.md 6.8）
+// ---------------------------------------------------------------------------
+
+// 信封：sig = Ed25519ctx(签发者私钥, context = "agentd/membership/v1", body)。签发者是组或 workspace 的密钥，由 agentserver 保管。
+message MembershipCert {
+  bytes body = 1;   // 序列化后的 MembershipCertBody
+  bytes sig = 2;
+}
+
+message MembershipCertBody {
+  bytes member = 1;              // 成员的 Ed25519 公钥
+  bytes issuer = 2;              // 组或 workspace 的 Ed25519 公钥
+  string workspace = 3;          // 基础域名
+  uint64 issued_at = 4;          // Unix 秒
+  uint64 expires_at = 5;         // Unix 秒，默认签发后 3600 秒
+  string name = 6;               // 组名，workspace 证书为空；仅供显示
+}
+
+// 吊销：member 为空表示该 issuer 签发的全部证书（组被删除）。节点保留到 until。
+message MembershipRevocation {
+  bytes member = 1;
+  bytes issuer = 2;
+  uint64 until = 3;
+}
+
+// ---------------------------------------------------------------------------
+// 控制面与 relay（docs/protocol.md 5.8，docs/design.md 5.7、5.8）
+// ---------------------------------------------------------------------------
+
+// agentserver 用 workspace 私钥给 (relay, workspace) 签的身份证书。节点只钉自己 workspace 的公钥，凭它认服务该 workspace 的任何 relay；
+// 首次从 relay 的 /.well-known/agentd?workspace=… 取得，之后随 Welcome.relays 更新。sig = Ed25519ctx(workspace 私钥, context = "agentd/relay/v1", body)。
+message RelayCert {
+  bytes body = 1;                // 序列化后的 RelayCertBody
+  bytes sig = 2;
+}
+
+message RelayCertBody {
+  bytes identity = 1;            // relay 的 Ed25519 公钥
+  string name = 2;
+  map<string, string> urls = 3;  // transport 名 → URL，如 "ws" → "https://relay-hk.agentsrv.example.com/ws"
+  string stun = 4;               // host:port，P2P 反射地址（2.6）
+  uint64 issued_at = 5;
+  uint64 expires_at = 6;
+  string workspace = 7;          // 基础域名：这张证书对哪个 workspace 的成员有效
+}
+
+// agentserver → 节点（经 relay 送达）的每条控制消息都在这个信封里。
+// sig = Ed25519ctx(该 workspace 的私钥, context = "agentd/control/v1", body)，私钥由 agentserver 保管；节点用 workspace.public_key 验签，
+// 核对 recipient 是自己、issued_at 在 ±300 秒内，并按消息自身的版本号丢弃不比当前新的内容（防 relay 伪造与回放）。
+message Signed {
+  bytes body = 1;                // 序列化后的 SignedBody
+  bytes sig = 2;
+}
+
+message SignedBody {
+  bytes recipient = 1;           // 收件节点公钥
+  uint64 issued_at = 2;          // Unix 秒
+  ControlMessage msg = 3;        // Welcome / Update / PolicyUpdate / Notice / AdvertiseResult / P2P 信令之一
+}
+
+// 节点 → agentserver（经 relay 转交）：连不上当前 relay、已换到别的 relay。
+message RelayReport {
+  bytes relay = 1;               // 连不上的 relay
+  Status status = 2;
+  string message = 3;
+}
+
+// relay → agentserver：按需查询。relay 不持有目录、路由表或策略的副本：握手、加入、转发与边缘证书都问后端，
+// 答案按 ttl_seconds 缓存，后端变更时用 RelayInvalidate 清除（docs/protocol.md 5.8）。
+message RelayLookup {
+  bytes request_id = 1;          // 16 字节，答案以它对应
+  oneof query {
+    NodeLookup node = 2;         // 节点握手：这把公钥是谁、所在 workspace 是否指派给我
+    JoinLookup join = 3;         // 带令牌的节点握手：加入请求
+    StreamLookup stream = 4;     // 转发一条流：选路、角色、预检一次问完
+    CertLookup cert = 5;         // edge 缺某个 workspace 的通配证书
+  }
+}
+
+message NodeLookup {
+  bytes identity = 1;
+}
+
+message JoinLookup {
+  bytes identity = 1;
+  string token = 2;              // 加入令牌，relay 看得到（设计文档 8.1）
+  string proposed_name = 3;
+  string workspace = 4;          // 加入链接里的基础域名
+  bytes timestamp = 5;           // ClientHello 的 TAI64N，后端持久化
+}
+
+// from 为空表示 edge 公网 443 上的匿名访问者，此时只能问 HTTP 服务（kind TCP、port 443）。
+message StreamLookup {
+  string workspace = 1;          // 基础域名
+  bytes from = 2;
+  Kind kind = 3;                 // KIND_TCP / KIND_TASK
+  Proto proto = 4;               // kind == KIND_TCP
+  string domain = 5;             // kind == KIND_TCP
+  uint32 port = 6;               // kind == KIND_TCP
+  bytes executor = 7;            // kind == KIND_TASK：OpenBody.task.executor
+}
+
+message CertLookup {
+  string workspace = 1;
+}
+
+// agentserver → relay：答案。status != OK 时就是 relay 应回给发起方的状态码
+// （握手：NOT_A_MEMBER、WRONG_RELAY、TOKEN_*、NAME_TAKEN、BAD_NAME、IDENTITY_IN_USE、WORKSPACE_MISMATCH、TIMESTAMP_OLD；
+// 流：ROLE_NOT_ALLOWED、NO_RULE、SERVICE_UNKNOWN、SERVICE_NOT_READY、ACL_DENIED、BAD_REQUEST）。
+message RelayAnswer {
+  bytes request_id = 1;
+  Status status = 2;
+  string message = 3;
+  uint32 ttl_seconds = 4;        // 可缓存时长；0 表示不缓存（join 的答案总是 0）。错误答案同样可缓存
+  oneof result {
+    NodeInfo node = 10;
+    StreamRoute route = 11;
+    WorkspaceCerts certs = 12;
+    RelayCert assigned_relay = 13;   // WRONG_RELAY 时：该 workspace 当前指派的 relay，relay 放进 ServerHello
+  }
+}
+
+// node / join 查询的答案：relay 据此填 ServerHello、放行数据流、填 RelayInfo.from_name，并在节点开控制流后送达 welcome。
+message NodeInfo {
+  bytes identity = 1;
+  string workspace = 2;          // 基础域名
+  string name = 3;
+  repeated Role role_caps = 4;
+  Signed welcome = 5;            // 签好名的 Welcome；不缓存
+}
+
+// 后端的选路与预检结果：先按服务表 / 路由表 / task.executor 选出目的节点，再查双方角色，再用目的节点的策略预检发起方。
+message StreamRoute {
+  enum TargetKind {
+    EGRESS = 0;                  // target 是出口节点
+    SERVICE_NODE = 1;            // target 是 ssh 服务所在节点
+    EDGE = 2;                    // HTTP 服务：本 relay 的 edge 终结 TLS，第二段再向 target（服务节点）开流
+    EXECUTOR = 3;                // target == StreamLookup.executor
+  }
+  TargetKind target_kind = 1;
+  bytes target = 2;              // 目的节点公钥
+  string target_name = 3;        // 仅日志
+  Service service = 4;           // SERVICE_NODE / EDGE 时
+  uint64 rules_version = 5;      // 选路所用的路由表版本，relay 填进 RelayInfo 与 Ack
+}
+
+// relay → agentserver：某节点在控制流上发来的消息；identity 是 relay 认证过的会话身份。
+message NodeMessage {
+  bytes identity = 1;
+  ControlMessage msg = 2;        // Advertise / PolicyApplied / Pull / RelayReport / P2P 信令
+}
+
+// agentserver → relay：发给某节点的控制消息，已签名；节点不在线则 relay 丢弃。
+message Deliver {
+  bytes identity = 1;
+  Signed signed = 2;
+}
+
+// relay → agentserver：节点上线与下线；relay 会话重建后先报一遍全部在线节点。
+message RelayPresence {
+  repeated bytes online = 1;
+  repeated bytes offline = 2;
+}
+
+// agentserver → relay：某个 workspace 的目录、路由表、服务、策略或证书变了。relay 丢弃该 workspace 的全部缓存条目
+// （workspace 为空表示全部），并关闭 removed 里节点的会话。
+message RelayInvalidate {
+  string workspace = 1;
+  repeated bytes removed = 2;
+}
+
+// agentserver → relay：各 workspace 服务域名的通配证书与私钥；签发或续期时推送，也是 CertLookup 的答案。relay 只在内存持有，同 workspace 的新证书替换旧的。
+message WorkspaceCerts {
+  repeated WorkspaceCert certs = 1;
+}
+
+message WorkspaceCert {
+  string workspace = 1;
+  bytes cert_chain_pem = 2;
+  bytes key_pem = 3;
+  uint64 expires_at = 4;
+}

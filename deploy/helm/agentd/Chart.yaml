@@ -1,0 +1,7 @@
+apiVersion: v2
+name: agentd
+description: agentd control plane (agentserver with its web console), data plane relays (agentrelay) and an optional PostgreSQL
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords: [agentd, relay, zero-trust, mcp]

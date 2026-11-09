@@ -1,0 +1,26 @@
+# A production-shaped configuration used by CI to render and validate the chart.
+domain: agentsrv.example.com
+agentserver:
+  defaultDnsProvider: cf-main
+  dnsProviders:
+    cf-main:
+      provider: cloudflare
+      email: ops@example.com
+      tokenSecret: { name: cloudflare-api, key: token }
+  ingress:
+    enabled: true
+    className: nginx
+    host: console.agentsrv.example.com
+relays:
+  - name: relay-hk
+    domain: relay-hk.agentsrv.example.com
+    tls: { mode: acme, email: ops@example.com }
+    stun: { enabled: true }
+  - name: relay-sg
+    domain: relay-sg.agentsrv.example.com
+    tls: { mode: file, secretName: relay-sg-tls }
+    service: { type: NodePort, port: 8443 }
+postgresql:
+  enabled: false
+externalDatabase:
+  existingSecret: agentd-database

@@ -1,0 +1,1170 @@
+openapi: 3.0.3
+info:
+  title: agentserver admin API
+  version: v1
+  description: |
+    agentserver（控制面，管理平台）对管理员、CLI 与 Web 控制台提供的 HTTP API。
+
+    agentserver 对外只有两个接口：relay 会话（Noise_IK 跑在 WebSocket / XHTTP / HTTP Upgrade 上，见 docs/protocol.md 5.8）
+    和本文定义的 admin API。节点不连 agentserver，所以这里没有任何面向 agentd 的端点。
+
+    - 监听地址是 AgentserverConfiguration 的 `admin_listen`（默认 127.0.0.1:7800）。要从别的机器管理就把它放在
+      SSH 隧道或自己的反向代理后面；每个请求带 `Authorization: Bearer <admin token>`，令牌来自 `admin_token_env` 指定的环境变量。
+    - `agentserver` CLI 的每个子命令都对应这里的一个操作（设计文档 9.3）；`agentserver backup` 例外，它直接读状态库，不经 HTTP。
+    - 所有名字（workspace、节点、组、服务、relay）都是 RFC 1123 label；公钥一律是 base64url 无填充的 43 字符。
+    - 写操作都是幂等或带明确冲突语义的；变更立即生效：相关节点收到签名的 Update / PolicyUpdate / Notice，relay 收到 RelayInvalidate。
+    - 错误统一返回 `Error`，`code` 与协议状态码同名时含义相同（如 NAME_TAKEN、TOKEN_USED）。
+    - 对应设计文档 v0.16、协议规范 v0.7。
+servers:
+  - url: http://127.0.0.1:7800/api/v1
+    description: 本机 admin 端点（默认）
+security:
+  - AdminToken: []
+tags:
+  - name: server
+    description: 服务端自身
+  - name: workspaces
+    description: workspace 的创建、域名、relay 指派与密钥
+  - name: tokens
+    description: 加入令牌与加入链接
+  - name: nodes
+    description: 目录里的成员
+  - name: groups
+    description: 实例组及其密钥
+  - name: routes
+    description: 路由表（源、协议、域名、目的）
+  - name: policies
+    description: 中央策略（按主体书写，渲染后下发给受管角色）
+  - name: services
+    description: 已注册的服务
+  - name: certs
+    description: workspace 的通配证书
+  - name: relays
+    description: relay 注册、证书与指派
+
+paths:
+  /server:
+    get:
+      tags: [server]
+      operationId: getServer
+      summary: 服务端信息
+      description: 对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServerInfo" }
+
+  /status:
+    get:
+      tags: [server]
+      operationId: getStatus
+      summary: 运行状态
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+
+  /workspaces:
+    get:
+      tags: [workspaces]
+      operationId: listWorkspaces
+      summary: 列出 workspace
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Workspace" }
+    post:
+      tags: [workspaces]
+      operationId: createWorkspace
+      summary: 创建 workspace
+      description: |
+        对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
+        完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceCreate" }
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: 名字或基础域名已存在（code NAME_TAKEN）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /workspaces/{ws}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [workspaces]
+      operationId: getWorkspace
+      summary: 查看 workspace（含公钥、证书状态、指派的 relay）
+      description: >-
+        `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [workspaces]
+      operationId: updateWorkspace
+      summary: 修改 relay 指派、公网 DNS 发布或 DNS 凭据
+      description: 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspacePatch" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [workspaces]
+      operationId: deleteWorkspace
+      summary: 删除 workspace
+      description: 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。
+      parameters:
+        - name: force
+          in: query
+          description: 仍有成员时也删除；不带则有成员的 workspace 返回 409
+          schema: { type: boolean, default: false }
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 仍有成员（code WORKSPACE_NOT_EMPTY）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /workspaces/{ws}/tokens:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [tokens]
+      operationId: listTokens
+      summary: 列出未使用的加入令牌
+      description: 对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Token" }
+    post:
+      tags: [tokens]
+      operationId: createToken
+      summary: 签发加入令牌并返回加入链接
+      description: |
+        对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+        返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+        令牌明文只在这次响应里出现一次。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TokenCreate" }
+      responses:
+        "201":
+          description: 已签发
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenCreated" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: 指定的名字已被节点或服务占用（code NAME_TAKEN）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /workspaces/{ws}/tokens/{tokenId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+      - name: tokenId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [tokens]
+      operationId: revokeToken
+      summary: 作废未使用的令牌
+      description: 对应 `agentserver token revoke`。
+      responses:
+        "204": { description: 已作废 }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workspaces/{ws}/nodes:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [nodes]
+      operationId: listNodes
+      summary: 列出成员
+      description: 对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。
+      parameters:
+        - name: online
+          in: query
+          description: 只列在线或只列离线
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Node" }
+
+  /workspaces/{ws}/nodes/{node}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/NodeName"
+    get:
+      tags: [nodes]
+      operationId: getNode
+      summary: 查看成员
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Node" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [nodes]
+      operationId: updateNode
+      summary: 改名或调整角色上限
+      description: |
+        对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+        调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NodePatch" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Node" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 新名字已被占用（code NAME_TAKEN）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      tags: [nodes]
+      operationId: removeNode
+      summary: 移除成员
+      description: |
+        对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
+        向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。
+        换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。
+      responses:
+        "204": { description: 已移除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workspaces/{ws}/groups:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [groups]
+      operationId: listGroups
+      summary: 列出组
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Group" }
+    post:
+      tags: [groups]
+      operationId: createGroup
+      summary: 创建组
+      description: 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupCreate" }
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: 组名已存在（code NAME_TAKEN）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /workspaces/{ws}/groups/{group}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/GroupName"
+    get:
+      tags: [groups]
+      operationId: getGroup
+      summary: 查看组
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [groups]
+      operationId: deleteGroup
+      summary: 删除组
+      description: 对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workspaces/{ws}/groups/{group}/members/{node}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/GroupName"
+      - $ref: "#/components/parameters/NodeName"
+    put:
+      tags: [groups]
+      operationId: addGroupMember
+      summary: 把成员加入组
+      description: 对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
+      responses:
+        "204": { description: 已加入（重复加入也是 204） }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [groups]
+      operationId: removeGroupMember
+      summary: 把成员移出组
+      description: 对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。
+      responses:
+        "204": { description: 已移出 }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workspaces/{ws}/routes:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [routes]
+      operationId: getRouteTable
+      summary: 查看路由表
+      description: 路由表只在 agentserver 上；节点收到的是按节点渲染、去掉目的的分流表。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteTable" }
+    put:
+      tags: [routes]
+      operationId: replaceRouteTable
+      summary: 整体替换路由表
+      description: 版本号加一，重新渲染并推送所有 ingress 节点的分流表，向 relay 推 `RelayInvalidate`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteTableWrite" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RouteTable" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      tags: [routes]
+      operationId: addRoute
+      summary: 追加一条路由
+      description: 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RouteWrite" }
+      responses:
+        "201":
+          description: 已追加
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Route" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /workspaces/{ws}/routes/{routeId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+      - name: routeId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [routes]
+      operationId: deleteRoute
+      summary: 删除一条路由
+      description: 对应 `agentserver route remove`。
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workspaces/{ws}/policies:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [policies]
+      operationId: listPolicies
+      summary: 列出中央策略语句
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PolicyStatement" }
+    put:
+      tags: [policies]
+      operationId: replacePolicies
+      summary: 整体替换中央策略
+      description: >-
+        按设计文档 6.8 重新渲染：每个 `policy_source: server` 的提供侧角色得到一份 (public_key, action, target) 列表，经签名的 `PolicyUpdate` 下发并等待 `PolicyApplied`；向 relay 推 `RelayInvalidate`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: "#/components/schemas/PolicyStatementWrite" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PolicyStatement" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      tags: [policies]
+      operationId: addPolicy
+      summary: 追加一条策略语句
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyStatementWrite" }
+      responses:
+        "201":
+          description: 已追加
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyStatement" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /workspaces/{ws}/policies/{policyId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+      - name: policyId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [policies]
+      operationId: deletePolicy
+      summary: 删除一条策略语句
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /workspaces/{ws}/services:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [services]
+      operationId: listServices
+      summary: 列出已注册的服务
+      description: 服务由节点在 `Advertise` 里注册，这里只读；状态 `cert_pending` 表示 workspace 的通配证书还没签下来。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Service" }
+
+  /workspaces/{ws}/certs:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    get:
+      tags: [certs]
+      operationId: listCerts
+      summary: 查看通配证书
+      description: 对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Cert" }
+
+  /workspaces/{ws}/certs/renew:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceName"
+    post:
+      tags: [certs]
+      operationId: renewCert
+      summary: 立即续期
+      description: 对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。
+      responses:
+        "202":
+          description: 已开始续期
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cert" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /relays:
+    get:
+      tags: [relays]
+      operationId: listRelays
+      summary: 列出 relay
+      description: 对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Relay" }
+    post:
+      tags: [relays]
+      operationId: registerRelay
+      summary: 注册 relay
+      description: |
+        对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+        relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RelayCreate" }
+      responses:
+        "201":
+          description: 已注册
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Relay" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: 名字或公钥已注册（code NAME_TAKEN / IDENTITY_IN_USE）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /relays/tokens:
+    get:
+      tags: [relays]
+      operationId: listRelayTokens
+      summary: 列出未使用的 relay 注册令牌
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RelayToken" }
+    post:
+      tags: [relays]
+      operationId: createRelayToken
+      summary: 签发 relay 注册令牌
+      description: >-
+        对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址，
+        agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。
+        AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RelayTokenCreate" }
+      responses:
+        "201":
+          description: 已签发
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RelayTokenCreated" }
+
+  /relays/tokens/{tokenId}:
+    parameters:
+      - name: tokenId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [relays]
+      operationId: revokeRelayToken
+      summary: 作废 relay 注册令牌
+      responses:
+        "204": { description: 已作废 }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /relays/{relay}:
+    parameters:
+      - $ref: "#/components/parameters/RelayName"
+    get:
+      tags: [relays]
+      operationId: getRelay
+      summary: 查看 relay
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Relay" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [relays]
+      operationId: removeRelay
+      summary: 注销 relay
+      description: 对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。
+      responses:
+        "204": { description: 已注销 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 仍被 workspace 指派（code RELAY_IN_USE）
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /relays/{relay}/certs:
+    parameters:
+      - $ref: "#/components/parameters/RelayName"
+    get:
+      tags: [relays]
+      operationId: listRelayCerts
+      summary: 查看该 relay 在各 workspace 的 relay 证书
+      description: 每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RelayCert" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    AdminToken:
+      type: http
+      scheme: bearer
+      description: 静态管理令牌，来自 AgentserverConfiguration 的 `admin_token_env` 指定的环境变量
+
+  parameters:
+    WorkspaceName:
+      name: ws
+      in: path
+      required: true
+      description: workspace 名（如 `home`）
+      schema: { $ref: "#/components/schemas/Label" }
+    NodeName:
+      name: node
+      in: path
+      required: true
+      description: 实例名
+      schema: { $ref: "#/components/schemas/Label" }
+    GroupName:
+      name: group
+      in: path
+      required: true
+      description: 组名
+      schema: { $ref: "#/components/schemas/Label" }
+    RelayName:
+      name: relay
+      in: path
+      required: true
+      description: relay 名
+      schema: { $ref: "#/components/schemas/Label" }
+
+  responses:
+    BadRequest:
+      description: 请求不合法（code BAD_REQUEST / BAD_NAME / INVALID_ARGUMENTS）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: 对象不存在（code NOT_FOUND）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Label:
+      type: string
+      description: RFC 1123 label，小写，≤ 63 字符
+      pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+    PublicKey:
+      type: string
+      description: Ed25519 公钥，base64url 无填充，43 字符
+      pattern: "^[A-Za-z0-9_-]{43}$"
+    Role:
+      type: string
+      enum: [ingress, submitter, egress, service, executor]
+    Proto:
+      type: string
+      enum: [tls, ssh]
+    PolicySource:
+      type: string
+      enum: [local, server]
+    Subject:
+      type: string
+      description: |
+        中央策略与路由表的主语：`node:<name>`、`group:<name>`、`workspace`、`public`，或 `agentd://<公钥>`。
+        渲染给节点时换成对应的公钥，`public` 换成 `*`；`user:<邮箱>` 与 `usergroup:<name>` 留给后续的边缘登录。
+      example: "group:pc"
+    Match:
+      type: object
+      description: 域名模式；`set` 第一期不做
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          enum: [domain, suffix]
+          description: domain 精确匹配；suffix 匹配本身及所有子域
+        value:
+          type: string
+          description: 小写、无末尾点的域名
+      example: { kind: suffix, value: ucas.edu.cn }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: 机器可读的错误码，如 BAD_REQUEST、BAD_NAME、NAME_TAKEN、IDENTITY_IN_USE、NOT_FOUND、WORKSPACE_NOT_EMPTY、RELAY_IN_USE、ACME_FAILED
+            message: { type: string }
+
+    ServerInfo:
+      type: object
+      required: [public_key, version, protocol]
+      properties:
+        public_key:
+          allOf: [{ $ref: "#/components/schemas/PublicKey" }]
+          description: agentserver 的公钥，只用于 relay 会话（relay 配置的 `control.public_key`）
+        version: { type: string, description: 软件版本，如 0.1.0 }
+        protocol:
+          type: object
+          properties:
+            major: { type: integer }
+            min: { type: integer }
+            max: { type: integer }
+        domain: { type: string, description: agentserver 的域名，也是 workspace 基础域名的默认父域 }
+
+    Status:
+      type: object
+      properties:
+        uptime_seconds: { type: integer }
+        workspaces: { type: integer }
+        relays_registered: { type: integer }
+        relays_connected: { type: integer }
+        nodes_total: { type: integer }
+        nodes_online: { type: integer }
+        certs_pending: { type: integer, description: 通配证书尚未签下的 workspace 数 }
+
+    Workspace:
+      type: object
+      required: [name, base_domain, public_key, relay, created_at]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        base_domain:
+          type: string
+          description: 基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`
+        public_key:
+          allOf: [{ $ref: "#/components/schemas/PublicKey" }]
+          description: workspace 公钥，成员唯一钉住的信任根；加入链接的 `key`
+        uri: { type: string, description: 名字形式 `agentd://<base_domain>/`，代表这把公钥 }
+        relay: { type: string, description: 指派的 relay 名；MVP 每个 workspace 一个 }
+        dns_provider: { type: string, description: 基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers） }
+        publish_dns: { type: boolean, description: 是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问 }
+        cert: { $ref: "#/components/schemas/Cert" }
+        members: { type: integer }
+        members_online: { type: integer }
+        routes_version: { type: integer }
+        directory_version: { type: integer }
+        created_at: { type: string, format: date-time }
+    WorkspaceCreate:
+      type: object
+      required: [name, relay]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        base_domain: { type: string, description: 省略则用 `<name>.<agentserver 域名>` }
+        dns_provider: { type: string, description: 自定义基础域名时必填 }
+        publish_dns: { type: boolean, default: false }
+        relay: { type: string, description: 指派的 relay 名 }
+    WorkspacePatch:
+      type: object
+      properties:
+        relay: { type: string }
+        publish_dns: { type: boolean }
+        dns_provider: { type: string }
+
+    Token:
+      type: object
+      required: [id, roles, expires_at, created_at]
+      properties:
+        id: { type: string, description: 令牌记录的标识，不是令牌本身 }
+        name:
+          allOf: [{ $ref: "#/components/schemas/Label" }]
+          description: 绑定的实例名；为空表示由加入的设备提出
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }
+          description: 角色上限
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    TokenCreate:
+      type: object
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        roles:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }
+          description: 省略表示不限
+        ttl: { type: string, description: Go duration，如 `24h`；默认 24h }
+    TokenCreated:
+      allOf:
+        - $ref: "#/components/schemas/Token"
+        - type: object
+          required: [join_link]
+          properties:
+            join_link:
+              type: string
+              description: 完整的加入链接，带 relay、key（workspace 公钥）、token；只返回这一次
+              example: "agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.com&key=Rt7aB…&token=Qm9…"
+
+    Node:
+      type: object
+      required: [name, public_key, role_caps, online, joined_at]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        public_key: { $ref: "#/components/schemas/PublicKey" }
+        uri_key: { type: string, description: "`agentd://<公钥>`" }
+        uri_name: { type: string, description: "`agentd://<base_domain>/<name>`" }
+        role_caps:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }
+        online: { type: boolean }
+        relay: { type: string, description: 当前所连 relay 名；离线时为空 }
+        last_seen: { type: string, format: date-time }
+        joined_at: { type: string, format: date-time }
+        policy_sources:
+          type: object
+          description: 节点随 Advertise 上报的各提供侧角色的策略来源
+          properties:
+            egress: { $ref: "#/components/schemas/PolicySource" }
+            service: { $ref: "#/components/schemas/PolicySource" }
+            executor: { $ref: "#/components/schemas/PolicySource" }
+        services:
+          type: array
+          items: { type: string }
+          description: 该节点注册的服务名
+        executor:
+          type: object
+          properties:
+            description: { type: string }
+            tools:
+              type: array
+              items: { type: string }
+        policy_version_applied:
+          type: integer
+          description: 受管角色最近确认应用的 PolicyUpdate 版本
+    NodePatch:
+      type: object
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        role_caps:
+          type: array
+          items: { $ref: "#/components/schemas/Role" }
+
+    Group:
+      type: object
+      required: [name, public_key, members]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        public_key:
+          allOf: [{ $ref: "#/components/schemas/PublicKey" }]
+          description: 组公钥；节点规则里写它，持有该组成员证书的节点即命中
+        uri: { type: string, description: "`agentd://<base_domain>/group/<name>`" }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/Label" }
+    GroupCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/Label" }
+
+    Route:
+      type: object
+      required: [id, from, proto, domains, to]
+      properties:
+        id: { type: string }
+        from:
+          allOf: [{ $ref: "#/components/schemas/Subject" }]
+          description: 源：`node:`、`group:` 或 `workspace`
+        proto:
+          type: array
+          items: { $ref: "#/components/schemas/Proto" }
+          description: 空表示 tls 与 ssh 都适用
+        domains:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/Match" }
+        to:
+          type: string
+          description: 目的：某个 egress 节点名、`direct` 或 `reject`
+    RouteWrite:
+      type: object
+      required: [from, domains, to]
+      properties:
+        from: { $ref: "#/components/schemas/Subject" }
+        proto:
+          type: array
+          items: { $ref: "#/components/schemas/Proto" }
+        domains:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/Match" }
+        to: { type: string }
+    RouteTable:
+      type: object
+      required: [version, routes, default]
+      properties:
+        version: { type: integer, description: 单调递增；分流表与 Ack.rules_version 同源 }
+        routes:
+          type: array
+          items: { $ref: "#/components/schemas/Route" }
+          description: 书写顺序即同等具体时的优先顺序
+        default:
+          type: string
+          enum: [direct, reject]
+    RouteTableWrite:
+      type: object
+      required: [routes]
+      properties:
+        routes:
+          type: array
+          items: { $ref: "#/components/schemas/RouteWrite" }
+        default:
+          type: string
+          enum: [direct, reject]
+          default: direct
+
+    PolicyTarget:
+      type: object
+      description: >-
+        一条策略的目标，三种之一：写 `egress`（出口节点名，配 proto / domains / ports），写 `exec`（executor 节点名，配 argv / stdin / shell），
+        或写 `service`（服务名）。与设计文档里 YAML 的写法相同。
+      properties:
+        egress:
+          allOf: [{ $ref: "#/components/schemas/Label" }]
+          description: 出口节点名
+        proto:
+          allOf: [{ $ref: "#/components/schemas/Proto" }]
+          description: egress 的单个协议，默认 tls；两种都要就写两条
+        domains:
+          type: array
+          items: { $ref: "#/components/schemas/Match" }
+          description: egress 的域名模式
+        ports:
+          type: array
+          items: { type: integer, minimum: 1, maximum: 65535 }
+          description: egress 的目的端口；省略时 tls 443、ssh 22
+        exec:
+          allOf: [{ $ref: "#/components/schemas/Label" }]
+          description: executor 节点名
+        argv:
+          type: array
+          items: { type: string }
+          description: argv 前缀；argv[0] 是裸名或绝对路径，执行路径取自规则
+        stdin: { type: boolean, description: "允许 write_stdin" }
+        shell: { type: boolean, description: "allow 时允许完整 shell；deny 时禁止开 shell" }
+        service:
+          allOf: [{ $ref: "#/components/schemas/Label" }]
+          description: 服务名
+      example: { egress: dorm, proto: tls, domains: [{ kind: suffix, value: ucas.edu.cn }] }
+    PolicyStatementWrite:
+      type: object
+      description: 一条中央策略语句：若干主体对若干 target 的 allow 与 deny。渲染时每个主体换成公钥（`public` 换成 `*`），按目的角色拆成 (public_key, action, target) 规则
+      required: [subjects]
+      properties:
+        subjects:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/Subject" }
+        allow:
+          type: array
+          items: { $ref: "#/components/schemas/PolicyTarget" }
+        deny:
+          type: array
+          items: { $ref: "#/components/schemas/PolicyTarget" }
+        comment: { type: string }
+      example:
+        subjects: ["group:pc"]
+        allow:
+          - { egress: dorm, proto: tls, domains: [{ kind: suffix, value: ucas.edu.cn }] }
+          - { exec: office, argv: ["lark-cli", "msg"] }
+          - { service: nas }
+    PolicyStatement:
+      allOf:
+        - $ref: "#/components/schemas/PolicyStatementWrite"
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string }
+
+    Service:
+      type: object
+      required: [name, fqdn, proto, node, state]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        fqdn: { type: string }
+        proto:
+          type: string
+          enum: [http, ssh]
+        node: { allOf: [{ $ref: "#/components/schemas/Label" }], description: 所在节点 }
+        node_online: { type: boolean }
+        state:
+          type: string
+          enum: [ready, cert_pending]
+        port: { type: integer, description: 成员访问时的端口：http 443，ssh 22 }
+        public:
+          type: boolean
+          description: >-
+            该服务节点的生效策略里是否有 `public_key: "*"` 的 allow（只对 http 有意义）
+
+    Cert:
+      type: object
+      required: [workspace, domain, state]
+      properties:
+        workspace: { $ref: "#/components/schemas/Label" }
+        domain: { type: string, description: 通配名，如 `*.home.agentsrv.example.com` }
+        state:
+          type: string
+          enum: [pending, ready, renewing, failed]
+        not_before: { type: string, format: date-time }
+        not_after: { type: string, format: date-time }
+        issuer: { type: string, description: CA 名 }
+        last_error: { type: string, description: state 为 failed 时的 ACME 错误 }
+        relays:
+          type: array
+          items: { type: string }
+          description: 已持有该证书的 relay 名
+
+    Relay:
+      type: object
+      required: [name, public_key, url, connected]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        public_key: { $ref: "#/components/schemas/PublicKey" }
+        url: { type: string, description: 基础 URL，如 `https://relay-hk.agentsrv.example.com` }
+        transports:
+          type: object
+          description: transport 名 → 路径
+          additionalProperties: { type: string }
+          example: { ws: /ws, xhttp: /x, httpupgrade: /up }
+        stun: { type: string, description: "host:port" }
+        connected: { type: boolean, description: relay 会话是否在线 }
+        connected_since: { type: string, format: date-time }
+        workspaces:
+          type: array
+          items: { $ref: "#/components/schemas/Label" }
+          description: 指派给它的 workspace
+        nodes_online: { type: integer }
+    RelayCreate:
+      type: object
+      required: [name, public_key, url]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        public_key: { $ref: "#/components/schemas/PublicKey" }
+        url: { type: string }
+        transports:
+          type: object
+          additionalProperties: { type: string }
+          description: 省略则用默认路径 ws /ws、xhttp /x、httpupgrade /up
+        stun: { type: string }
+    RelayToken:
+      type: object
+      required: [id, expires_at, created_at]
+      properties:
+        id: { type: string }
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    RelayTokenCreate:
+      type: object
+      properties:
+        ttl: { type: string, description: Go duration，默认 24h }
+    RelayTokenCreated:
+      allOf:
+        - $ref: "#/components/schemas/RelayToken"
+        - type: object
+          required: [token]
+          properties:
+            token: { type: string, description: 令牌明文，只返回这一次；写进 relay 配置的 control.join_token }
+    RelayCert:
+      type: object
+      required: [workspace, relay, issued_at, expires_at, cert]
+      properties:
+        workspace: { $ref: "#/components/schemas/Label" }
+        relay: { $ref: "#/components/schemas/Label" }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        cert:
+          type: string
+          description: base64url 编码的 RelayCert protobuf，与 relay 的 well-known 端点返回的相同

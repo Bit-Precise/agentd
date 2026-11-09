@@ -1,0 +1,132 @@
+{{- $full := include "agentd.fullname" . -}}
+{{- range $item := .Values.relays }}
+{{- $r := merge (deepCopy $item) (dict "service" (dict "type" "LoadBalancer" "port" 443 "annotations" (dict) "loadBalancerIP" "") "stun" (dict "enabled" false "port" 3478) "tls" (dict "mode" "selfsigned" "email" "" "secretName" "") "resources" (dict)) }}
+{{- $name := printf "%s-%s" $full $r.name }}
+{{- $keySecret := printf "%s-key" $name }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $keySecret }}
+  labels: {{- include "agentd.labels" $ | nindent 4 }}
+type: Opaque
+stringData:
+  # A stable Ed25519 seed: the relay registers under this key.
+  key: {{ include "agentd.keep" (list $ $keySecret "key" (randBytes 32)) | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels: {{- include "agentd.labels" $ | nindent 4 }}
+data:
+  config.yaml: |
+    apiVersion: agentd/v1
+    kind: AgentrelayConfiguration
+    name: {{ $r.name }}
+    domain: {{ $r.domain }}
+    url: {{ printf "https://%s%s" $r.domain (ternary "" (printf ":%v" $r.service.port) (eq (int $r.service.port) 443)) }}
+    listen: ":8443"
+    key_env: AGENTRELAY_KEY
+    control:
+      url: {{ printf "https://%s:%v" (include "agentd.serverHost" $) $.Values.agentserver.service.relayPort }}
+      ca_file: /etc/agentrelay/control-ca/ca.crt
+      join_token_env: AGENTRELAY_JOIN_TOKEN
+    {{- if eq $r.tls.mode "acme" }}
+    tls: { mode: acme, email: {{ $r.tls.email | quote }}, cache_dir: /var/cache/agentrelay/acme }
+    {{- else }}
+    # file: the given Secret; selfsigned: a certificate from the chart CA
+    tls: { mode: file, cert_file: /etc/agentrelay/tls/tls.crt, key_file: /etc/agentrelay/tls/tls.key }
+    {{- end }}
+    {{- if $r.stun.enabled }}
+    stun: ":3478"
+    {{- end }}
+    log: { level: {{ $.Values.agentserver.log.level }}, format: {{ $.Values.agentserver.log.format }} }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: {{- include "agentd.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: agentrelay
+    agentd.dev/relay: {{ $r.name }}
+spec:
+  replicas: 1   # one process per relay key
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/instance: {{ $.Release.Name }}, agentd.dev/relay: {{ $r.name }} }
+  template:
+    metadata:
+      labels: {{- include "agentd.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: agentrelay
+        agentd.dev/relay: {{ $r.name }}
+      annotations:
+        checksum/config: {{ printf "%v" $r | sha256sum | trunc 16 }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: { runAsNonRoot: true, runAsUser: 65532, fsGroup: 65532 }
+      containers:
+        - name: agentrelay
+          image: {{ include "agentd.image" (list $ "agentrelay") }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          args: ["run", "-c", "/etc/agentrelay/config.yaml"]
+          env:
+            - { name: AGENTRELAY_KEY, valueFrom: { secretKeyRef: { name: {{ $keySecret }}, key: key } } }
+            - { name: AGENTRELAY_JOIN_TOKEN, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" $ }}, key: relay-join-token } } }
+          ports:
+            - { name: https, containerPort: 8443 }
+            {{- if $r.stun.enabled }}
+            - { name: stun, containerPort: 3478, protocol: UDP }
+            {{- end }}
+          readinessProbe: { httpGet: { path: /healthz, port: https, scheme: HTTPS }, periodSeconds: 5 }
+          livenessProbe: { tcpSocket: { port: https }, initialDelaySeconds: 10, periodSeconds: 20 }
+          volumeMounts:
+            - { name: config, mountPath: /etc/agentrelay/config.yaml, subPath: config.yaml }
+            - { name: control-ca, mountPath: /etc/agentrelay/control-ca, readOnly: true }
+            {{- if ne $r.tls.mode "acme" }}
+            - { name: tls, mountPath: /etc/agentrelay/tls, readOnly: true }
+            {{- end }}
+            {{- if eq $r.tls.mode "acme" }}
+            - { name: acme, mountPath: /var/cache/agentrelay }
+            {{- end }}
+          resources: {{- toYaml ($r.resources | default dict) | nindent 12 }}
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+      volumes:
+        - { name: config, configMap: { name: {{ $name }} } }
+        - name: control-ca
+          secret: { secretName: {{ $full }}-agentserver-tls, items: [{ key: ca.crt, path: ca.crt }] }
+        {{- if eq $r.tls.mode "file" }}
+        - { name: tls, secret: { secretName: {{ required "relays[].tls.secretName is required for tls.mode file" $r.tls.secretName }} } }
+        {{- else if eq $r.tls.mode "selfsigned" }}
+        - { name: tls, secret: { secretName: {{ printf "%s-%s-tls" $full $r.name }} } }
+        {{- end }}
+        {{- if eq $r.tls.mode "acme" }}
+        - { name: acme, emptyDir: {} }
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: {{- include "agentd.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: agentrelay
+  {{- with $r.service.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $r.service.type }}
+  {{- if and (eq $r.service.type "LoadBalancer") $r.service.loadBalancerIP }}
+  loadBalancerIP: {{ $r.service.loadBalancerIP }}
+  {{- end }}
+  {{- if eq $r.service.type "LoadBalancer" }}
+  externalTrafficPolicy: Local
+  {{- end }}
+  selector: { app.kubernetes.io/instance: {{ $.Release.Name }}, agentd.dev/relay: {{ $r.name }} }
+  ports:
+    - { name: https, port: {{ $r.service.port }}, targetPort: https, protocol: TCP }
+    {{- if $r.stun.enabled }}
+    - { name: stun, port: {{ $r.stun.port }}, targetPort: stun, protocol: UDP }
+    {{- end }}
+{{- end }}

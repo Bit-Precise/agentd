@@ -1,0 +1,10 @@
+/bin/
+/dist/
+/.dev/
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+*.test
+/agentd
+/agentserver
+/agentrelay
