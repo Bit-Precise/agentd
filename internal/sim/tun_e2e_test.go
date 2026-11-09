@@ -112,10 +112,21 @@ func TestTUNEndToEnd(t *testing.T) {
 		}
 		// The platform resolver (not Go's) must return the fake address.
 		sys := &net.Resolver{PreferGo: false}
-		s.eventually("the system resolver returns the fake address", func() bool {
+		ok := false
+		var last error
+		for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline) && !ok; time.Sleep(500 * time.Millisecond) {
 			addrs, err := sys.LookupNetIP(ctx, "ip4", "web.campus.test")
-			return err == nil && len(addrs) > 0 && addrs[0].Unmap() == fake
-		})
+			last = err
+			ok = err == nil && len(addrs) > 0 && addrs[0].Unmap() == fake
+		}
+		if !ok {
+			t.Logf("system resolver: %v; tun status: %v", last, laptop.a.Status()["tun"])
+			for _, c := range [][]string{{"scutil", "--dns"}, {"netstat", "-rn", "-f", "inet"}, {"resolvectl", "status"}} {
+				out, _ := exec.Command(c[0], c[1:]...).CombinedOutput()
+				t.Logf("$ %s\n%s", strings.Join(c, " "), out)
+			}
+			t.Fatal("the system resolver did not return the fake address")
+		}
 	}
 	c, err := net.DialTimeout("tcp", netip.AddrPortFrom(fake, 443).String(), 10*time.Second)
 	if err != nil {
@@ -203,6 +214,7 @@ func startElevator(t *testing.T, exe, sock string) {
 		cmd.Wait()
 		logf.Seek(0, 0)
 		b, _ := io.ReadAll(logf)
+		logf.Close()
 		t.Logf("elevator log:\n%s", b)
 	})
 	deadline := time.Now().Add(20 * time.Second)

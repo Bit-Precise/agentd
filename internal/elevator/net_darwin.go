@@ -128,11 +128,13 @@ func writeDict(key string, d dnsDict) error {
 	return err
 }
 
-// darwinDNS is the primary service's DNS as found before the takeover. A
-// manually configured service (Setup:) wins over the dynamic one (State:),
-// so both keys are overridden and both are restored exactly. The Setup:
-// override lives only in the dynamic store: a reboot or a preferences apply
-// resets it even if the elevator dies.
+// darwinDNS is the primary service's DNS as found before the takeover.
+// The takeover writes a Setup: (manual) DNS dictionary for the service in
+// the dynamic store: unlike the DHCP-managed State: key, a manual resolver
+// is not scoped to the physical interface, so the system's queries follow
+// the routing table into the TUN. The override never touches the saved
+// preferences, so a reboot or a preferences apply resets it even if the
+// elevator dies; restore writes back the old dictionary or removes ours.
 type darwinDNS struct {
 	service string
 	state   dnsDict
@@ -161,27 +163,19 @@ func flushDNS() {
 
 // takeOverDNS points the primary service at the built-in DNS.
 func takeOverDNS(d darwinDNS) error {
-	ours := []string{"198.18.0.2"}
-	st := d.state
-	st.exists, st.servers = true, ours
-	err := writeDict("State:/Network/Service/"+d.service+"/DNS", st)
-	if d.setup.exists && len(d.setup.servers) > 0 {
-		su := d.setup
-		su.servers = ours
-		if e := writeDict("Setup:/Network/Service/"+d.service+"/DNS", su); e != nil && err == nil {
-			err = e
-		}
+	su := d.setup
+	if !su.exists {
+		su = dnsDict{exists: true, search: d.state.search, domain: d.state.domain}
 	}
+	su.servers = []string{"198.18.0.2"}
+	err := writeDict("Setup:/Network/Service/"+d.service+"/DNS", su)
 	flushDNS()
 	return err
 }
 
 // restoreDNS writes back what readDNS found.
 func restoreDNS(d darwinDNS) {
-	_ = writeDict("State:/Network/Service/"+d.service+"/DNS", d.state)
-	if d.setup.exists && len(d.setup.servers) > 0 {
-		_ = writeDict("Setup:/Network/Service/"+d.service+"/DNS", d.setup)
-	}
+	_ = writeDict("Setup:/Network/Service/"+d.service+"/DNS", d.setup)
 	flushDNS()
 }
 
