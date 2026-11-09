@@ -19,6 +19,10 @@ import (
 	"agentd/internal/wire/pb"
 )
 
+// RelayControlTimeout bounds the time from a relay's handshake to its control
+// stream; a variable so tests can shorten it.
+var RelayControlTimeout = 10 * time.Second
+
 // DefaultTransports are the transport paths used when none are configured.
 var DefaultTransports = map[string]string{"ws": "/ws", "httpupgrade": "/up", "xhttp": "/x"}
 
@@ -104,23 +108,9 @@ func (c *Coordinator) serveRelay(raw net.Conn) {
 		return
 	}
 	defer mux.Close()
-	actx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	st, err := mux.AcceptStream()
-	cancel()
-	_ = actx
-	if err != nil {
-		return
-	}
-	var open pb.StreamOpen
-	if err := wire.ReadMsg(st, &open, wire.OpenMax); err != nil {
-		return
-	}
-	body, err := wire.DecodeOpen(open.Open)
-	if err != nil || body.Kind != pb.Kind_KIND_CONTROL {
-		wire.WriteMsg(st, &pb.Ack{Status: pb.Status_BAD_REQUEST, Message: "first stream must be the control stream"})
-		return
-	}
-	if err := wire.WriteMsg(st, &pb.Ack{Status: pb.Status_OK}); err != nil {
+	st, ok := acceptRelayControl(mux)
+	if !ok {
+		c.log.Info("relay did not open its control stream", "relay", name)
 		return
 	}
 	var wmu sync.Mutex
@@ -155,4 +145,28 @@ func (c *Coordinator) serveRelay(raw net.Conn) {
 			c.handlePresence(ctx, name, x.RelayPresence)
 		}
 	}
+}
+
+// acceptRelayControl takes the relay's control stream, which must be the first
+// stream and arrive within RelayControlTimeout; otherwise the session closes.
+func acceptRelayControl(mux *session.Mux) (*session.Stream, bool) {
+	timer := time.AfterFunc(RelayControlTimeout, func() { mux.Close() })
+	defer timer.Stop()
+	st, err := mux.AcceptStream()
+	if err != nil {
+		return nil, false
+	}
+	var open pb.StreamOpen
+	if err := wire.ReadMsg(st, &open, wire.OpenMax); err != nil {
+		return nil, false
+	}
+	body, err := wire.DecodeOpen(open.Open)
+	if err != nil || body.Kind != pb.Kind_KIND_CONTROL {
+		wire.WriteMsg(st, &pb.Ack{Status: pb.Status_BAD_REQUEST, Message: "first stream must be the control stream"})
+		return nil, false
+	}
+	if err := wire.WriteMsg(st, &pb.Ack{Status: pb.Status_OK}); err != nil {
+		return nil, false
+	}
+	return st, true
 }
