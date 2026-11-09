@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, v2]
+    branches: [main]
     tags: ["v*"]
   pull_request:
 
@@ -120,6 +120,25 @@ jobs:
           name: bin-${{ matrix.goos }}-${{ matrix.goarch }}
           path: out/
 
+  sign-dry-run:
+    name: macOS signing (dry run)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: build darwin binaries
+        run: make dist PLATFORMS="darwin/amd64 darwin/arm64" VERSION=v0.0.0-ci
+      # The release signs with the org's Developer ID in the release-signing
+      # environment; here a throwaway identity exercises the same script.
+      - name: sign with a throwaway identity
+        run: |
+          scripts/release/test-identity.sh > "$RUNNER_TEMP/id.env"
+          set -a; . "$RUNNER_TEMP/id.env"; set +a
+          SKIP_NOTARIZE=1 scripts/release/sign-macos.sh dist 0.0.0-ci
+          unzip -l dist/agentd_0.0.0-ci_darwin_arm64.zip
+
   web:
     name: web console
     runs-on: ubuntu-latest
@@ -204,7 +223,7 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=sha,format=short
-            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/v2' }}
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}
       - uses: docker/build-push-action@v6
         with:
           context: .

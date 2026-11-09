@@ -1,16 +1,26 @@
 name: release
 
+# A v* tag builds every binary, signs and notarizes the macOS binaries with
+# the org's Developer ID, signs the Windows binaries with Azure Artifact
+# Signing, and publishes a GitHub release plus the Helm chart. A manual run
+# (on main: the release-signing environment admits only main and v* tags)
+# does everything except publishing, to check the signing setup.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -22,21 +32,179 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - uses: azure/setup-helm@v4
+      - id: version
+        name: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v=${GITHUB_REF_NAME#v}; else v=0.0.0-dev.${GITHUB_SHA::7}; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: web console (embedded into agentserver)
         run: make web
       - name: cross-compile
-        run: make dist VERSION=${GITHUB_REF_NAME}
-      - name: checksums
-        run: cd dist && sha256sum * > SHA256SUMS
-      - name: helm package
+        run: make dist VERSION=v${{ steps.version.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-linux
+          path: dist/*-linux-*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-darwin
+          path: dist/*-darwin-*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-windows
+          path: dist/*-windows-*
+          if-no-files-found: error
+
+  macos:
+    name: sign and notarize (macOS)
+    needs: build
+    runs-on: macos-15
+    environment: release-signing
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: bin-darwin
+          path: dist
+      - name: sign, notarize, assess
+        env:
+          APPLE_APPLICATION_IDENTITY: ${{ vars.APPLE_APPLICATION_IDENTITY }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          APPLE_NOTARY_KEY_ID: ${{ vars.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ vars.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_APPLICATION_P12_BASE64: ${{ secrets.APPLE_APPLICATION_P12_BASE64 }}
+          APPLE_APPLICATION_P12_PASSWORD: ${{ secrets.APPLE_APPLICATION_P12_PASSWORD }}
+          APPLE_NOTARY_KEY_P8_BASE64: ${{ secrets.APPLE_NOTARY_KEY_P8_BASE64 }}
+        run: scripts/release/sign-macos.sh dist "${{ needs.build.outputs.version }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-darwin
+          path: dist/*.zip
+          if-no-files-found: error
+
+  windows:
+    name: sign (Windows)
+    needs: build
+    runs-on: windows-latest
+    environment: release-signing
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: bin-windows
+          path: dist
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Signs with the Azure CLI session from azure/login only (GitHub OIDC,
+      # no stored credential), RFC 3161 timestamp, SHA-256 digests.
+      - uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\dist
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: agentd
+          description-url: https://github.com/${{ github.repository }}
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+      - name: verify signatures and timestamps
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
-          v=${GITHUB_REF_NAME#v}
-          helm package deploy/helm/agentd --version "$v" --app-version "$v" -d dist
+          $files = @(Get-ChildItem dist -Filter *.exe)
+          if ($files.Count -ne 6) { throw "expected 6 executables, found $($files.Count)" }
+          $bad = 0
+          foreach ($f in $files) {
+            $s = Get-AuthenticodeSignature -LiteralPath $f.FullName
+            "{0}: {1}; signer {2}; timestamp {3}" -f $f.Name, $s.Status, $s.SignerCertificate.Subject, $s.TimeStamperCertificate.Subject
+            if ($s.Status -ne 'Valid' -or $null -eq $s.TimeStamperCertificate) { $bad++ }
+          }
+          if ($bad) { throw "$bad executables lack a valid signature with a timestamp" }
+          $v = & dist\agentd-windows-amd64.exe version
+          $v
+          if ($v -notlike "*$env:VERSION*") { throw "signed agentd reports an unexpected version (want $env:VERSION)" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-windows
+          path: dist/*.exe
+          if-no-files-found: error
+
+  package:
+    needs: [build, macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: bin-linux
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-darwin
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-windows
+          path: dist
+      - name: archives, chart, checksums
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          mkdir -p out
+          helm package deploy/helm/agentd --version "$VERSION" --app-version "$VERSION" -d out
+          scripts/release/package.sh dist "$VERSION" out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: [build, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: azure/setup-helm@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: out
+      - name: push the chart
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
-          helm push "dist/agentd-$v.tgz" "oci://ghcr.io/$owner/charts"
+          echo "$GH_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          helm push "out/agentd-$VERSION.tgz" "oci://ghcr.io/$owner/charts"
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: out/*
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true

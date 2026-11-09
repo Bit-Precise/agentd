@@ -45,7 +45,7 @@ helm install agentd deploy/helm/agentd \
   --set relays[0].name=relay-1 --set relays[0].domain=relay-1.agentsrv.example.com
 ```
 
-安装后的说明（取 admin 令牌、端口转发控制台、DNS 指向 relay）会由 chart 打印。生产环境把 relay 的 `tls.mode` 设为 `acme` 或 `file`，并在 `agentserver.dnsProviders` 配置 Cloudflare 以签发受信任的 workspace 通配证书；`deploy/helm/agentd/ci/production-values.yaml` 是一份完整示例。镜像由 CI 推到 `ghcr.io/bit-precise/agentd/{agentserver,agentrelay,agentd}`：每次推送 main 或 v2 更新 `edge` 标签，仓库里的 chart 默认就用它；发布版的 chart 固定为对应版本的镜像。
+安装后的说明（取 admin 令牌、端口转发控制台、DNS 指向 relay）会由 chart 打印。生产环境把 relay 的 `tls.mode` 设为 `acme` 或 `file`，并在 `agentserver.dnsProviders` 配置 Cloudflare 以签发受信任的 workspace 通配证书；`deploy/helm/agentd/ci/production-values.yaml` 是一份完整示例。镜像由 CI 推到 `ghcr.io/bit-precise/agentd/{agentserver,agentrelay,agentd}`：每次推送 main 更新 `edge` 标签，仓库里的 chart 默认就用它；发布版的 chart 固定为对应版本的镜像。
 
 ## 节点
 
@@ -69,6 +69,12 @@ make helm-lint
 ```
 
 `internal/sim` 在一个进程里跑 agentserver、agentrelay 与多个 agentd，覆盖加入、经出口的 TLS、策略拒绝、远程任务、MCP 与经 edge 的 HTTP 服务。
+
+## 发布与签名
+
+推送 `v*` 标签触发 `.github/workflows/release.yml`：Linux 上交叉编译全部二进制；macOS 二进制在 macOS runner 上用组织的 Developer ID Application 证书签名（hardened runtime、安全时间戳），每个架构的 ZIP 交给 notarytool 公证，再由 Gatekeeper 确认公证票据；Windows 的 `.exe` 用 Azure Artifact Signing 签名（GitHub OIDC 登录 Azure，不存凭据，带 RFC 3161 时间戳），签完逐个校验签名与时间戳。最后产出 `agentd_<版本>_{linux,darwin,windows}_{amd64,arm64}` 压缩包、chart 包与 `SHA256SUMS`，发布到 GitHub Release，chart 推到 `oci://ghcr.io/bit-precise/charts`；带 `-` 的标签（如 `v0.1.0-rc.1`）发成预发布。
+
+签名用的证书、公证密钥与 Azure 参数是 Bit-Precise 组织级的 secrets 与 variables，两个签名任务跑在仓库的 `release-signing` environment 里，该 environment 只放行 main 与 `v*` 标签。在 main 上手动运行这个 workflow 会走完构建、签名、公证与打包而不发布，用来检查签名配置；CI 的 `macOS signing (dry run)` 任务在每次推送与 PR 上用一次性的自签名身份跑同一个签名脚本（`scripts/release/sign-macos.sh`）。
 
 ## TUN 模式（macOS、Linux、Windows）
 
