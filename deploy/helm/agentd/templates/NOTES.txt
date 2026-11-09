@@ -16,7 +16,8 @@ agentd {{ .Chart.AppVersion }} is installed.
    agentserver workspace create home --relay {{ (index .Values.relays 0).name }}
    agentserver token create -w home --name laptop
    agentd join '<link>'
-{{- if eq (index .Values.relays 0).tls.mode "selfsigned" }}
+{{- $first := merge (deepCopy (index .Values.relays 0)) (dict "tls" (dict "mode" "selfsigned")) }}
+{{- if eq $first.tls.mode "selfsigned" }}
 
 Relays use certificates from the chart CA (tls.mode selfsigned). Nodes trust it with:
    kubectl -n {{ .Release.Namespace }} get secret {{ include "agentd.fullname" . }}-agentserver-tls -o jsonpath='{.data.ca\.crt}' | base64 -d > agentd-ca.pem

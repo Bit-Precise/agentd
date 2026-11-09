@@ -157,9 +157,16 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: lint
         run: helm lint deploy/helm/agentd
+      - name: install dry run (renders NOTES too)
+        run: |
+          helm install t deploy/helm/agentd --dry-run=client > /dev/null
+          for f in minimal production; do
+            helm install t deploy/helm/agentd --dry-run=client -f "deploy/helm/agentd/ci/$f-values.yaml" > /dev/null
+          done
       - name: rendered configs pass the real parsers
         run: |
           helm template t deploy/helm/agentd | go run ./tools/checkconfig
+          helm template t deploy/helm/agentd -f deploy/helm/agentd/ci/minimal-values.yaml | go run ./tools/checkconfig
           helm template t deploy/helm/agentd -f deploy/helm/agentd/ci/production-values.yaml | go run ./tools/checkconfig
       - name: kubeconform
         run: |

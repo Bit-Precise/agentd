@@ -1,0 +1,5 @@
+# The smallest useful configuration: one relay with only a name and a domain.
+domain: agentsrv.example.com
+relays:
+  - name: relay-1
+    domain: relay-1.agentsrv.example.com
