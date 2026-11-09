@@ -54,6 +54,16 @@ if [ "$dry" != 1 ]; then
 fi
 notary() { xcrun notarytool "$@" --key "$work/notary.p8" --key-id "$APPLE_NOTARY_KEY_ID" --issuer "$APPLE_NOTARY_ISSUER_ID"; }
 field() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$1" "$2" 2>/dev/null || true; }
+# notarized FILE succeeds once FILE's notarization ticket can be found. Bare
+# executables cannot be stapled, so the ticket is looked up online; spctl's
+# execute assessment rejects every command-line tool as "not an app", while
+# codesign's notarized requirement and the install assessment check the ticket.
+notarized() {
+  local out
+  codesign --verify --strict -R=notarized --check-notarization "$1" 2>/dev/null &&
+    out=$(spctl --assess --type install -vv "$1" 2>&1) &&
+    grep -q '^source=Notarized Developer ID' <<<"$out"
+}
 
 for arch in amd64 arm64; do
   name="agentd_${version}_darwin_${arch}"
@@ -91,17 +101,19 @@ for arch in amd64 arm64; do
     if [ -n "$id" ]; then notary log "$id" >&2 || true; fi
     exit 1
   fi
-  # Bare executables cannot be stapled, so Gatekeeper looks the ticket up
-  # online. spctl calls command-line tools "not an app" even when they pass;
-  # the source line is what shows the notarization.
   for c in agentd agentserver agentrelay; do
-    for try in 1 2 3 4 5 6; do
-      verdict=$(spctl --assess --type execute -vv "$stage/$c" 2>&1 || true)
-      grep -q '^source=Notarized Developer ID' <<<"$verdict" && break
-      [ "$try" = 6 ] && { echo "$c: Gatekeeper does not see a notarization ticket" >&2; echo "$verdict" >&2; exit 1; }
+    try=1
+    until notarized "$stage/$c"; do
+      if [ "$try" = 6 ]; then
+        echo "$c: no notarization ticket found" >&2
+        codesign --verify -vvv -R=notarized --check-notarization "$stage/$c" >&2 || true
+        spctl --assess --type install -vv "$stage/$c" >&2 || true
+        exit 1
+      fi
+      try=$((try + 1))
       sleep 10
     done
-    echo "$c: $(grep '^source=' <<<"$verdict")"
+    echo "$c: notarized (Gatekeeper: $(spctl --assess --type install -vv "$stage/$c" 2>&1 | grep '^source=' || true))"
   done
 done
 

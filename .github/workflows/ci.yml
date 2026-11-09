@@ -50,6 +50,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # Embedded PostgreSQL downloads its binaries from Maven Central; keep them
+      # so a flaky download does not fail the run.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/agentd/embedded-postgres
+          key: embedded-postgres-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}
+          restore-keys: embedded-postgres-${{ runner.os }}-${{ runner.arch }}-
       # Packages that need PostgreSQL skip when it cannot start.
       - run: go test -count=1 ./internal/identity/... ./internal/wire/... ./internal/session/... ./internal/transport/... ./internal/policy/... ./internal/routes/... ./internal/sniff/... ./internal/task/... ./internal/agent/... ./internal/relay/... ./internal/cliutil/...
 
@@ -76,6 +83,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      # Embedded PostgreSQL downloads its binaries from Maven Central; keep them
+      # so a flaky download does not fail the run.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/agentd/embedded-postgres
+          key: embedded-postgres-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.sum') }}
+          restore-keys: embedded-postgres-${{ runner.os }}-${{ runner.arch }}-
       - name: wintun
         if: runner.os == 'Windows'
         shell: bash
