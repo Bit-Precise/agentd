@@ -14,7 +14,7 @@ info:
     - 所有名字（workspace、节点、组、服务、relay）都是 RFC 1123 label；公钥一律是 base64url 无填充的 43 字符。
     - 写操作都是幂等或带明确冲突语义的；变更立即生效：相关节点收到签名的 Update / PolicyUpdate / Notice，relay 收到 RelayInvalidate。
     - 错误统一返回 `Error`，`code` 与协议状态码同名时含义相同（如 NAME_TAKEN、TOKEN_USED）。
-    - 对应设计文档 v0.19、协议规范 v0.7。
+    - 对应设计文档 v0.20、协议规范 v0.7。
 servers:
   - url: http://127.0.0.1:7800/api/v1
     description: 本机 admin 端点（默认）

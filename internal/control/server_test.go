@@ -2,10 +2,17 @@ package control
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -128,6 +135,12 @@ func TestServerConfigValidation(t *testing.T) {
 		"apiVersion: agentd/v1\nkind: AgentserverConfiguration\ndomain: a.test\ntls: {mode: selfsigned}\ndns_providers: {cf: {provider: cloudflare, token_env: T}}\n",
 		"apiVersion: agentd/v1\nkind: AgentserverConfiguration\ndomain: a.test\ntls: {mode: selfsigned}\ndns_providers: {cf: {provider: cloudflare, token_env: T, zones: [cs.ac.cn]}, dp: {provider: dnspod, secret_id_env: A, secret_key_env: B, zones: [CS.ac.cn]}}\n",
 		"apiVersion: agentd/v1\nkind: AgentserverConfiguration\ndomain: a.test\ntls: {mode: selfsigned}\ndns_providers: {cf: {provider: cloudflare, token_env: T, zones: [\"bad_zone!\"]}}\n",
+		// half an external account binding
+		"apiVersion: agentd/v1\nkind: AgentserverConfiguration\ndomain: a.test\ntls: {mode: selfsigned}\ndns_providers: {cf: {provider: cloudflare, token_env: T, zones: [a.test], eab_key_id_env: K}}\n",
+		"apiVersion: agentd/v1\nkind: AgentserverConfiguration\ndomain: a.test\ntls: {mode: selfsigned}\ndns_providers: {cf: {provider: cloudflare, token_env: T, zones: [a.test], eab_hmac_key_env: H}}\n",
+		// every transport is TLS, the ACME directory included
+		"apiVersion: agentd/v1\nkind: AgentserverConfiguration\ndomain: a.test\ntls: {mode: selfsigned}\ndns_providers: {cf: {provider: cloudflare, token_env: T, zones: [a.test], acme_directory: \"http://acme.test/directory\"}}\n",
+		"apiVersion: agentd/v1\nkind: AgentserverConfiguration\ndomain: a.test\ntls: {mode: selfsigned}\ndns_providers: {cf: {provider: cloudflare, token_env: T, zones: [a.test], acme_directory: \"dv.acme-v02.api.pki.goog/directory\"}}\n",
 	}
 	for i, b := range bad {
 		if _, err := ParseServerConfig([]byte(b)); err == nil {
@@ -194,8 +207,9 @@ domain: a.test
 tls: {mode: selfsigned}
 default_dns_provider: dp
 dns_providers:
-  dp: {provider: dnspod, secret_id_env: TEST_DP_ID, secret_key_env: TEST_DP_KEY, email: ops@a.test, propagation_wait: 5s, zones: [cs.ac.cn]}
-  cf: {provider: cloudflare, token_env: TEST_CF_TOKEN, zones: [mryao.org]}
+  dp: {provider: dnspod, secret_id_env: TEST_DP_ID, secret_key_env: TEST_DP_KEY, email: ops@a.test, propagation_wait: 5s, zones: [cs.ac.cn],
+       acme_directory: "https://dv.acme-v02.api.pki.goog/directory", eab_key_id_env: TEST_EAB_KID, eab_hmac_key_env: TEST_EAB_HMAC}
+  cf: {provider: cloudflare, token_env: TEST_CF_TOKEN, zones: [mryao.org], account_key_env: TEST_ACCOUNT_KEY}
   dev: {provider: selfsigned}
 `))
 	if err != nil {
@@ -205,6 +219,15 @@ dns_providers:
 	t.Setenv("TEST_DP_ID", "AKIDtest")
 	t.Setenv("TEST_DP_KEY", "dp-secret")
 	t.Setenv("TEST_CF_TOKEN", "cf-token")
+	t.Setenv("TEST_EAB_KID", "kid-1")
+	hmacKey := []byte("an HMAC key handed out by the CA, 64 bytes or so, ending in ~~~")
+	t.Setenv("TEST_EAB_HMAC", base64.RawURLEncoding.EncodeToString(hmacKey))
+	accountKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, _ := x509.MarshalPKCS8PrivateKey(accountKey)
+	t.Setenv("TEST_ACCOUNT_KEY", string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})))
 	issuers, err := dnsIssuers(cfg, nil, self)
 	if err != nil {
 		t.Fatal(err)
@@ -216,13 +239,28 @@ dns_providers:
 	if c, ok := dp.DNS.(*DNSPodClient); !ok || c.SecretID != "AKIDtest" || c.SecretKey != "dp-secret" || dp.Email != "ops@a.test" || dp.PropagationWait != 5*time.Second {
 		t.Fatalf("dp issuer %+v with %#v", dp, dp.DNS)
 	}
+	if dp.Directory != GoogleTrustServices || dp.EAB == nil || dp.EAB.KID != "kid-1" || string(dp.EAB.Key) != string(hmacKey) || dp.AccountKey != nil {
+		t.Fatalf("dp issuer: directory %q, EAB %v, account key %v", dp.Directory, dp.EAB, dp.AccountKey)
+	}
 	if cf, ok := issuers["cf"].(*ACMEIssuer); !ok {
 		t.Fatalf("cf issuer is %T", issuers["cf"])
 	} else if c, ok := cf.DNS.(*CloudflareClient); !ok || c.Token != "cf-token" {
 		t.Fatalf("cf dns client %#v", cf.DNS)
+	} else if k, ok := cf.AccountKey.(*ecdsa.PrivateKey); !ok || !k.Equal(accountKey) || cf.EAB != nil {
+		t.Fatalf("cf account key %T, EAB %v", cf.AccountKey, cf.EAB)
 	}
 	if issuers["dev"] != Issuer(self) || issuers["selfsigned"] != Issuer(self) {
 		t.Fatalf("selfsigned issuers: %v %v", issuers["dev"], issuers["selfsigned"])
+	}
+	// Bad credentials are named by their variable, never shown.
+	for env, val := range map[string]string{"TEST_EAB_HMAC": "not base64url!", "TEST_ACCOUNT_KEY": "-----BEGIN NOTHING-----", "TEST_EAB_KID": ""} {
+		old := os.Getenv(env)
+		t.Setenv(env, val)
+		_, err := dnsIssuers(cfg, nil, self)
+		if err == nil || !strings.Contains(err.Error(), env) || (val != "" && strings.Contains(err.Error(), val)) {
+			t.Fatalf("%s=%q: %v", env, val, err)
+		}
+		t.Setenv(env, old)
 	}
 	t.Setenv("TEST_DP_KEY", "")
 	if _, err := dnsIssuers(cfg, nil, self); err == nil || !strings.Contains(err.Error(), "TEST_DP_KEY") {

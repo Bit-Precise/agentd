@@ -28,7 +28,10 @@ data:
     dns_providers:
       {{- range $name, $p := $s.dnsProviders }}
       {{- $env := $name | upper | replace "-" "_" }}
-      {{ $name }}: { provider: {{ $p.provider }}{{ if $p.zones }}, zones: {{ toJson $p.zones }}{{ end }}{{ if $p.tokenSecret }}, token_env: DNS_TOKEN_{{ $env }}{{ end }}{{ if $p.secretIdSecret }}, secret_id_env: DNS_SECRET_ID_{{ $env }}{{ end }}{{ if $p.secretKeySecret }}, secret_key_env: DNS_SECRET_KEY_{{ $env }}{{ end }}{{ if $p.email }}, email: {{ $p.email | quote }}{{ end }}{{ if $p.acmeDirectory }}, acme_directory: {{ $p.acmeDirectory | quote }}{{ end }}{{ if $p.propagationWait }}, propagation_wait: {{ $p.propagationWait }}{{ end }} }
+      {{- if ne (empty $p.eabKeyIdSecret) (empty $p.eabHmacKeySecret) }}
+      {{- fail (printf "agentserver.dnsProviders.%s: set both eabKeyIdSecret and eabHmacKeySecret" $name) }}
+      {{- end }}
+      {{ $name }}: { provider: {{ $p.provider }}{{ if $p.zones }}, zones: {{ toJson $p.zones }}{{ end }}{{ if $p.tokenSecret }}, token_env: DNS_TOKEN_{{ $env }}{{ end }}{{ if $p.secretIdSecret }}, secret_id_env: DNS_SECRET_ID_{{ $env }}{{ end }}{{ if $p.secretKeySecret }}, secret_key_env: DNS_SECRET_KEY_{{ $env }}{{ end }}{{ if $p.email }}, email: {{ $p.email | quote }}{{ end }}{{ if $p.acmeDirectory }}, acme_directory: {{ $p.acmeDirectory | quote }}{{ end }}{{ if $p.propagationWait }}, propagation_wait: {{ $p.propagationWait }}{{ end }}{{ if $p.eabKeyIdSecret }}, eab_key_id_env: DNS_EAB_KEY_ID_{{ $env }}{{ end }}{{ if $p.eabHmacKeySecret }}, eab_hmac_key_env: DNS_EAB_HMAC_KEY_{{ $env }}{{ end }}{{ if $p.accountKeySecret }}, account_key_env: DNS_ACCOUNT_KEY_{{ $env }}{{ end }} }
       {{- end }}
     {{- end }}
     log: { level: {{ $s.log.level }}, format: {{ $s.log.format }} }
@@ -75,6 +78,15 @@ spec:
             {{- end }}
             {{- if $p.secretKeySecret }}
             - { name: DNS_SECRET_KEY_{{ $env }}, valueFrom: { secretKeyRef: { name: {{ $p.secretKeySecret.name }}, key: {{ $p.secretKeySecret.key }} } } }
+            {{- end }}
+            {{- if $p.eabKeyIdSecret }}
+            - { name: DNS_EAB_KEY_ID_{{ $env }}, valueFrom: { secretKeyRef: { name: {{ $p.eabKeyIdSecret.name }}, key: {{ $p.eabKeyIdSecret.key }} } } }
+            {{- end }}
+            {{- if $p.eabHmacKeySecret }}
+            - { name: DNS_EAB_HMAC_KEY_{{ $env }}, valueFrom: { secretKeyRef: { name: {{ $p.eabHmacKeySecret.name }}, key: {{ $p.eabHmacKeySecret.key }} } } }
+            {{- end }}
+            {{- if $p.accountKeySecret }}
+            - { name: DNS_ACCOUNT_KEY_{{ $env }}, valueFrom: { secretKeyRef: { name: {{ $p.accountKeySecret.name }}, key: {{ $p.accountKeySecret.key }} } } }
             {{- end }}
             {{- end }}
           ports:

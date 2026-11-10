@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 
 	"agentd/internal/identity"
@@ -284,18 +285,17 @@ func dnsIssuers(cfg *ServerConfig, st *store.Store, self Issuer) (map[string]Iss
 			}
 			return "", fmt.Errorf("dns provider %s: %s is empty", name, v)
 		}
-		acmeIssuer := func(dns DNSClient) *ACMEIssuer {
-			return &ACMEIssuer{Store: st, Directory: p.Directory, Email: p.Email, DNS: dns, PropagationWait: p.PropagationWait}
-		}
+		var dns DNSClient
 		switch p.Provider {
 		case "selfsigned":
 			issuers[name] = self
+			continue
 		case "cloudflare":
 			tok, err := env(p.TokenEnv)
 			if err != nil {
 				return nil, err
 			}
-			issuers[name] = acmeIssuer(&CloudflareClient{Token: tok})
+			dns = &CloudflareClient{Token: tok}
 		case "dnspod":
 			id, err := env(p.SecretIDEnv)
 			if err != nil {
@@ -305,8 +305,36 @@ func dnsIssuers(cfg *ServerConfig, st *store.Store, self Issuer) (map[string]Iss
 			if err != nil {
 				return nil, err
 			}
-			issuers[name] = acmeIssuer(&DNSPodClient{SecretID: id, SecretKey: key})
+			dns = &DNSPodClient{SecretID: id, SecretKey: key}
+		default:
+			return nil, fmt.Errorf("dns provider %s: unknown provider %q", name, p.Provider)
 		}
+		is := &ACMEIssuer{Store: st, Directory: p.Directory, Email: p.Email, DNS: dns, PropagationWait: p.PropagationWait}
+		if p.EABKeyIDEnv != "" {
+			kid, err := env(p.EABKeyIDEnv)
+			if err != nil {
+				return nil, err
+			}
+			hmacKey, err := env(p.EABHMACKeyEnv)
+			if err != nil {
+				return nil, err
+			}
+			key, err := DecodeEABKey(hmacKey)
+			if err != nil {
+				return nil, fmt.Errorf("dns provider %s: %s: %w", name, p.EABHMACKeyEnv, err)
+			}
+			is.EAB = &acme.ExternalAccountBinding{KID: kid, Key: key}
+		}
+		if p.AccountKeyEnv != "" {
+			pemKey, err := env(p.AccountKeyEnv)
+			if err != nil {
+				return nil, err
+			}
+			if is.AccountKey, err = ParseACMEAccountKey([]byte(pemKey)); err != nil {
+				return nil, fmt.Errorf("dns provider %s: %s: %w", name, p.AccountKeyEnv, err)
+			}
+		}
+		issuers[name] = is
 	}
 	return issuers, nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -66,6 +67,13 @@ type DNSProvider struct {
 	Email           string        `yaml:"email"`          // ACME account contact
 	Directory       string        `yaml:"acme_directory"` // default Let's Encrypt
 	PropagationWait time.Duration `yaml:"propagation_wait"`
+	// External account binding, for CAs that require one (Google Trust
+	// Services): the key id and its base64url HMAC key.
+	EABKeyIDEnv   string `yaml:"eab_key_id_env"`
+	EABHMACKeyEnv string `yaml:"eab_hmac_key_env"`
+	// A PEM ACME account key (ECDSA or RSA). By default a key is generated
+	// and kept in the state database.
+	AccountKeyEnv string `yaml:"account_key_env"`
 }
 
 // LogConfig selects the log format.
@@ -167,6 +175,14 @@ func (c *ServerConfig) Validate() error {
 		}
 		if p.Provider != "selfsigned" && len(p.Zones) == 0 {
 			return fmt.Errorf("dns provider %s: list the zones its account hosts in zones", name)
+		}
+		if (p.EABKeyIDEnv == "") != (p.EABHMACKeyEnv == "") {
+			return fmt.Errorf("dns provider %s: set both eab_key_id_env and eab_hmac_key_env", name)
+		}
+		if p.Directory != "" {
+			if u, err := url.Parse(p.Directory); err != nil || u.Scheme != "https" || u.Host == "" {
+				return fmt.Errorf("dns provider %s: acme_directory must be an https URL", name)
+			}
 		}
 		for i, z := range p.Zones {
 			z = strings.ToLower(strings.TrimSuffix(z, "."))

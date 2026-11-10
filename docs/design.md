@@ -1,6 +1,6 @@
 # agentd 设计文档
 
-- 状态：v0.19 草案，已有可运行实现
+- 状态：v0.20 草案，已有可运行实现
 - 日期：2026-11-10
 - 范围：评估原始方案，并给出可以直接开工的初步设计；标注「待定」的地方汇总在第 10 节；历次评审与反馈的处理见第 12 节；SSH 可行性研究见附录 A
 - 配套：协议规范 `docs/protocol.md`（线上格式、状态机、校验顺序、常量），protobuf 定义 `proto/agentd/v1/wire.proto`，agentd 实例配置参考 `docs/agentd-config.yaml`，agentserver admin API 定义 `docs/agentserver-openapi.yaml`
@@ -28,6 +28,7 @@
 | v0.17 | 2026-11-09 | 实现 TUN 模式（阶段 2，macOS 与 Linux）：elevator 以 root 运行（`sudo agentd elevator install` 装成 LaunchDaemon 或 systemd 系统单元，只服务安装者的 uid，按 unix socket 的对端凭据校验，同一时刻只交给一个实例），在 `/var/run/agentd-elevator.sock` 上收 `open` 请求，创建设备并用 SCM_RIGHTS 把描述符交给非特权的 agentd，agentd 断开即恢复路由与 DNS；Linux 设备 `agentd0` 用 IFF_NO_PI 纯 IP 帧，接管用 `0.0.0.0/1` 与 `128.0.0.0/1` 两条路由，agentd 自身的套接字绑定物理接口的源地址，elevator 加 `from <源地址> lookup 5200` 策略路由让它们走原默认路由，DNS 走 systemd-resolved（`resolvectl dns/domain ~.`）或改写并恢复 resolv.conf；macOS 用 utun、同样两条路由，自身套接字用 `IP_BOUND_IF`，DNS 用 scutil 改写主服务的 `State:/Network/Service/<id>/DNS` 并在退出与换网时恢复；agentd 自身的域名解析直接问上游，不经内置 DNS；网络切换由 elevator 每 5 秒检测并推给 agentd，agentd 换绑并重连 relay；QUIC Initial（v1、v2）解密取 SNI，命中转发或服务域名的丢弃；Windows 的 TUN（wintun）仍在阶段 4 |
 | v0.18 | 2026-11-09 | TUN 补齐 Windows 并改进 macOS：Windows 的 elevator 是系统服务（`agentd elevator install` 在管理员 shell 里注册，下载并按 SHA-256 校验 wintun 0.14.1 放到 agentd.exe 旁），socket 的 ACL 只允许安装者的 SID；wintun 会话不能跨进程传递，所以 elevator 持有适配器并在 socket 上以 `[类型][u16 长度][载荷]` 帧转发数据包，agentd 自身套接字用 `IP_UNICAST_IF` 绕过 TUN，适配器用 netsh 配地址、路由与 DNS，关闭即删除；macOS 的 DNS 接管改为在动态存储里写主服务的 `Setup:` DNS（DHCP 来的 `State:` DNS 会被绑定到物理接口，查询不进 TUN），退出时写回或删除；elevator 退出前等待会话完成恢复，agentd 停止时先释放设备再拆协议栈；新增 `tun.capture: all | fakeip`，fakeip 只把 fake-IP 段路由进 TUN、不接管默认路由；TUN 端到端测试在 GitHub 的 Linux、macOS、Windows runner 上跑真实设备 |
 | v0.19 | 2026-11-10 | workspace 通配证书的签发方按域名选择，不再按 workspace 指定：`dns_providers` 的每一项用 `zones` 列出它的账号托管的 zone，workspace 的基础域名在所有 zone 里取最长匹配（被委派出去的子域可以用另一家），都不匹配时用 `default_dns_provider`（默认 selfsigned）；同一个 zone 只能属于一个提供方。workspace 的 `dns_provider` 不再是输入（admin API 只读返回实际选中的提供方，CLI 去掉 `--dns-provider`，状态库删掉该列）。DNS-01 新增 DNSPod（腾讯云 API 3.0，用官方 Go SDK `tencentcloud-sdk-go` 的 dnspod 模块签名与调用）：`provider: dnspod` 配 `secret_id_env` / `secret_key_env`，挑战记录写在默认线路、TTL 至少 600（DNSPod 各套餐都接受的下限）；ACME 签发器改为接 `DNSClient` 接口，Cloudflare 与 DNSPod 各一个实现并共用同一组契约测试；chart 的 `dnsProviders` 支持 `zones`、`secretIdSecret` / `secretKeySecret`、`acmeDirectory`、`propagationWait` |
+| v0.20 | 2026-11-10 | workspace 证书可以来自要求外部账号绑定（EAB）的 CA，如 Google Trust Services（`acme_directory: https://dv.acme-v02.api.pki.goog/directory`）：`dns_providers` 的每一项可配 `eab_key_id_env` / `eab_hmac_key_env`（HMAC 为 base64url）。GTS 的一个 EAB 密钥只能注册一个账号，注册后作废，所以 agentserver 先按账号私钥查找已有账号（`onlyReturnExisting`），查不到才带 EAB 注册；同一进程内账号的建立串行进行，`acme_directory` 与 `email` 相同的提供方共用一个账号；状态库里的账号私钥只插入不覆盖。可用 `account_key_env` 指定 PEM 账号私钥（ECDSA 或 RSA），不再生成、也不写入状态库，状态库重建后账号不丢。`acme_directory` 必须是 https。zone 的 CAA 记录要允许所选 CA（如 `cs.ac.cn` 只允许 `pki.goog`）。chart 的 `dnsProviders` 加 `eabKeyIdSecret` / `eabHmacKeySecret` / `accountKeySecret` |
 
 目录
 
@@ -538,6 +539,7 @@ MVP：每个 workspace 指派一个 relay，该 workspace 的全部成员都连�
 - 每个 zone（agentserver 自己的域名，以及 workspace 的自定义域名）配置一份 DNS 提供商凭据（支持 Cloudflare 与 DNSPod（腾讯云 API 3.0），经 `golang.org/x/crypto/acme` 做 DNS-01；阿里云等按同一接口扩展），用于 ACME DNS-01 和（可选）写服务记录。用哪份凭据由域名决定，不由 workspace 指定：DNS-01 只能由托管该 zone 的提供方完成，所以每份凭据列出它的 `zones`，workspace 的基础域名取最长匹配的 zone（委派出去的子域可以用另一家），都不匹配时用 `default_dns_provider`。DNS-01 不要求域名有公网 A 记录，所以服务域名可以只在工作区内解析。
 - 每个 workspace 一张通配证书 `*.<基础域名>`，由 agentserver 在创建 workspace 或绑定自定义域名时申请，到期前 30 天续期；DNS-01 通常要 1 到 3 分钟，期间该 workspace 的 HTTP 服务处于 `cert_pending`。私钥与证书由 agentserver 签发并加密存放在状态库里，经控制面与 relay 的会话下发给服务该 workspace 的 relay，relay 只在内存持有；节点上没有任何公网域名的私钥。
 - 通配证书的前提是私钥不离开运营方的服务端（agentserver 与它指派的 relay），这正是 v0.4 的决定；它也把 Let's Encrypt 的签发配额从「每服务一张」降到「每 workspace 一张」。
+- CA 默认是 Let's Encrypt，每个提供方可用 `acme_directory` 换成别的 ACME CA；zone 的 CAA 记录决定哪些 CA 能签（例如 `cs.ac.cn` 只允许 Google Trust Services 的 `pki.goog`）。要求外部账号绑定（EAB）的 CA（Google Trust Services、ZeroSSL）另配 `eab_key_id_env` / `eab_hmac_key_env`。GTS 的 EAB 密钥只能注册一个账号，注册后即作废，所以 agentserver 先用账号私钥查找已有账号，查不到才带 EAB 注册；账号私钥默认生成后密封在状态库（只插入不覆盖），`acme_directory` 与 `email` 相同的提供方共用它；`account_key_env` 可改用运营方保管的 PEM 私钥，状态库重建后仍是同一个账号。
 - agentserver 与 relay 各自域名的证书：放在 Cloudflare 后面时可用 Cloudflare 源站证书，直连时同样走 ACME。
 - 自定义域名的 zone 凭据只用于 `_acme-challenge.<基础域名>` 和 `*.<基础域名>` 两条记录，应申请只限该 zone 的最小权限令牌。
 
@@ -1082,7 +1084,9 @@ relay_join_token_env: AGENTSERVER_RELAY_TOKEN       # 可选：relay 自注册�
 relay_cert_ttl: 720h                                # relay 证书有效期，到一半时续签；每个 (relay, workspace) 一张，用 workspace 密钥签
 dns_providers:
   cf-main: { provider: cloudflare, token_env: CF_API_TOKEN, zones: [agentsrv.example.com, example.org] }   # 账号托管的 zone；workspace 的基础域名按最长匹配选提供方
-  dnspod: { provider: dnspod, secret_id_env: DNSPOD_SECRET_ID, secret_key_env: DNSPOD_SECRET_KEY, zones: [example.cn] }   # 腾讯云 API 3.0 密钥
+  dnspod: { provider: dnspod, secret_id_env: DNSPOD_SECRET_ID, secret_key_env: DNSPOD_SECRET_KEY, zones: [example.cn],   # 腾讯云 API 3.0 密钥
+            acme_directory: "https://dv.acme-v02.api.pki.goog/directory",                # 默认 Let's Encrypt；zone 的 CAA 只允许 pki.goog 时用 GTS
+            eab_key_id_env: GTS_EAB_KEY_ID, eab_hmac_key_env: GTS_EAB_HMAC_KEY }          # GTS 要求外部账号绑定（gcloud publicca external-account-keys create）；可选 account_key_env：PEM 账号私钥
 default_dns_provider: selfsigned                    # 基础域名不在任何 zones 里时用它（默认 selfsigned）
 ```
 

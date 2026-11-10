@@ -1090,10 +1090,14 @@ func (s *Store) ACMEAccountKey(ctx context.Context, id string) ([]byte, error) {
 	return s.box.open(sealed)
 }
 
-// PutACMEAccountKey stores an ACME account key.
-func (s *Store) PutACMEAccountKey(ctx context.Context, id string, keyPEM []byte) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO acme_accounts(id, key_pem) VALUES ($1,$2) ON CONFLICT (id) DO UPDATE SET key_pem=EXCLUDED.key_pem`, id, s.box.seal(keyPEM))
-	return err
+// AddACMEAccountKey stores keyPEM as ACME account key id unless a key is
+// stored under id already, and returns the stored key: an account key is
+// never replaced, since its account may hold a spent single-use EAB key.
+func (s *Store) AddACMEAccountKey(ctx context.Context, id string, keyPEM []byte) ([]byte, error) {
+	if _, err := s.pool.Exec(ctx, `INSERT INTO acme_accounts(id, key_pem) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, id, s.box.seal(keyPEM)); err != nil {
+		return nil, err
+	}
+	return s.ACMEAccountKey(ctx, id)
 }
 
 // CacheGet reads an autocert cache entry (ErrNotFound when absent).
