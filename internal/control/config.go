@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -43,7 +44,7 @@ type ServerConfig struct {
 	} `yaml:"selfsigned_ca"`
 
 	DNSProviders       map[string]DNSProvider `yaml:"dns_providers"`
-	DefaultDNSProvider string                 `yaml:"default_dns_provider"` // for workspaces that name none; default "selfsigned"
+	DefaultDNSProvider string                 `yaml:"default_dns_provider"` // for base domains outside every listed zone; default "selfsigned"
 
 	Log LogConfig `yaml:"log"`
 }
@@ -54,12 +55,16 @@ type DatabaseConfig struct {
 	URLEnv string `yaml:"url_env"` // default AGENTSERVER_DATABASE_URL; wins over url when set
 }
 
-// DNSProvider issues workspace wildcard certificates.
+// DNSProvider issues workspace wildcard certificates. A workspace uses the
+// provider whose zones hold its base domain (the longest zone wins).
 type DNSProvider struct {
-	Provider        string        `yaml:"provider"`  // cloudflare | selfsigned
-	TokenEnv        string        `yaml:"token_env"` // cloudflare API token
-	Email           string        `yaml:"email"`     // ACME account contact
-	Directory       string        `yaml:"acme_directory"`
+	Provider        string        `yaml:"provider"`       // cloudflare | dnspod | selfsigned
+	Zones           []string      `yaml:"zones"`          // zones the provider's account hosts; required for cloudflare and dnspod
+	TokenEnv        string        `yaml:"token_env"`      // cloudflare API token
+	SecretIDEnv     string        `yaml:"secret_id_env"`  // dnspod: Tencent Cloud API 3.0 SecretId
+	SecretKeyEnv    string        `yaml:"secret_key_env"` // dnspod: Tencent Cloud API 3.0 SecretKey
+	Email           string        `yaml:"email"`          // ACME account contact
+	Directory       string        `yaml:"acme_directory"` // default Let's Encrypt
 	PropagationWait time.Duration `yaml:"propagation_wait"`
 }
 
@@ -142,6 +147,7 @@ func (c *ServerConfig) Validate() error {
 			return fmt.Errorf("transport %s path must start with /", k)
 		}
 	}
+	zones := map[string]string{}
 	for name, p := range c.DNSProviders {
 		if !identity.ValidLabel(name) {
 			return fmt.Errorf("invalid dns provider name %q", name)
@@ -151,10 +157,29 @@ func (c *ServerConfig) Validate() error {
 			if p.TokenEnv == "" {
 				return fmt.Errorf("dns provider %s: cloudflare needs token_env", name)
 			}
+		case "dnspod":
+			if p.SecretIDEnv == "" || p.SecretKeyEnv == "" {
+				return fmt.Errorf("dns provider %s: dnspod needs secret_id_env and secret_key_env", name)
+			}
 		case "selfsigned":
 		default:
-			return fmt.Errorf("dns provider %s: provider must be cloudflare or selfsigned", name)
+			return fmt.Errorf("dns provider %s: provider must be cloudflare, dnspod or selfsigned", name)
 		}
+		if p.Provider != "selfsigned" && len(p.Zones) == 0 {
+			return fmt.Errorf("dns provider %s: list the zones its account hosts in zones", name)
+		}
+		for i, z := range p.Zones {
+			z = strings.ToLower(strings.TrimSuffix(z, "."))
+			if !identity.ValidDomain(z) {
+				return fmt.Errorf("dns provider %s: invalid zone %q", name, p.Zones[i])
+			}
+			if other, dup := zones[z]; dup {
+				return fmt.Errorf("zone %s is listed by dns providers %s and %s", z, other, name)
+			}
+			zones[z] = name
+			p.Zones[i] = z
+		}
+		c.DNSProviders[name] = p
 	}
 	if c.DefaultDNSProvider != "selfsigned" {
 		if _, ok := c.DNSProviders[c.DefaultDNSProvider]; !ok {
@@ -162,6 +187,17 @@ func (c *ServerConfig) Validate() error {
 		}
 	}
 	return nil
+}
+
+// DNSZones maps every zone listed in dns_providers to its provider.
+func (c *ServerConfig) DNSZones() map[string]string {
+	out := map[string]string{}
+	for name, p := range c.DNSProviders {
+		for _, z := range p.Zones {
+			out[z] = name
+		}
+	}
+	return out
 }
 
 // DatabaseURL resolves the database URL.

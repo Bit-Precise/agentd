@@ -180,7 +180,6 @@ type Workspace struct {
 	PrivateKey       ed25519.PrivateKey
 	PublicKey        []byte
 	Relay            string
-	DNSProvider      string
 	PublishDNS       bool
 	RoutesVersion    uint64
 	RoutesDefault    string
@@ -188,12 +187,12 @@ type Workspace struct {
 	CreatedAt        time.Time
 }
 
-const wsCols = `name, base_domain, private_key, public_key, relay, dns_provider, publish_dns, routes_version, routes_default, directory_version, created_at`
+const wsCols = `name, base_domain, private_key, public_key, relay, publish_dns, routes_version, routes_default, directory_version, created_at`
 
 func (s *Store) scanWS(row pgx.Row) (Workspace, error) {
 	var w Workspace
 	var sealed []byte
-	err := row.Scan(&w.Name, &w.BaseDomain, &sealed, &w.PublicKey, &w.Relay, &w.DNSProvider, &w.PublishDNS, &w.RoutesVersion, &w.RoutesDefault, &w.DirectoryVersion, &w.CreatedAt)
+	err := row.Scan(&w.Name, &w.BaseDomain, &sealed, &w.PublicKey, &w.Relay, &w.PublishDNS, &w.RoutesVersion, &w.RoutesDefault, &w.DirectoryVersion, &w.CreatedAt)
 	if err != nil {
 		return w, notFound(err)
 	}
@@ -203,8 +202,8 @@ func (s *Store) scanWS(row pgx.Row) (Workspace, error) {
 
 // CreateWorkspace inserts a workspace. PublicKey is derived from PrivateKey.
 func (s *Store) CreateWorkspace(ctx context.Context, w Workspace) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO workspaces(name, base_domain, private_key, public_key, relay, dns_provider, publish_dns) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		w.Name, w.BaseDomain, s.box.sealKey(w.PrivateKey), []byte(identity.Public(w.PrivateKey)), w.Relay, w.DNSProvider, w.PublishDNS)
+	_, err := s.pool.Exec(ctx, `INSERT INTO workspaces(name, base_domain, private_key, public_key, relay, publish_dns) VALUES ($1,$2,$3,$4,$5,$6)`,
+		w.Name, w.BaseDomain, s.box.sealKey(w.PrivateKey), []byte(identity.Public(w.PrivateKey)), w.Relay, w.PublishDNS)
 	if isUnique(err) {
 		return fmt.Errorf("%w: workspace name or base domain already used", ErrConflict)
 	}
@@ -261,9 +260,9 @@ func (s *Store) WorkspacesOfRelay(ctx context.Context, relay string) ([]Workspac
 	return out, nil
 }
 
-// UpdateWorkspace changes relay assignment, DNS publication or DNS provider.
-func (s *Store) UpdateWorkspace(ctx context.Context, name string, relay *string, publish *bool, provider *string) error {
-	tag, err := s.pool.Exec(ctx, `UPDATE workspaces SET relay=COALESCE($2, relay), publish_dns=COALESCE($3, publish_dns), dns_provider=COALESCE($4, dns_provider), directory_version=directory_version+1 WHERE name=$1`, name, relay, publish, provider)
+// UpdateWorkspace changes relay assignment or DNS publication.
+func (s *Store) UpdateWorkspace(ctx context.Context, name string, relay *string, publish *bool) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE workspaces SET relay=COALESCE($2, relay), publish_dns=COALESCE($3, publish_dns), directory_version=directory_version+1 WHERE name=$1`, name, relay, publish)
 	if isFK(err) {
 		return fmt.Errorf("%w: relay %q", ErrNotFound, *relay)
 	}

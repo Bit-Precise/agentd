@@ -1,12 +1,19 @@
 # A production-shaped configuration used by CI to render and validate the chart.
 domain: agentsrv.example.com
 agentserver:
-  defaultDnsProvider: cf-main
   dnsProviders:
     cf-main:
       provider: cloudflare
+      zones: [agentsrv.example.com, example.org]
       email: ops@example.com
       tokenSecret: { name: cloudflare-api, key: token }
+    dnspod-cn:
+      provider: dnspod
+      zones: [example.cn]
+      email: ops@example.com
+      secretIdSecret: { name: dnspod-api, key: secret-id }
+      secretKeySecret: { name: dnspod-api, key: secret-key }
+      propagationWait: 20s
   ingress:
     enabled: true
     className: nginx

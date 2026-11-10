@@ -33,7 +33,7 @@ func setup(t *testing.T) *fixture {
 	}
 	t.Cleanup(st.Close)
 	srvKey, _ := identity.GenerateKey()
-	certs := NewCertManager(st, nil, "", nil)
+	certs := NewCertManager(st, nil, nil, "", nil)
 	c := New(Options{Store: st, ServerKey: srvKey, Certs: certs})
 	relayKey, _ := identity.GenerateKey()
 	if err := st.CreateRelay(ctx, store.Relay{Name: "relay-hk", PublicKey: identity.Public(relayKey), URL: "https://relay.example.com"}); err != nil {

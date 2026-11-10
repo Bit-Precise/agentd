@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ const RenewBefore = 30 * 24 * time.Hour
 type CertManager struct {
 	st      *store.Store
 	issuers map[string]Issuer
+	zones   map[string]string // zone -> dns provider name
 	def     string
 	log     *slog.Logger
 	onReady func(ctx context.Context, ws string)
@@ -32,9 +34,11 @@ type CertManager struct {
 	inflight map[string]bool
 }
 
-// NewCertManager creates a manager. issuers maps dns provider names (as used
-// by workspaces) to issuers; def is used when a workspace names none.
-func NewCertManager(st *store.Store, issuers map[string]Issuer, def string, log *slog.Logger) *CertManager {
+// NewCertManager creates a manager. issuers maps dns provider names to
+// issuers and zones maps each zone to the provider whose account hosts it: a
+// workspace's base domain selects the provider of the longest zone holding
+// it, or def when no zone does.
+func NewCertManager(st *store.Store, issuers map[string]Issuer, zones map[string]string, def string, log *slog.Logger) *CertManager {
 	if issuers == nil {
 		issuers = map[string]Issuer{}
 	}
@@ -47,23 +51,31 @@ func NewCertManager(st *store.Store, issuers map[string]Issuer, def string, log 
 	if log == nil {
 		log = slog.Default()
 	}
-	return &CertManager{st: st, issuers: issuers, def: def, log: log, inflight: map[string]bool{}}
+	z := map[string]string{}
+	for zone, p := range zones {
+		z[strings.ToLower(strings.TrimSuffix(zone, "."))] = p
+	}
+	return &CertManager{st: st, issuers: issuers, zones: z, def: def, log: log, inflight: map[string]bool{}}
 }
 
-// HasIssuer reports whether a dns provider name is configured.
-func (m *CertManager) HasIssuer(name string) bool {
-	if name == "" {
-		return true
+// ProviderFor names the dns provider that issues certificates under domain:
+// the provider of the longest zone holding it, else the default.
+func (m *CertManager) ProviderFor(domain string) string {
+	d := strings.ToLower(strings.TrimSuffix(domain, "."))
+	for {
+		if p, ok := m.zones[d]; ok {
+			return p
+		}
+		i := strings.IndexByte(d, '.')
+		if i < 0 {
+			return m.def
+		}
+		d = d[i+1:]
 	}
-	_, ok := m.issuers[name]
-	return ok
 }
 
 func (m *CertManager) issuerFor(ws store.Workspace) (Issuer, string, error) {
-	name := ws.DNSProvider
-	if name == "" {
-		name = m.def
-	}
+	name := m.ProviderFor(ws.BaseDomain)
 	is, ok := m.issuers[name]
 	if !ok {
 		return nil, name, fmt.Errorf("unknown dns provider %q", name)

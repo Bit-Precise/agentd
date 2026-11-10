@@ -20,7 +20,8 @@ type CloudflareClient struct {
 	HTTP    *http.Client
 }
 
-// DNSRecord is a Cloudflare DNS record.
+// DNSRecord is a DNS record as the DNS providers take it (in Cloudflare's
+// JSON shape; DNSPodClient maps it to its own fields).
 type DNSRecord struct {
 	ID      string `json:"id,omitempty"`
 	Type    string `json:"type"`

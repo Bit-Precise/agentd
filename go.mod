@@ -14,6 +14,8 @@ require (
 	github.com/miekg/dns v1.1.68
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oapi-codegen/runtime v1.8.0
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.131
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/dnspod v1.3.131
 	golang.org/x/crypto v0.58.0
 	golang.org/x/sys v0.49.0
 	golang.zx2c4.com/wireguard v0.0.0-20261024220952-b3bc704ef0ee

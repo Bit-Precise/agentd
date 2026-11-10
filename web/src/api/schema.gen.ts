@@ -642,8 +642,8 @@ export interface components {
             uri?: string;
             /** @description 指派的 relay 名；MVP 每个 workspace 一个 */
             relay: string;
-            /** @description 基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers） */
-            dns_provider?: string;
+            /** @description 签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider */
+            readonly dns_provider?: string;
             /** @description 是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问 */
             publish_dns?: boolean;
             cert?: components["schemas"]["Cert"];
@@ -656,10 +656,8 @@ export interface components {
         };
         WorkspaceCreate: {
             name: components["schemas"]["Label"];
-            /** @description 省略则用 `<name>.<agentserver 域名>` */
+            /** @description 省略则用 `<name>.<agentserver 域名>`；通配证书由基础域名所在 zone 的 DNS 提供方签发 */
             base_domain?: string;
-            /** @description 自定义基础域名时必填 */
-            dns_provider?: string;
             /** @default false */
             publish_dns: boolean;
             /** @description 指派的 relay 名 */
@@ -668,7 +666,6 @@ export interface components {
         WorkspacePatch: {
             relay?: string;
             publish_dns?: boolean;
-            dns_provider?: string;
         };
         Token: {
             /** @description 令牌记录的标识，不是令牌本身 */

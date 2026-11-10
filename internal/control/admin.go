@@ -183,9 +183,13 @@ func (a *Admin) apiCert(ctx context.Context, ws store.Workspace) adminapi.Cert {
 func (a *Admin) apiWorkspace(ctx context.Context, ws store.Workspace) adminapi.Workspace {
 	nodes, _ := a.C.st.ListNodes(ctx, ws.Name)
 	cert := a.apiCert(ctx, ws)
+	var provider *string
+	if a.C.certs != nil {
+		provider = ptr(a.C.certs.ProviderFor(ws.BaseDomain))
+	}
 	return adminapi.Workspace{
 		Name: ws.Name, BaseDomain: ws.BaseDomain, PublicKey: identity.EncodeKey(ws.PublicKey), Uri: ptr("agentd://" + ws.BaseDomain + "/"),
-		Relay: ws.Relay, DnsProvider: ptr(ws.DNSProvider), PublishDns: ptr(ws.PublishDNS), Cert: &cert,
+		Relay: ws.Relay, DnsProvider: provider, PublishDns: ptr(ws.PublishDNS), Cert: &cert,
 		Members: ptr(len(nodes)), MembersOnline: ptr(a.C.OnlineCount(ws.Name)),
 		RoutesVersion: ptr(int(ws.RoutesVersion)), DirectoryVersion: ptr(int(ws.DirectoryVersion)), CreatedAt: ws.CreatedAt,
 	}
@@ -215,13 +219,6 @@ func (a *Admin) CreateWorkspace(ctx context.Context, req adminapi.CreateWorkspac
 	if !identity.ValidDomain(base) {
 		return adminapi.CreateWorkspace400JSONResponse{BadRequestJSONResponse: badRequest("invalid base domain " + base)}, nil
 	}
-	provider := ""
-	if b.DnsProvider != nil {
-		provider = *b.DnsProvider
-	}
-	if a.C.certs != nil && !a.C.certs.HasIssuer(provider) {
-		return adminapi.CreateWorkspace400JSONResponse{BadRequestJSONResponse: badRequest("unknown dns provider " + provider)}, nil
-	}
 	if _, err := a.C.st.GetRelay(ctx, b.Relay); err != nil {
 		return adminapi.CreateWorkspace400JSONResponse{BadRequestJSONResponse: badRequest("unknown relay " + b.Relay)}, nil
 	}
@@ -229,7 +226,7 @@ func (a *Admin) CreateWorkspace(ctx context.Context, req adminapi.CreateWorkspac
 	if err != nil {
 		return nil, err
 	}
-	ws := store.Workspace{Name: b.Name, BaseDomain: base, PrivateKey: key, Relay: b.Relay, DNSProvider: provider, PublishDNS: b.PublishDns != nil && *b.PublishDns}
+	ws := store.Workspace{Name: b.Name, BaseDomain: base, PrivateKey: key, Relay: b.Relay, PublishDNS: b.PublishDns != nil && *b.PublishDns}
 	if err := a.C.st.CreateWorkspace(ctx, ws); err != nil {
 		if code, c := classify(err); code == 409 {
 			return adminapi.CreateWorkspace409JSONResponse(apiErr(c, err.Error())), nil
@@ -279,10 +276,7 @@ func (a *Admin) UpdateWorkspace(ctx context.Context, req adminapi.UpdateWorkspac
 	if b == nil {
 		return adminapi.UpdateWorkspace400JSONResponse{BadRequestJSONResponse: badRequest("empty body")}, nil
 	}
-	if b.DnsProvider != nil && a.C.certs != nil && !a.C.certs.HasIssuer(*b.DnsProvider) {
-		return adminapi.UpdateWorkspace400JSONResponse{BadRequestJSONResponse: badRequest("unknown dns provider " + *b.DnsProvider)}, nil
-	}
-	if err := a.C.st.UpdateWorkspace(ctx, req.Ws, b.Relay, b.PublishDns, b.DnsProvider); err != nil {
+	if err := a.C.st.UpdateWorkspace(ctx, req.Ws, b.Relay, b.PublishDns); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return adminapi.UpdateWorkspace400JSONResponse{BadRequestJSONResponse: badRequest(err.Error())}, nil
 		}
@@ -292,9 +286,6 @@ func (a *Admin) UpdateWorkspace(ctx context.Context, req adminapi.UpdateWorkspac
 	if b.Relay != nil && *b.Relay != old.Relay {
 		a.C.pushRelayState(ctx, ws.Relay)
 		a.C.invalidate(old, a.memberKeys(ctx, ws.Name)...) // old relay closes the members' sessions
-	}
-	if b.DnsProvider != nil && a.C.certs != nil {
-		a.C.certs.Ensure(context.Background(), ws, true)
 	}
 	a.C.Changed(ctx, ws.Name)
 	return adminapi.UpdateWorkspace200JSONResponse(a.apiWorkspace(ctx, ws)), nil

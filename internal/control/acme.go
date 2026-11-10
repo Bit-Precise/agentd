@@ -22,13 +22,25 @@ import (
 // LetsEncrypt is the production ACME directory.
 const LetsEncrypt = "https://acme-v02.api.letsencrypt.org/directory"
 
+// DNSClient manages the records that answer ACME DNS-01 challenges.
+// CloudflareClient and DNSPodClient implement it.
+type DNSClient interface {
+	// ZoneFor returns the zone holding name, in the form the other
+	// methods take.
+	ZoneFor(ctx context.Context, name string) (string, error)
+	// CreateRecord creates r, whose Name is fully qualified, and returns
+	// the record's id.
+	CreateRecord(ctx context.Context, zone string, r DNSRecord) (string, error)
+	DeleteRecord(ctx context.Context, zone, id string) error
+}
+
 // ACMEIssuer obtains certificates with ACME DNS-01 challenges answered
-// through Cloudflare DNS (design 6.2).
+// through a DNS provider (design 6.2).
 type ACMEIssuer struct {
 	Store           *store.Store
 	Directory       string
 	Email           string
-	DNS             *CloudflareClient
+	DNS             DNSClient
 	PropagationWait time.Duration // default 30s
 }
 

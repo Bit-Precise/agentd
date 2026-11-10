@@ -27,7 +27,7 @@ func TestRelayMustOpenControlStream(t *testing.T) {
 	}
 	t.Cleanup(st.Close)
 	srvKey, _ := identity.GenerateKey()
-	c := New(Options{Store: st, ServerKey: srvKey, Certs: NewCertManager(st, nil, "", nil)})
+	c := New(Options{Store: st, ServerKey: srvKey, Certs: NewCertManager(st, nil, nil, "", nil)})
 	relayKey, _ := identity.GenerateKey()
 	if err := st.CreateRelay(ctx, store.Relay{Name: "relay-hk", PublicKey: identity.Public(relayKey), URL: "https://relay.example.com"}); err != nil {
 		t.Fatal(err)

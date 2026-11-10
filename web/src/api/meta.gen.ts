@@ -142,7 +142,8 @@ export const meta: Meta = {
             },
             "dns_provider": {
               "type": "string",
-              "description": "基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers）"
+              "readOnly": true,
+              "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
             },
             "publish_dns": {
               "type": "boolean",
@@ -246,11 +247,7 @@ export const meta: Meta = {
           },
           "base_domain": {
             "type": "string",
-            "description": "省略则用 `<name>.<agentserver 域名>`"
-          },
-          "dns_provider": {
-            "type": "string",
-            "description": "自定义基础域名时必填"
+            "description": "省略则用 `<name>.<agentserver 域名>`；通配证书由基础域名所在 zone 的 DNS 提供方签发"
           },
           "publish_dns": {
             "type": "boolean",
@@ -300,7 +297,8 @@ export const meta: Meta = {
           },
           "dns_provider": {
             "type": "string",
-            "description": "基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers）"
+            "readOnly": true,
+            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
           },
           "publish_dns": {
             "type": "boolean",
@@ -427,7 +425,8 @@ export const meta: Meta = {
           },
           "dns_provider": {
             "type": "string",
-            "description": "基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers）"
+            "readOnly": true,
+            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
           },
           "publish_dns": {
             "type": "boolean",
@@ -525,9 +524,6 @@ export const meta: Meta = {
           },
           "publish_dns": {
             "type": "boolean"
-          },
-          "dns_provider": {
-            "type": "string"
           }
         },
         "$name": "WorkspacePatch"
@@ -569,7 +565,8 @@ export const meta: Meta = {
           },
           "dns_provider": {
             "type": "string",
-            "description": "基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers）"
+            "readOnly": true,
+            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
           },
           "publish_dns": {
             "type": "boolean",
@@ -3848,7 +3845,8 @@ export const meta: Meta = {
           },
           "dns_provider": {
             "type": "string",
-            "description": "基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers）"
+            "readOnly": true,
+            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
           },
           "publish_dns": {
             "type": "boolean",

@@ -43,10 +43,9 @@ func init() {
 			fmt.Println(r.JSON200.PublicKey)
 			return nil
 		}},
-		"workspace create": {usage: "<ws> --relay <relay> [--base-domain d] [--dns-provider p] [--publish-dns]", minArgs: 1, flags: func(c *cmdCtx) {
+		"workspace create": {usage: "<ws> --relay <relay> [--base-domain d] [--publish-dns]", minArgs: 1, flags: func(c *cmdCtx) {
 			c.defStr("relay", "", "assigned relay")
-			c.defStr("base-domain", "", "base domain (default <ws>.<agentserver domain>)")
-			c.defStr("dns-provider", "", "dns provider for the base domain")
+			c.defStr("base-domain", "", "base domain (default <ws>.<agentserver domain>); its zone selects the dns provider")
 			c.defBool("publish-dns", "publish *.<base domain> for public services")
 		}, run: func(c *cmdCtx) error {
 			if c.s("relay") == "" {
@@ -54,14 +53,13 @@ func init() {
 			}
 			pub := c.b("publish-dns")
 			return c.show(chk(c.api.CreateWorkspaceWithResponse(c.ctx, adminapi.WorkspaceCreate{Name: c.args[0], Relay: c.s("relay"),
-				BaseDomain: strp(c.s("base-domain")), DnsProvider: strp(c.s("dns-provider")), PublishDns: &pub})))
+				BaseDomain: strp(c.s("base-domain")), PublishDns: &pub})))
 		}},
-		"workspace update": {usage: "<ws> [--relay r] [--dns-provider p] [--publish-dns=true|false]", minArgs: 1, flags: func(c *cmdCtx) {
+		"workspace update": {usage: "<ws> [--relay r] [--publish-dns=true|false]", minArgs: 1, flags: func(c *cmdCtx) {
 			c.defStr("relay", "", "assigned relay")
-			c.defStr("dns-provider", "", "dns provider")
 			c.defBool("publish-dns", "publish *.<base domain>")
 		}, run: func(c *cmdCtx) error {
-			p := adminapi.WorkspacePatch{Relay: strp(c.s("relay")), DnsProvider: strp(c.s("dns-provider"))}
+			p := adminapi.WorkspacePatch{Relay: strp(c.s("relay"))}
 			if c.set("publish-dns") {
 				v := c.b("publish-dns")
 				p.PublishDns = &v

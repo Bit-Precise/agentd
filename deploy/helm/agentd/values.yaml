@@ -16,14 +16,28 @@ agentserver:
   adminToken: ""
   stateKey: ""
   relayJoinToken: ""
-  # Workspace wildcard certificates: "selfsigned" (dev; nodes need the CA via
-  # AGENTD_EXTRA_ROOTS) or the name of a dnsProviders entry.
+  # Workspace wildcard certificates come from the dnsProviders entry whose
+  # zones hold the workspace's base domain (the longest zone wins), else from
+  # defaultDnsProvider: "selfsigned" (dev; browsers and nodes need the CA) or
+  # the name of an entry.
   defaultDnsProvider: selfsigned
+  # ACME DNS-01 through Cloudflare or DNSPod (Tencent Cloud API 3.0); a zone
+  # belongs to one entry. Certificates come from Let's Encrypt unless
+  # acmeDirectory names another CA.
   dnsProviders: {}
   #  cf-main:
   #    provider: cloudflare
+  #    zones: [agentsrv.example.com]
   #    email: ops@example.com
   #    tokenSecret: { name: cloudflare-api, key: token }
+  #  dnspod:
+  #    provider: dnspod
+  #    zones: [example.cn]
+  #    email: ops@example.com
+  #    secretIdSecret: { name: dnspod-api, key: secret-id }
+  #    secretKeySecret: { name: dnspod-api, key: secret-key }
+  #    acmeDirectory: ""        # default Let's Encrypt
+  #    propagationWait: ""      # wait before asking the CA to validate; default 30s
   relayCertTTL: 720h
   log: { level: info, format: json }
   resources: {}

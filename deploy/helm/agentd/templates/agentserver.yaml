@@ -27,7 +27,8 @@ data:
     {{- if $s.dnsProviders }}
     dns_providers:
       {{- range $name, $p := $s.dnsProviders }}
-      {{ $name }}: { provider: {{ $p.provider }}{{ if $p.tokenSecret }}, token_env: {{ printf "DNS_TOKEN_%s" ($name | upper | replace "-" "_") }}{{ end }}{{ if $p.email }}, email: {{ $p.email }}{{ end }} }
+      {{- $env := $name | upper | replace "-" "_" }}
+      {{ $name }}: { provider: {{ $p.provider }}{{ if $p.zones }}, zones: {{ toJson $p.zones }}{{ end }}{{ if $p.tokenSecret }}, token_env: DNS_TOKEN_{{ $env }}{{ end }}{{ if $p.secretIdSecret }}, secret_id_env: DNS_SECRET_ID_{{ $env }}{{ end }}{{ if $p.secretKeySecret }}, secret_key_env: DNS_SECRET_KEY_{{ $env }}{{ end }}{{ if $p.email }}, email: {{ $p.email | quote }}{{ end }}{{ if $p.acmeDirectory }}, acme_directory: {{ $p.acmeDirectory | quote }}{{ end }}{{ if $p.propagationWait }}, propagation_wait: {{ $p.propagationWait }}{{ end }} }
       {{- end }}
     {{- end }}
     log: { level: {{ $s.log.level }}, format: {{ $s.log.format }} }
@@ -65,8 +66,15 @@ spec:
             - { name: AGENTSERVER_RELAY_TOKEN, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" . }}, key: relay-join-token } } }
             - { name: AGENTSERVER_DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $dbSecret }}, key: url } } }
             {{- range $name, $p := $s.dnsProviders }}
+            {{- $env := $name | upper | replace "-" "_" }}
             {{- if $p.tokenSecret }}
-            - { name: {{ printf "DNS_TOKEN_%s" ($name | upper | replace "-" "_") }}, valueFrom: { secretKeyRef: { name: {{ $p.tokenSecret.name }}, key: {{ $p.tokenSecret.key }} } } }
+            - { name: DNS_TOKEN_{{ $env }}, valueFrom: { secretKeyRef: { name: {{ $p.tokenSecret.name }}, key: {{ $p.tokenSecret.key }} } } }
+            {{- end }}
+            {{- if $p.secretIdSecret }}
+            - { name: DNS_SECRET_ID_{{ $env }}, valueFrom: { secretKeyRef: { name: {{ $p.secretIdSecret.name }}, key: {{ $p.secretIdSecret.key }} } } }
+            {{- end }}
+            {{- if $p.secretKeySecret }}
+            - { name: DNS_SECRET_KEY_{{ $env }}, valueFrom: { secretKeyRef: { name: {{ $p.secretKeySecret.name }}, key: {{ $p.secretKeySecret.key }} } } }
             {{- end }}
             {{- end }}
           ports:

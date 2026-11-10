@@ -1,7 +1,7 @@
 # agentd 设计文档
 
-- 状态：v0.18 草案，已有可运行实现
-- 日期：2026-11-09
+- 状态：v0.19 草案，已有可运行实现
+- 日期：2026-11-10
 - 范围：评估原始方案，并给出可以直接开工的初步设计；标注「待定」的地方汇总在第 10 节；历次评审与反馈的处理见第 12 节；SSH 可行性研究见附录 A
 - 配套：协议规范 `docs/protocol.md`（线上格式、状态机、校验顺序、常量），protobuf 定义 `proto/agentd/v1/wire.proto`，agentd 实例配置参考 `docs/agentd-config.yaml`，agentserver admin API 定义 `docs/agentserver-openapi.yaml`
 
@@ -27,6 +27,7 @@
 | v0.16 | 2026-11-09 | 按首个实现对齐：agentserver 的状态库改为 PostgreSQL（`database.url` / `url_env`，迁移内嵌，私钥用 `state_key_env` 派生的 AES-256-GCM 密封）；relay 可自注册：`ClientHello.relay`（`RelayRegistration`：名字、URL、transport、STUN），公钥未登记时 `join_token` 是 relay 注册令牌（admin API `/relays/tokens` 签发一次性令牌，或 `relay_join_token_env` 给出长期引导令牌）；agentserver 在 relay 会话端点旁提供 `GET /.well-known/agentserver`（身份与 transport 路径），relay 的 `control.public_key` 为空时经校验过的 TLS 取得；agentserver 的 `key_file` 可省略（密钥密封在状态库），`tls.mode` 为 `acme`（TLS-ALPN-01，缓存在状态库）、`file`（文件变化时重载）或 `selfsigned`（状态库里的开发 CA，`ca_out` 导出）；admin 监听同时提供 Web 控制台（由 OpenAPI 文档生成）；agentrelay 配置加 `url`、`key_env`、`control.ca_file`、`control.transport`、`control.join_token_env`；ACME 用 `golang.org/x/crypto/acme` 加 Cloudflare DNS-01，不依赖 lego；agentd 用 `AGENTD_EXTRA_ROOTS` 追加信任的 CA 文件（仍总是校验证书），本地 API 在所有平台（含 Windows 10+）都是 unix socket，路径过长时放到用户缓存目录；TUN、elevator 与 P2P 尚未实现 |
 | v0.17 | 2026-11-09 | 实现 TUN 模式（阶段 2，macOS 与 Linux）：elevator 以 root 运行（`sudo agentd elevator install` 装成 LaunchDaemon 或 systemd 系统单元，只服务安装者的 uid，按 unix socket 的对端凭据校验，同一时刻只交给一个实例），在 `/var/run/agentd-elevator.sock` 上收 `open` 请求，创建设备并用 SCM_RIGHTS 把描述符交给非特权的 agentd，agentd 断开即恢复路由与 DNS；Linux 设备 `agentd0` 用 IFF_NO_PI 纯 IP 帧，接管用 `0.0.0.0/1` 与 `128.0.0.0/1` 两条路由，agentd 自身的套接字绑定物理接口的源地址，elevator 加 `from <源地址> lookup 5200` 策略路由让它们走原默认路由，DNS 走 systemd-resolved（`resolvectl dns/domain ~.`）或改写并恢复 resolv.conf；macOS 用 utun、同样两条路由，自身套接字用 `IP_BOUND_IF`，DNS 用 scutil 改写主服务的 `State:/Network/Service/<id>/DNS` 并在退出与换网时恢复；agentd 自身的域名解析直接问上游，不经内置 DNS；网络切换由 elevator 每 5 秒检测并推给 agentd，agentd 换绑并重连 relay；QUIC Initial（v1、v2）解密取 SNI，命中转发或服务域名的丢弃；Windows 的 TUN（wintun）仍在阶段 4 |
 | v0.18 | 2026-11-09 | TUN 补齐 Windows 并改进 macOS：Windows 的 elevator 是系统服务（`agentd elevator install` 在管理员 shell 里注册，下载并按 SHA-256 校验 wintun 0.14.1 放到 agentd.exe 旁），socket 的 ACL 只允许安装者的 SID；wintun 会话不能跨进程传递，所以 elevator 持有适配器并在 socket 上以 `[类型][u16 长度][载荷]` 帧转发数据包，agentd 自身套接字用 `IP_UNICAST_IF` 绕过 TUN，适配器用 netsh 配地址、路由与 DNS，关闭即删除；macOS 的 DNS 接管改为在动态存储里写主服务的 `Setup:` DNS（DHCP 来的 `State:` DNS 会被绑定到物理接口，查询不进 TUN），退出时写回或删除；elevator 退出前等待会话完成恢复，agentd 停止时先释放设备再拆协议栈；新增 `tun.capture: all | fakeip`，fakeip 只把 fake-IP 段路由进 TUN、不接管默认路由；TUN 端到端测试在 GitHub 的 Linux、macOS、Windows runner 上跑真实设备 |
+| v0.19 | 2026-11-10 | workspace 通配证书的签发方按域名选择，不再按 workspace 指定：`dns_providers` 的每一项用 `zones` 列出它的账号托管的 zone，workspace 的基础域名在所有 zone 里取最长匹配（被委派出去的子域可以用另一家），都不匹配时用 `default_dns_provider`（默认 selfsigned）；同一个 zone 只能属于一个提供方。workspace 的 `dns_provider` 不再是输入（admin API 只读返回实际选中的提供方，CLI 去掉 `--dns-provider`，状态库删掉该列）。DNS-01 新增 DNSPod（腾讯云 API 3.0，用官方 Go SDK `tencentcloud-sdk-go` 的 dnspod 模块签名与调用）：`provider: dnspod` 配 `secret_id_env` / `secret_key_env`，挑战记录写在默认线路、TTL 至少 600（DNSPod 各套餐都接受的下限）；ACME 签发器改为接 `DNSClient` 接口，Cloudflare 与 DNSPod 各一个实现并共用同一组契约测试；chart 的 `dnsProviders` 支持 `zones`、`secretIdSecret` / `secretKeySecret`、`acmeDirectory`、`propagationWait` |
 
 目录
 
@@ -534,7 +535,7 @@ MVP：每个 workspace 指派一个 relay，该 workspace 的全部成员都连�
 
 ### 6.2 证书
 
-- 每个 zone（agentserver 自己的域名，以及 workspace 的自定义域名）配置一份 DNS 提供商凭据（首个实现支持 Cloudflare，经 `golang.org/x/crypto/acme` 做 DNS-01；阿里云、DNSPod 等按同一接口扩展），用于 ACME DNS-01 和（可选）写服务记录。DNS-01 不要求域名有公网 A 记录，所以服务域名可以只在工作区内解析。
+- 每个 zone（agentserver 自己的域名，以及 workspace 的自定义域名）配置一份 DNS 提供商凭据（支持 Cloudflare 与 DNSPod（腾讯云 API 3.0），经 `golang.org/x/crypto/acme` 做 DNS-01；阿里云等按同一接口扩展），用于 ACME DNS-01 和（可选）写服务记录。用哪份凭据由域名决定，不由 workspace 指定：DNS-01 只能由托管该 zone 的提供方完成，所以每份凭据列出它的 `zones`，workspace 的基础域名取最长匹配的 zone（委派出去的子域可以用另一家），都不匹配时用 `default_dns_provider`。DNS-01 不要求域名有公网 A 记录，所以服务域名可以只在工作区内解析。
 - 每个 workspace 一张通配证书 `*.<基础域名>`，由 agentserver 在创建 workspace 或绑定自定义域名时申请，到期前 30 天续期；DNS-01 通常要 1 到 3 分钟，期间该 workspace 的 HTTP 服务处于 `cert_pending`。私钥与证书由 agentserver 签发并加密存放在状态库里，经控制面与 relay 的会话下发给服务该 workspace 的 relay，relay 只在内存持有；节点上没有任何公网域名的私钥。
 - 通配证书的前提是私钥不离开运营方的服务端（agentserver 与它指派的 relay），这正是 v0.4 的决定；它也把 Let's Encrypt 的签发配额从「每服务一张」降到「每 workspace 一张」。
 - agentserver 与 relay 各自域名的证书：放在 Cloudflare 后面时可用 Cloudflare 源站证书，直连时同样走 ACME。
@@ -1080,7 +1081,9 @@ state_key_env: AGENTSERVER_STATE_KEY                # 私钥密封用的密钥�
 relay_join_token_env: AGENTSERVER_RELAY_TOKEN       # 可选：relay 自注册的长期引导令牌（helm chart 用它）
 relay_cert_ttl: 720h                                # relay 证书有效期，到一半时续签；每个 (relay, workspace) 一张，用 workspace 密钥签
 dns_providers:
-  cf-main: { provider: cloudflare, token_env: CF_API_TOKEN }   # agentsrv.example.com 所在 zone
+  cf-main: { provider: cloudflare, token_env: CF_API_TOKEN, zones: [agentsrv.example.com, example.org] }   # 账号托管的 zone；workspace 的基础域名按最长匹配选提供方
+  dnspod: { provider: dnspod, secret_id_env: DNSPOD_SECRET_ID, secret_key_env: DNSPOD_SECRET_KEY, zones: [example.cn] }   # 腾讯云 API 3.0 密钥
+default_dns_provider: selfsigned                    # 基础域名不在任何 zones 里时用它（默认 selfsigned）
 ```
 
 ```yaml
@@ -1103,8 +1106,7 @@ stun: ":3478"                                         # P2P 反射地址（7.8�
 apiVersion: agentd/v1
 kind: Workspace
 name: home
-base_domain: home.agentsrv.example.com     # 自定义时写 home.example.org 并指定它所在 zone 的 dns_provider
-dns_provider: cf-main
+base_domain: home.agentsrv.example.com     # 可自定义（如 home.example.org）；签发证书的 DNS 提供方由它所在的 zone 决定
 relay: relay-hk                            # 指派给该 workspace 的 relay，成员都连它
 publish_dns: false                         # true 时写入 *.home.agentsrv.example.com 指向 relay，供有 public_key "*" 规则的服务公开访问
 routes:                                    # 路由表（6.5）：(源, 协议, 域名) → 目的；只在 agentserver 上，ingress 只收去掉目的的分流表
@@ -1249,7 +1251,7 @@ agentd mcp                                     stdio MCP server
 agentserver run                                控制面
 agentrelay run                                 数据面，配置见 9.1
 agentserver key show                           显示 agentserver 公钥
-agentserver workspace create|list|delete|set-relay|key <ws> [--base-domain …] [--dns-provider …] [--publish-dns] [--relay <name>]   key 显示 workspace 公钥（加入链接的 key、成员配置的 workspace.public_key）
+agentserver workspace create|list|delete|set-relay|key <ws> [--base-domain …] [--publish-dns] [--relay <name>]   key 显示 workspace 公钥（加入链接的 key、成员配置的 workspace.public_key）
 agentserver relay add|remove|list <name> --public-key … --url … [--stun …]   注册 relay、签发 relay 证书并供 workspace 指派
 agentserver token create --workspace <ws> [--name <node>] [--roles …] [--ttl 24h]   输出加入链接
 agentserver token list|revoke --workspace <ws>
@@ -1272,7 +1274,7 @@ agentd 的 CLI 通过实例目录下的 `agentd.sock`（默认 `~/.agentd/agentd
 - transport：参考 Xray-core 的 `websocket`、`splithttp`、`httpupgrade` 实现，按需移植而不是整体依赖 Xray-core 模块。
 - 嗅探：TLS 参考 `common/protocol/tls/sniff.go`，但它只解析第一个 TLS record，跨 record 和跨 TCP 段的累积要自己写；SSH 只看首行前缀；QUIC 参考 `common/protocol/quic/sniff.go`；整体流程参考 `app/dispatcher/default.go` 的嗅探分支（7.7）。
 - fake-IP：参考 `app/dns/fakedns`，分配改为按域名哈希确定。
-- TUN：gVisor netstack（TCP 与 UDP forwarder）+ `wireguard-go/tun`；DNS：`miekg/dns`；ACME：`golang.org/x/crypto/acme`（DNS-01 走 Cloudflare API；agentserver 与 relay 自身域名用 TLS-ALPN-01 的 autocert）；存储：PostgreSQL（pgx）；admin API：oapi-codegen 生成的 strict server，Web 控制台的类型、客户端与界面元数据由同一份 OpenAPI 生成；MCP：官方 Go SDK；多路复用：libp2p go-yamux v5（活跃维护，有 `Reset()`，窗口按 RTT 自动调整）；HTTP 反向代理：标准库 `httputil.ReverseProxy`；命令解析：`mvdan.cc/sh/v3/syntax`。
+- TUN：gVisor netstack（TCP 与 UDP forwarder）+ `wireguard-go/tun`；DNS：`miekg/dns`；ACME：`golang.org/x/crypto/acme`（DNS-01 走 Cloudflare API 或 DNSPod API 3.0（腾讯云官方 Go SDK）；agentserver 与 relay 自身域名用 TLS-ALPN-01 的 autocert）；存储：PostgreSQL（pgx）；admin API：oapi-codegen 生成的 strict server，Web 控制台的类型、客户端与界面元数据由同一份 OpenAPI 生成；MCP：官方 Go SDK；多路复用：libp2p go-yamux v5（活跃维护，有 `Reset()`，窗口按 RTT 自动调整）；HTTP 反向代理：标准库 `httputil.ReverseProxy`；命令解析：`mvdan.cc/sh/v3/syntax`。
 - 任务：Codex 的 tool schema、输出格式和 bash 白名单解析作为参考实现。
 - 平台：macOS 与 Linux 先行，Windows（wintun）第四阶段。
 

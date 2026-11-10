@@ -108,21 +108,11 @@ func NewServer(ctx context.Context, cfg *ServerConfig, o ServerOptions) (*Server
 	self := &SelfSignedIssuer{Store: s.Store}
 	issuers := o.Issuers
 	if issuers == nil {
-		issuers = map[string]Issuer{"selfsigned": self}
-		for name, p := range cfg.DNSProviders {
-			switch p.Provider {
-			case "selfsigned":
-				issuers[name] = self
-			case "cloudflare":
-				tok := os.Getenv(p.TokenEnv)
-				if tok == "" {
-					return nil, fmt.Errorf("dns provider %s: %s is empty", name, p.TokenEnv)
-				}
-				issuers[name] = &ACMEIssuer{Store: s.Store, Directory: p.Directory, Email: p.Email, DNS: &CloudflareClient{Token: tok}, PropagationWait: p.PropagationWait}
-			}
+		if issuers, err = dnsIssuers(cfg, s.Store, self); err != nil {
+			return nil, err
 		}
 	}
-	s.Certs = NewCertManager(s.Store, issuers, cfg.DefaultDNSProvider, lg)
+	s.Certs = NewCertManager(s.Store, issuers, cfg.DNSZones(), cfg.DefaultDNSProvider, lg)
 	bootstrap := ""
 	if cfg.RelayJoinTokenEnv != "" {
 		bootstrap = os.Getenv(cfg.RelayJoinTokenEnv)
@@ -281,4 +271,42 @@ func trimNL(p []byte) []byte {
 		p = p[:len(p)-1]
 	}
 	return p
+}
+
+// dnsIssuers builds the workspace certificate issuers named by
+// dns_providers; "selfsigned" always exists.
+func dnsIssuers(cfg *ServerConfig, st *store.Store, self Issuer) (map[string]Issuer, error) {
+	issuers := map[string]Issuer{"selfsigned": self}
+	for name, p := range cfg.DNSProviders {
+		env := func(v string) (string, error) {
+			if val := os.Getenv(v); val != "" {
+				return val, nil
+			}
+			return "", fmt.Errorf("dns provider %s: %s is empty", name, v)
+		}
+		acmeIssuer := func(dns DNSClient) *ACMEIssuer {
+			return &ACMEIssuer{Store: st, Directory: p.Directory, Email: p.Email, DNS: dns, PropagationWait: p.PropagationWait}
+		}
+		switch p.Provider {
+		case "selfsigned":
+			issuers[name] = self
+		case "cloudflare":
+			tok, err := env(p.TokenEnv)
+			if err != nil {
+				return nil, err
+			}
+			issuers[name] = acmeIssuer(&CloudflareClient{Token: tok})
+		case "dnspod":
+			id, err := env(p.SecretIDEnv)
+			if err != nil {
+				return nil, err
+			}
+			key, err := env(p.SecretKeyEnv)
+			if err != nil {
+				return nil, err
+			}
+			issuers[name] = acmeIssuer(&DNSPodClient{SecretID: id, SecretKey: key})
+		}
+	}
+	return issuers, nil
 }

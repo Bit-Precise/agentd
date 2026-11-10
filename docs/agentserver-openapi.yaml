@@ -14,7 +14,7 @@ info:
     - 所有名字（workspace、节点、组、服务、relay）都是 RFC 1123 label；公钥一律是 base64url 无填充的 43 字符。
     - 写操作都是幂等或带明确冲突语义的；变更立即生效：相关节点收到签名的 Update / PolicyUpdate / Notice，relay 收到 RelayInvalidate。
     - 错误统一返回 `Error`，`code` 与协议状态码同名时含义相同（如 NAME_TAKEN、TOKEN_USED）。
-    - 对应设计文档 v0.16、协议规范 v0.7。
+    - 对应设计文档 v0.19、协议规范 v0.7。
 servers:
   - url: http://127.0.0.1:7800/api/v1
     description: 本机 admin 端点（默认）
@@ -827,7 +827,7 @@ components:
           description: workspace 公钥，成员唯一钉住的信任根；加入链接的 `key`
         uri: { type: string, description: 名字形式 `agentd://<base_domain>/`，代表这把公钥 }
         relay: { type: string, description: 指派的 relay 名；MVP 每个 workspace 一个 }
-        dns_provider: { type: string, description: 基础域名所在 zone 的 DNS 凭据名（AgentserverConfiguration.dns_providers） }
+        dns_provider: { type: string, readOnly: true, description: 签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider }
         publish_dns: { type: boolean, description: 是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问 }
         cert: { $ref: "#/components/schemas/Cert" }
         members: { type: integer }
@@ -840,8 +840,7 @@ components:
       required: [name, relay]
       properties:
         name: { $ref: "#/components/schemas/Label" }
-        base_domain: { type: string, description: 省略则用 `<name>.<agentserver 域名>` }
-        dns_provider: { type: string, description: 自定义基础域名时必填 }
+        base_domain: { type: string, description: 省略则用 `<name>.<agentserver 域名>`；通配证书由基础域名所在 zone 的 DNS 提供方签发 }
         publish_dns: { type: boolean, default: false }
         relay: { type: string, description: 指派的 relay 名 }
     WorkspacePatch:
@@ -849,7 +848,6 @@ components:
       properties:
         relay: { type: string }
         publish_dns: { type: boolean }
-        dns_provider: { type: string }
 
     Token:
       type: object

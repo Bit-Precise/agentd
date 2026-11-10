@@ -12,17 +12,16 @@ import (
 
 // workspaceDoc is the `kind: Workspace` file (design 9.1).
 type workspaceDoc struct {
-	APIVersion  string                           `json:"apiVersion"`
-	Kind        string                           `json:"kind"`
-	Name        string                           `json:"name"`
-	BaseDomain  string                           `json:"base_domain"`
-	DNSProvider string                           `json:"dns_provider"`
-	Relay       string                           `json:"relay"`
-	PublishDNS  *bool                            `json:"publish_dns"`
-	Routes      *[]adminapi.RouteWrite           `json:"routes"`
-	Default     string                           `json:"default"`
-	Groups      map[string][]string              `json:"groups"`
-	Policies    *[]adminapi.PolicyStatementWrite `json:"policies"`
+	APIVersion string                           `json:"apiVersion"`
+	Kind       string                           `json:"kind"`
+	Name       string                           `json:"name"`
+	BaseDomain string                           `json:"base_domain"`
+	Relay      string                           `json:"relay"`
+	PublishDNS *bool                            `json:"publish_dns"`
+	Routes     *[]adminapi.RouteWrite           `json:"routes"`
+	Default    string                           `json:"default"`
+	Groups     map[string][]string              `json:"groups"`
+	Policies   *[]adminapi.PolicyStatementWrite `json:"policies"`
 }
 
 // apply converges a workspace to a Workspace file: creates or updates it,
@@ -49,7 +48,7 @@ func apply(c *cmdCtx) error {
 	switch cur.StatusCode() {
 	case http.StatusNotFound:
 		if _, err := cliutil.Check(c.api.CreateWorkspaceWithResponse(c.ctx, adminapi.WorkspaceCreate{Name: d.Name, Relay: d.Relay,
-			BaseDomain: strp(d.BaseDomain), DnsProvider: strp(d.DNSProvider), PublishDns: d.PublishDNS})); err != nil {
+			BaseDomain: strp(d.BaseDomain), PublishDns: d.PublishDNS})); err != nil {
 			return err
 		}
 		fmt.Printf("workspace %s created\n", d.Name)
@@ -65,9 +64,6 @@ func apply(c *cmdCtx) error {
 		}
 		if d.PublishDNS != nil && (w.PublishDns == nil || *w.PublishDns != *d.PublishDNS) {
 			p.PublishDns, changed = d.PublishDNS, true
-		}
-		if d.DNSProvider != "" && (w.DnsProvider == nil || *w.DnsProvider != d.DNSProvider) {
-			p.DnsProvider, changed = &d.DNSProvider, true
 		}
 		if changed {
 			if _, err := cliutil.Check(c.api.UpdateWorkspaceWithResponse(c.ctx, d.Name, p)); err != nil {

@@ -45,7 +45,7 @@ helm install agentd deploy/helm/agentd \
   --set relays[0].name=relay-1 --set relays[0].domain=relay-1.agentsrv.example.com
 ```
 
-安装后的说明（取 admin 令牌、端口转发控制台、DNS 指向 relay）会由 chart 打印。生产环境把 relay 的 `tls.mode` 设为 `acme` 或 `file`，并在 `agentserver.dnsProviders` 配置 Cloudflare 以签发受信任的 workspace 通配证书；`deploy/helm/agentd/ci/production-values.yaml` 是一份完整示例。镜像由 CI 推到 `ghcr.io/bit-precise/agentd/{agentserver,agentrelay,agentd}`：每次推送 main 更新 `edge` 标签，仓库里的 chart 默认就用它；发布版的 chart 固定为对应版本的镜像。
+安装后的说明（取 admin 令牌、端口转发控制台、DNS 指向 relay）会由 chart 打印。生产环境把 relay 的 `tls.mode` 设为 `acme` 或 `file`，并在 `agentserver.dnsProviders` 配置 Cloudflare 或 DNSPod 以签发受信任的 workspace 通配证书；`deploy/helm/agentd/ci/production-values.yaml` 是一份完整示例。镜像由 CI 推到 `ghcr.io/bit-precise/agentd/{agentserver,agentrelay,agentd}`：每次推送 main 更新 `edge` 标签，仓库里的 chart 默认就用它；发布版的 chart 固定为对应版本的镜像。
 
 ## 节点
 
