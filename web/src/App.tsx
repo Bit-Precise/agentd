@@ -4,6 +4,7 @@ import {
   FolderKanban,
   LogOut,
   Moon,
+  ShieldCheck,
   Sun,
 } from "lucide-react";
 import { meta } from "./api/meta.gen";
@@ -83,7 +84,7 @@ export function App() {
   const [authenticated, setAuthenticated] = useState(() => Boolean(initialToken));
   const [authError, setAuthError] = useState("");
   const [identity, setIdentity] = useState<AuthMe | null>(null);
-  const [adminMode, setAdminMode] = useState(() => initialRoute.admin || Boolean(initialToken) || (initialRoute.view === "overview" && localStorage.getItem("agentd.adminMode") === "true"));
+  const [adminMode, setAdminMode] = useState(() => initialRoute.admin || Boolean(initialToken));
   const [dark, setDark] = useState(() => localStorage.getItem("agentd.theme") === "dark");
   const [wsList, setWsList] = useState<WorkspaceOption[]>([]);
   const [{ admin, view, ws }, setRoute] = useState<RouteState>(initialRoute);
@@ -104,7 +105,7 @@ export function App() {
       setIdentity(me);
       if (me) {
         setAuthenticated(true);
-        if (me.instance_admin) setAdminMode(true);
+        if (me.instance_admin && initialRoute.admin) setAdminMode(true);
       }
     }).catch(() => undefined);
     void authConfig().catch(() => undefined);
@@ -118,7 +119,7 @@ export function App() {
 
   useEffect(() => {
     const instanceAdmin = Boolean(token) || Boolean(identity?.instance_admin);
-    if (admin || !instanceAdmin) return;
+    if (admin || !token || !instanceAdmin) return;
     const nextView = view === "workspaces" ? "workspaces" : view === "overview" ? "overview" : view;
     const nextWs = nextView === "workspaces" || nextView === "overview" ? "" : ws;
     setAdminMode(true);
@@ -180,6 +181,14 @@ export function App() {
 
   const selectWorkspace = (nextWs: string) => {
     go(workspaceView ? view : (adminMode ? "workspaces" : "members"), nextWs);
+  };
+
+  const setMode = (nextAdmin: boolean) => {
+    setAdminMode(nextAdmin);
+    localStorage.setItem("agentd.adminMode", String(nextAdmin));
+    const nextView = view === "overview" ? (nextAdmin ? "overview" : "workspaces") : view;
+    const nextWs = nextView === "overview" || nextView === "workspaces" ? "" : ws;
+    go(nextView, nextWs, nextAdmin);
   };
 
   const navItem = (key: string, label: string, workspace = "") => (
@@ -253,7 +262,7 @@ export function App() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <UserMenu identity={identity} canAdmin={Boolean(identity?.instance_admin || token)} dark={dark} onDark={setDark} onLogout={logout} />
+              <UserMenu identity={identity} adminMode={adminMode} canSwitchMode={Boolean(identity?.instance_admin && !token)} dark={dark} onDark={setDark} onMode={() => setMode(!adminMode)} onLogout={logout} />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
@@ -280,8 +289,8 @@ function UserHome({ identity }: { identity: AuthMe | null }) {
   );
 }
 
-function UserMenu({ identity, canAdmin, dark, onDark, onLogout }: { identity: AuthMe | null; canAdmin: boolean; dark: boolean; onDark: (value: boolean) => void; onLogout: () => void }) {
-  const label = identity?.name || identity?.email || (canAdmin ? "Instance admin" : "User");
+function UserMenu({ identity, adminMode, canSwitchMode, dark, onDark, onMode, onLogout }: { identity: AuthMe | null; adminMode: boolean; canSwitchMode: boolean; dark: boolean; onDark: (value: boolean) => void; onMode: () => void; onLogout: () => void }) {
+  const label = identity?.name || identity?.email || (canSwitchMode ? "Instance admin" : "User");
   const initials = label.slice(0, 1).toUpperCase();
   return (
     <DropdownMenu>
@@ -296,6 +305,7 @@ function UserMenu({ identity, canAdmin, dark, onDark, onLogout }: { identity: Au
         <DropdownMenuLabel className="p-0 font-normal"><div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm"><Avatar size="sm" className="rounded-lg"><AvatarImage src={identity?.picture} alt="" /><AvatarFallback className="rounded-lg">{initials}</AvatarFallback></Avatar><div className="grid flex-1 text-left text-sm leading-tight"><span className="truncate font-semibold">{label}</span>{identity?.email && <span className="truncate text-xs text-muted-foreground">{identity.email}</span>}</div></div></DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => onDark(!dark)}>{dark ? <Sun /> : <Moon />}{dark ? "Light mode" : "Dark mode"}</DropdownMenuItem>
+        {canSwitchMode && <DropdownMenuItem onSelect={onMode}><ShieldCheck />{adminMode ? "Workspace mode" : "Admin mode"}</DropdownMenuItem>}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onLogout}><LogOut />Log out</DropdownMenuItem>
       </DropdownMenuContent>

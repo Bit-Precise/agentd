@@ -1605,8 +1605,8 @@ workspace 的用户成员和 agentd 节点是两类不同 entity：`members` 统
 
 - **instance admin API**：`/api/v1/admin`，文档为 `docs/agentserver-openapi.yaml`，所有 operation 只接受 `instance_admin`，
   管理 instance 配置、全局 users 以及所有 workspace / relay 资源；
-- **user API**：`/api/v1`，文档为 `docs/agentserver-user-openapi.yaml`，只接受 OIDC bearer principal，
-  返回和操作当前用户有 membership 的 workspace；
+- **user API**：`/api/v1`，文档为 `docs/agentserver-user-openapi.yaml`，接受 OIDC bearer principal，
+  返回和操作当前用户有 membership 的 workspace；OIDC instance admin 显式进入 workspace mode 后也按自己的 membership 访问，bootstrap `AdminToken` 仍只走 admin API；
 - `web_user`：上述两个 Web surface 的浏览器和自动化调用者；
 - `agentd`：节点守护进程，只通过 relay 的 Noise/transport 会话收发控制消息，不调用 admin API；
 - `relay`：中继，通过 transport 会话与 agentserver 交换控制消息，也不使用 用户角色。

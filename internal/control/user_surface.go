@@ -60,7 +60,10 @@ func (a *Admin) userHandler(adminToken string, oidc *OIDCAuth) http.Handler {
 			writeJSONError(w, http.StatusUnauthorized, "UNAUTHORIZED", "user bearer required")
 			return
 		}
-		if p.instanceAdmin {
+		// The bootstrap admin token has no user subject and cannot enter the
+		// workspace surface. An OIDC instance admin does have a stable subject;
+		// when they explicitly choose workspace mode, use normal membership RBAC.
+		if p.instanceAdmin && p.subject == "" {
 			writeJSONError(w, http.StatusForbidden, "FORBIDDEN", "use the instance admin API for the bootstrap administrator")
 			return
 		}
