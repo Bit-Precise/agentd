@@ -1,240 +1,106 @@
-// SchemaForm renders an editor for any JSON schema from the generated
-// metadata: scalars, enums, arrays (of scalars, enums or objects) and nested
-// objects, with a raw JSON mode for anything else.
+// SchemaForm renders generated JSON schemas using shadcn form primitives.
 import { useState } from "react";
 import type { Schema } from "../api/meta";
 import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Select } from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Textarea } from "./ui/textarea";
 
 type Value = unknown;
+const isScalar = (schema?: Schema) => Boolean(schema && ["string", "integer", "number", "boolean"].includes(schema.type || "string") && !schema.properties && schema.type !== "array" && schema.type !== "object");
 
-const isScalar = (s?: Schema) => !!s && ["string", "integer", "number", "boolean"].includes(s.type || "string") && !s.properties && s.type !== "array" && s.type !== "object";
-
-export function emptyValue(s: Schema): Value {
-  if (s.default !== undefined) return s.default;
-  if (s.type === "array") return [];
-  if (s.type === "object" || s.properties) {
-    const o: Record<string, Value> = {};
-    for (const k of s.required || []) {
-      const p = s.properties?.[k];
-      if (p) o[k] = emptyValue(p);
+export function emptyValue(schema: Schema): Value {
+  if (schema.default !== undefined) return schema.default;
+  if (schema.type === "array") return [];
+  if (schema.type === "object" || schema.properties) {
+    const output: Record<string, Value> = {};
+    for (const key of schema.required || []) {
+      const property = schema.properties?.[key];
+      if (property) output[key] = emptyValue(property);
     }
-    return o;
+    return output;
   }
-  if (s.type === "boolean") return false;
-  if (s.enum?.length) return "";
+  if (schema.type === "boolean") return false;
   return "";
 }
 
-// prune drops empty optional values so PATCH and create bodies stay minimal.
-export function prune(s: Schema, v: Value, required = true): Value {
-  if (v === undefined || v === null) return undefined;
-  if (s.type === "array" && Array.isArray(v)) {
-    const items = v.map((x) => (s.items ? prune(s.items, x, true) : x)).filter((x) => x !== undefined && x !== "");
+export function prune(schema: Schema, value: Value, required = true): Value {
+  if (value === undefined || value === null) return undefined;
+  if (schema.type === "array" && Array.isArray(value)) {
+    const items = value.map((item) => (schema.items ? prune(schema.items, item, true) : item)).filter((item) => item !== undefined && item !== "");
     return items.length || required ? items : undefined;
   }
-  if ((s.type === "object" || s.properties) && typeof v === "object") {
-    const o: Record<string, Value> = {};
-    for (const [k, sub] of Object.entries(s.properties || {})) {
-      const req = (s.required || []).includes(k);
-      const pv = prune(sub, (v as Record<string, Value>)[k], req);
-      if (pv !== undefined) o[k] = pv;
+  if ((schema.type === "object" || schema.properties) && typeof value === "object") {
+    const output: Record<string, Value> = {};
+    for (const [key, property] of Object.entries(schema.properties || {})) {
+      const item = prune(property, (value as Record<string, Value>)[key], (schema.required || []).includes(key));
+      if (item !== undefined) output[key] = item;
     }
-    return Object.keys(o).length || required ? o : undefined;
+    return Object.keys(output).length || required ? output : undefined;
   }
-  if (v === "" && !required) return undefined;
-  if (s.type === "boolean" && v === false && !required) return undefined;
-  return v;
+  if (value === "" && !required) return undefined;
+  if (schema.type === "boolean" && value === false && !required) return undefined;
+  return value;
 }
 
-function Help({ s }: { s: Schema }) {
-  if (!s.description) return null;
-  return <div className="help">{s.description}</div>;
+function Help({ schema }: { schema: Schema }) {
+  return schema.description ? <p className="text-xs whitespace-pre-wrap text-muted-foreground">{schema.description}</p> : null;
 }
 
 function label(name: string) {
   return name.replace(/_/g, " ");
 }
 
-export function Field({ name, schema, value, onChange, required }: { name: string; schema: Schema; value: Value; onChange: (v: Value) => void; required?: boolean }) {
-  const s = schema;
-  const title = (
-    <span className="field-name">
-      {label(name)}
-      {required && <span className="req">*</span>}
-    </span>
-  );
-  if (s.readOnly) return null;
-  if (s.enum && s.type !== "array") {
-    return (
-      <Label className="field">
-        {title}
-        <Select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>
-          {!required && <option value="">—</option>}
-          {required && value === "" && <option value="">choose…</option>}
-          {s.enum.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </Select>
-        <Help s={s} />
-      </Label>
-    );
+function FieldTitle({ name, required }: { name: string; required?: boolean }) {
+  return <span className="capitalize">{label(name)}{required && <span className="ml-0.5 text-destructive">*</span>}</span>;
+}
+
+export function Field({ name, schema, value, onChange, required }: { name: string; schema: Schema; value: Value; onChange: (value: Value) => void; required?: boolean }) {
+  if (schema.readOnly) return null;
+  if (schema.enum && schema.type !== "array") {
+    return <div className="grid gap-2"><Label htmlFor={`field-${name}`}><FieldTitle name={name} required={required} /></Label><Select value={String(value ?? "")} onValueChange={onChange}><SelectTrigger id={`field-${name}`}><SelectValue placeholder={required ? "Choose…" : "—"} /></SelectTrigger><SelectContent>{schema.enum.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select><Help schema={schema} /></div>;
   }
-  if (s.type === "boolean") {
-    return (
-      <label className="field check">
-        <input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} />
-        {title}
-        <Help s={s} />
-      </label>
-    );
+  if (schema.type === "boolean") {
+    return <div className="grid gap-1"><Label className="flex items-center gap-2"><Checkbox checked={Boolean(value)} onCheckedChange={(checked) => onChange(checked === true)} /><FieldTitle name={name} required={required} /></Label><Help schema={schema} /></div>;
   }
-  if (s.type === "integer" || s.type === "number") {
-    return (
-      <Label className="field">
-        {title}
-        <Input type="number" value={value === undefined || value === "" ? "" : String(value)} min={s.minimum} max={s.maximum}
-          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} />
-        <Help s={s} />
-      </Label>
-    );
+  if (schema.type === "integer" || schema.type === "number") {
+    return <div className="grid gap-2"><Label htmlFor={`field-${name}`}><FieldTitle name={name} required={required} /></Label><Input id={`field-${name}`} type="number" value={value === undefined || value === "" ? "" : String(value)} min={schema.minimum} max={schema.maximum} onChange={(event) => onChange(event.target.value === "" ? "" : Number(event.target.value))} /><Help schema={schema} /></div>;
   }
-  if (s.type === "array") {
+  if (schema.type === "array") {
     const items = Array.isArray(value) ? value : [];
-    const it = s.items || { type: "string" };
-    if (it.enum) {
-      return (
-        <fieldset className="field">
-          <legend>{title}</legend>
-          <div className="chips">
-            {it.enum.map((o) => (
-              <label key={o} className="chip">
-                <input type="checkbox" checked={items.includes(o)}
-                  onChange={(e) => onChange(e.target.checked ? [...items, o] : items.filter((x) => x !== o))} />
-                {o}
-              </label>
-            ))}
-          </div>
-          <Help s={s} />
-        </fieldset>
-      );
+    const itemSchema = schema.items || { type: "string" };
+    if (itemSchema.enum) {
+      return <fieldset className="grid gap-3 rounded-lg border p-4"><legend className="px-1 text-sm font-medium"><FieldTitle name={name} required={required} /></legend><div className="flex flex-wrap gap-3">{itemSchema.enum.map((option) => <Label key={option} className="flex items-center gap-2 font-normal"><Checkbox checked={items.includes(option)} onCheckedChange={(checked) => onChange(checked === true ? [...items, option] : items.filter((item) => item !== option))} />{option}</Label>)}</div><Help schema={schema} /></fieldset>;
     }
-    if (isScalar(it)) {
-      return (
-        <Label className="field">
-          {title}
-          <Input type="text" placeholder="comma separated" value={items.join(", ")}
-            onChange={(e) => {
-              const parts = e.target.value.split(",").map((x) => x.trim());
-              onChange(it.type === "integer" || it.type === "number" ? parts.filter(Boolean).map(Number) : parts.filter((x, i) => x !== "" || i === parts.length - 1));
-            }} />
-          <Help s={s} />
-        </Label>
-      );
+    if (isScalar(itemSchema)) {
+      return <div className="grid gap-2"><Label htmlFor={`field-${name}`}><FieldTitle name={name} required={required} /></Label><Input id={`field-${name}`} placeholder="Comma separated" value={items.join(", ")} onChange={(event) => { const parts = event.target.value.split(",").map((part) => part.trim()); onChange(itemSchema.type === "integer" || itemSchema.type === "number" ? parts.filter(Boolean).map(Number) : parts.filter((part, index) => part !== "" || index === parts.length - 1)); }} /><Help schema={schema} /></div>;
     }
-    return (
-      <fieldset className="field list">
-        <legend>{title}</legend>
-        <Help s={s} />
-        {items.map((x, i) => (
-          <div key={i} className="list-item">
-            <ObjectFields schema={it} value={x} onChange={(nv) => onChange(items.map((y, j) => (j === i ? nv : y)))} />
-            <Button type="button" variant="link" className="danger" onClick={() => onChange(items.filter((_, j) => j !== i))}>
-              remove
-            </Button>
-          </div>
-        ))}
-        <Button type="button" variant="link" onClick={() => onChange([...items, emptyValue(it)])}>
-          + add {it.$name || "item"}
-        </Button>
-      </fieldset>
-    );
+    return <fieldset className="grid gap-3 rounded-lg border p-4"><legend className="px-1 text-sm font-medium"><FieldTitle name={name} required={required} /></legend><Help schema={schema} />{items.map((item, index) => <Card key={index} size="sm"><CardContent className="grid gap-3 p-3"><ObjectFields schema={itemSchema} value={item} onChange={(next) => onChange(items.map((current, itemIndex) => itemIndex === index ? next : current))} /><Button type="button" variant="link" className="justify-self-start px-0 text-destructive" onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button></CardContent></Card>)}<Button type="button" variant="outline" className="justify-self-start" onClick={() => onChange([...items, emptyValue(itemSchema)])}>Add {itemSchema.$name || "item"}</Button></fieldset>;
   }
-  if (s.type === "object" || s.properties) {
-    if (!s.properties) return <JsonField name={name} value={value} onChange={onChange} />;
-    return (
-      <fieldset className="field">
-        <legend>{title}</legend>
-        <Help s={s} />
-        <ObjectFields schema={s} value={value} onChange={onChange} />
-      </fieldset>
-    );
+  if (schema.type === "object" || schema.properties) {
+    if (!schema.properties) return <JsonField name={name} value={value} onChange={onChange} />;
+    return <fieldset className="grid gap-3 rounded-lg border p-4"><legend className="px-1 text-sm font-medium"><FieldTitle name={name} required={required} /></legend><Help schema={schema} /><ObjectFields schema={schema} value={value} onChange={onChange} /></fieldset>;
   }
-  return (
-    <Label className="field">
-      {title}
-      <Input type="text" value={String(value ?? "")} pattern={s.pattern} placeholder={s.example !== undefined ? String(s.example) : ""}
-        onChange={(e) => onChange(e.target.value)} />
-      <Help s={s} />
-    </Label>
-  );
+  return <div className="grid gap-2"><Label htmlFor={`field-${name}`}><FieldTitle name={name} required={required} /></Label><Input id={`field-${name}`} type="text" value={String(value ?? "")} pattern={schema.pattern} placeholder={schema.example !== undefined ? String(schema.example) : ""} onChange={(event) => onChange(event.target.value)} /><Help schema={schema} /></div>;
 }
 
-export function ObjectFields({ schema, value, onChange }: { schema: Schema; value: Value; onChange: (v: Value) => void }) {
-  const obj = (value && typeof value === "object" ? value : {}) as Record<string, Value>;
-  return (
-    <div className="object">
-      {Object.entries(schema.properties || {}).map(([k, sub]) => (
-        <Field key={k} name={k} schema={sub} required={(schema.required || []).includes(k)}
-          value={obj[k] ?? (sub.type === "array" ? [] : "")} onChange={(nv) => onChange({ ...obj, [k]: nv })} />
-      ))}
-    </div>
-  );
+export function ObjectFields({ schema, value, onChange }: { schema: Schema; value: Value; onChange: (value: Value) => void }) {
+  const object = (value && typeof value === "object" ? value : {}) as Record<string, Value>;
+  return <div className="grid gap-4">{Object.entries(schema.properties || {}).map(([key, property]) => <Field key={key} name={key} schema={property} required={(schema.required || []).includes(key)} value={object[key] ?? (property.type === "array" ? [] : "")} onChange={(next) => onChange({ ...object, [key]: next })} />)}</div>;
 }
 
-function JsonField({ name, value, onChange }: { name: string; value: Value; onChange: (v: Value) => void }) {
+function JsonField({ name, value, onChange }: { name: string; value: Value; onChange: (value: Value) => void }) {
   const [text, setText] = useState(() => JSON.stringify(value ?? {}, null, 2));
-  const [err, setErr] = useState("");
-  return (
-    <label className="field">
-      <span className="field-name">{label(name)}</span>
-      <textarea rows={6} value={text} onChange={(e) => {
-        setText(e.target.value);
-        try {
-          onChange(JSON.parse(e.target.value));
-          setErr("");
-        } catch (x) {
-          setErr(String(x));
-        }
-      }} />
-      {err && <div className="error small">{err}</div>}
-    </label>
-  );
+  const [error, setError] = useState("");
+  return <div className="grid gap-2"><Label htmlFor={`json-${name}`}><FieldTitle name={name} /></Label><Textarea id={`json-${name}`} rows={6} value={text} onChange={(event) => { setText(event.target.value); try { onChange(JSON.parse(event.target.value)); setError(""); } catch (cause) { setError(String(cause)); } }} />{error && <p className="text-xs text-destructive">{error}</p>}</div>;
 }
 
-// SchemaForm edits a whole request body, with a JSON toggle.
-export function SchemaForm({ schema, value, onChange }: { schema: Schema; value: Value; onChange: (v: Value) => void }) {
+export function SchemaForm({ schema, value, onChange }: { schema: Schema; value: Value; onChange: (value: Value) => void }) {
   const [raw, setRaw] = useState(false);
   const [text, setText] = useState("");
-  const [err, setErr] = useState("");
-  return (
-    <div className="schema-form">
-      <div className="form-mode">
-        <Button type="button" variant="link" className={raw ? "" : "active"} onClick={() => setRaw(false)}>form</Button>
-        <Button type="button" variant="link" className={raw ? "active" : ""} onClick={() => { setText(JSON.stringify(prune(schema, value) ?? value, null, 2)); setRaw(true); }}>JSON</Button>
-      </div>
-      {raw ? (
-        <>
-          <textarea className="json" rows={16} value={text} onChange={(e) => {
-            setText(e.target.value);
-            try {
-              onChange(JSON.parse(e.target.value));
-              setErr("");
-            } catch (x) {
-              setErr(String(x));
-            }
-          }} />
-          {err && <div className="error small">{err}</div>}
-        </>
-      ) : schema.type === "array" ? (
-        <Field name={schema.$name || "items"} schema={schema} value={value} onChange={onChange} />
-      ) : (
-        <ObjectFields schema={schema} value={value} onChange={onChange} />
-      )}
-    </div>
-  );
+  const [error, setError] = useState("");
+  return <div className="grid gap-4"><div className="flex justify-end gap-1"><Button type="button" variant={raw ? "ghost" : "secondary"} size="sm" onClick={() => setRaw(false)}>Form</Button><Button type="button" variant={raw ? "secondary" : "ghost"} size="sm" onClick={() => { setText(JSON.stringify(prune(schema, value) ?? value, null, 2)); setRaw(true); }}>JSON</Button></div>{raw ? <div className="grid gap-2"><Textarea className="font-mono text-xs" rows={16} value={text} onChange={(event) => { setText(event.target.value); try { onChange(JSON.parse(event.target.value)); setError(""); } catch (cause) { setError(String(cause)); } }} />{error && <p className="text-xs text-destructive">{error}</p>}</div> : schema.type === "array" ? <Field name={schema.$name || "items"} schema={schema} value={value} onChange={onChange} /> : <ObjectFields schema={schema} value={value} onChange={onChange} />}</div>;
 }

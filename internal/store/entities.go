@@ -78,9 +78,16 @@ type rowScanner interface{ Scan(...any) error }
 func scanAudit(row rowScanner) (AuditEvent, error) {
 	var e AuditEvent
 	var meta []byte
-	err := row.Scan(&e.ID, &e.OccurredAt, &e.ActorKind, &e.ActorID, &e.Action, &e.ResourceType, &e.ResourceID, &e.WorkspaceID, &e.RequestID, &e.Outcome, &e.ErrorCode, &meta)
+	var resourceID, workspaceID *string
+	err := row.Scan(&e.ID, &e.OccurredAt, &e.ActorKind, &e.ActorID, &e.Action, &e.ResourceType, &resourceID, &workspaceID, &e.RequestID, &e.Outcome, &e.ErrorCode, &meta)
 	if err != nil {
 		return e, notFound(err)
+	}
+	if resourceID != nil {
+		e.ResourceID = *resourceID
+	}
+	if workspaceID != nil {
+		e.WorkspaceID = *workspaceID
 	}
 	_ = json.Unmarshal(meta, &e.Metadata)
 	return e, nil

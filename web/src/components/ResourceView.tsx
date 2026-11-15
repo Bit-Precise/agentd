@@ -1,6 +1,5 @@
-// ResourceView renders one resource from the generated metadata: a table of
-// the list operation, a detail panel, and dialogs for create, replace,
-// update, delete and any extra operations on the resource.
+// ResourceView renders one generated OpenAPI resource with shadcn table,
+// card, dialog and sheet primitives.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { call, ApiError } from "../api/client";
 import { meta } from "../api/meta.gen";
@@ -8,30 +7,29 @@ import type { Operation, Resource, Schema } from "../api/meta";
 import { emptyValue, prune, SchemaForm } from "./SchemaForm";
 import { Cell, columns, Detail } from "./format";
 import { Modal } from "./Modal";
+import { Alert, AlertDescription } from "./ui/alert";
+import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
-// fit keeps only the parts of v that schema s describes (prefilling write
-// bodies from read objects).
 function fit(s: Schema | undefined, v: unknown): unknown {
   if (!s || v === undefined || v === null) return v;
   if (s.type === "array" && Array.isArray(v)) return v.map((x) => fit(s.items, x));
   if ((s.type === "object" || s.properties) && typeof v === "object" && s.properties) {
-    const o: Record<string, unknown> = {};
-    for (const k of Object.keys(s.properties)) {
-      const x = (v as Record<string, unknown>)[k];
-      if (x !== undefined) o[k] = fit(s.properties[k], x);
+    const output: Record<string, unknown> = {};
+    for (const key of Object.keys(s.properties)) {
+      const value = (v as Record<string, unknown>)[key];
+      if (value !== undefined) output[key] = fit(s.properties[key], value);
     }
-    return o;
+    return output;
   }
   return v;
 }
 
-// A few older agentserver responses used human-readable aliases (name,
-// subject) before every resource received an explicit UUID. Keeping the
-// display fallback here lets the generated console remain useful while a
-// mixed-version control plane is being upgraded.
 function displayValue(row: Record<string, unknown>, key: string): unknown {
   if (row[key] !== undefined) return row[key];
   if (key === "id") return row.name ?? row.subject ?? row.workspace ?? row.token;
@@ -43,8 +41,8 @@ function displayValue(row: Record<string, unknown>, key: string): unknown {
 }
 
 function verb(op: Operation): string {
-  const s = op.summary.replace(/[。.]$/, "");
-  return s.length > 40 ? op.id : s;
+  const summary = op.summary.replace(/[。.]$/, "");
+  return summary.length > 40 ? op.id : summary;
 }
 
 interface DialogState {
@@ -53,7 +51,6 @@ interface DialogState {
   body: unknown;
   query: Record<string, unknown>;
   title: string;
-  after?: (result: unknown) => void;
   surface: "admin" | "user";
 }
 
@@ -65,6 +62,7 @@ export function ResourceView({ r, ws, surface = "admin", readOnly = false, onCha
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [result, setResult] = useState<{ title: string; value: unknown } | null>(null);
   const ops = meta.operations;
+
   const baseParams = useMemo((): Record<string, string> => {
     if (r.scope !== "workspace") return {};
     const names = ops[r.list]?.pathParams || [];
@@ -83,131 +81,109 @@ export function ResourceView({ r, ws, surface = "admin", readOnly = false, onCha
     } finally {
       setLoading(false);
     }
-  }, [r.list, r.scope, ws, baseParams, surface]);
+  }, [baseParams, r.list, r.scope, surface, ws]);
 
   useEffect(() => {
     setSelected(null);
     setData(null);
-    load();
+    void load();
   }, [load]);
 
   const rows = useMemo(() => {
-    const d = r.listField ? (data as Record<string, unknown> | null)?.[r.listField] : data;
-    return (Array.isArray(d) ? d : []) as Record<string, unknown>[];
+    const value = r.listField ? (data as Record<string, unknown> | null)?.[r.listField] : data;
+    return (Array.isArray(value) ? value : []) as Record<string, unknown>[];
   }, [data, r.listField]);
   const cols = useMemo(() => columns(r.item), [r.item]);
   const extra = useMemo(() => {
     if (!r.listField || !data) return [] as [string, unknown][];
-    return Object.entries(data as Record<string, unknown>).filter(([k]) => k !== r.listField);
+    return Object.entries(data as Record<string, unknown>).filter(([key]) => key !== r.listField);
   }, [data, r.listField]);
-
   const itemPath = (row: Record<string, unknown>) => (r.idParam ? { ...baseParams, [r.idParam]: String(displayValue(row, r.idField)) } : baseParams);
 
-  const open = (opId: string, path: Record<string, string>, body: unknown, after?: (x: unknown) => void, title?: string) => {
+  const open = (opId: string, path: Record<string, string>, body: unknown, title?: string) => {
     const op = ops[opId];
-    const q: Record<string, unknown> = {};
-    for (const p of op.query) q[p.name] = p.schema.type === "boolean" ? false : "";
-    setDialog({ op, path, body: body ?? (op.body ? emptyValue(op.body) : undefined), query: q, title: title || verb(op), after, surface });
+    const query: Record<string, unknown> = {};
+    for (const parameter of op.query) query[parameter.name] = parameter.schema.type === "boolean" ? false : "";
+    setDialog({ op, path, body: body ?? (op.body ? emptyValue(op.body) : undefined), query, title: title || verb(op), surface });
   };
 
-  const finish = (op: Operation, res: unknown) => {
+  const finish = async (op: Operation, response: unknown) => {
     setDialog(null);
-    load();
+    await load();
     onChanged?.();
     const name = op.response?.$name;
-    const showResult = res !== null && res !== undefined && (op.method === "GET" || (name && name !== r.item.$name && op.method === "POST"));
-    if (showResult) setResult({ title: verb(op), value: res });
+    const showResult = response !== null && response !== undefined && (op.method === "GET" || (name && name !== r.item.$name && op.method === "POST"));
+    if (showResult) setResult({ title: verb(op), value: response });
     if (op.method === "DELETE") setSelected(null);
   };
 
   return (
-    <section className="resource">
-      <header className="resource-head">
-        <div>
-          <h1>{r.label}</h1>
-          <p className="muted">{r.title}</p>
+    <section className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="grid gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{r.label}</h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">{r.title}</p>
         </div>
-        <div className="actions">
-          <Button variant="secondary" onClick={load} disabled={loading}>{loading ? "loading…" : "refresh"}</Button>
-          {!readOnly && r.collectionActions.map((id) => (
-            <Button key={id} variant="secondary" onClick={() => open(id, baseParams, undefined)}>{verb(ops[id])}</Button>
-          ))}
-          {r.replace && !readOnly && (
-            <Button variant="secondary" onClick={() => open(r.replace!, baseParams, fit(ops[r.replace!].body, data), undefined, "edit all")}>edit all</Button>
-          )}
-          {r.create && !readOnly && <Button onClick={() => open(r.create!, baseParams, undefined, undefined, "create")}>+ new</Button>}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void load()} disabled={loading}>{loading ? "Loading…" : "Refresh"}</Button>
+          {!readOnly && r.collectionActions.map((id) => <Button key={id} variant="outline" onClick={() => open(id, baseParams, undefined)}>{verb(ops[id])}</Button>)}
+          {r.replace && !readOnly && <Button variant="outline" onClick={() => open(r.replace!, baseParams, fit(ops[r.replace!].body, data), "Edit all")}>Edit all</Button>}
+          {r.create && !readOnly && <Button onClick={() => open(r.create!, baseParams, undefined, "Create")}>New</Button>}
         </div>
       </header>
-      {r.scope === "workspace" && !ws && <div className="notice">Choose or create a workspace first.</div>}
-      {error && <div className="error">{error}</div>}
-      {extra.length > 0 && (
-        <div className="extra">
-          {extra.map(([k, v]) => (
-            <span key={k} className="pill">{k}: <Cell value={v} /></span>
-          ))}
-        </div>
-      )}
-      <div className="table-wrap">
-        <Table>
-          <TableHeader>
-            <TableRow>{cols.map((c) => <TableHead key={c}>{c.replace(/_/g, " ")}</TableHead>)}<TableHead /></TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow key={String(displayValue(row, r.idField) ?? i)} onClick={() => setSelected(row)} className={selected === row ? "sel" : ""}>
-                {cols.map((c) => <TableCell key={c}><Cell value={displayValue(row, c)} /></TableCell>)}
-                <TableCell className="row-actions">
-                  {r.remove && !readOnly && (
-                    <Button variant="link" className="danger" onClick={(e) => { e.stopPropagation(); open(r.remove!, itemPath(row), undefined, undefined, `${verb(ops[r.remove!])}: ${displayValue(row, r.idField)}`); }}>delete</Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {!rows.length && !loading && (
-              <TableRow><TableCell colSpan={cols.length + 1} className="muted center">nothing here yet</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
 
-      {selected && (
-        <aside className="detail">
-          <header>
-            <h2>{String(displayValue(selected, r.idField) ?? "")}</h2>
-            <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>✕</Button>
-          </header>
-          <div className="actions">
-            {r.update && !readOnly && <Button variant="secondary" onClick={() => open(r.update!, itemPath(selected), fit(ops[r.update!].body, selected), undefined, "edit")}>edit</Button>}
-            {!readOnly && r.itemActions.map((id) => (
-              <Button key={id} variant="secondary" onClick={() => open(id, itemPath(selected), undefined)}>{verb(ops[id])}</Button>
-            ))}
+      {r.scope === "workspace" && !ws && <Alert><AlertDescription>Choose or create a workspace first.</AlertDescription></Alert>}
+      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+      {extra.length > 0 && <div className="flex flex-wrap gap-2">{extra.map(([key, value]) => <Badge key={key} variant="secondary" className="h-auto max-w-full gap-1 px-3 py-1 font-normal">{key}: <Cell value={value} /></Badge>)}</div>}
+
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader><TableRow>{cols.map((column) => <TableHead key={column}>{column.replace(/_/g, " ")}</TableHead>)}<TableHead /></TableRow></TableHeader>
+            <TableBody>
+              {rows.map((row, index) => (
+                <TableRow key={String(displayValue(row, r.idField) ?? index)} onClick={() => setSelected(row)} data-state={selected === row ? "selected" : undefined} className="cursor-pointer">
+                  {cols.map((column) => <TableCell key={column}><Cell value={displayValue(row, column)} /></TableCell>)}
+                  <TableCell className="text-right">{r.remove && !readOnly && <Button variant="link" className="text-destructive" onClick={(event) => { event.stopPropagation(); open(r.remove!, itemPath(row), undefined, `${verb(ops[r.remove!])}: ${displayValue(row, r.idField)}`); }}>Delete</Button>}</TableCell>
+                </TableRow>
+              ))}
+              {!rows.length && !loading && <TableRow><TableCell colSpan={cols.length + 1} className="h-24 text-center text-muted-foreground">Nothing here yet</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {selected && <Sheet open onOpenChange={(openState) => { if (!openState) setSelected(null); }}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>{String(displayValue(selected, r.idField) ?? "Details")}</SheetTitle>
+            <SheetDescription>Resource details and available actions.</SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-wrap gap-2 px-4">
+            {r.update && !readOnly && <Button variant="outline" onClick={() => open(r.update!, itemPath(selected), fit(ops[r.update!].body, selected), "Edit")}>Edit</Button>}
+            {!readOnly && r.itemActions.map((id) => <Button key={id} variant="outline" onClick={() => open(id, itemPath(selected), undefined)}>{verb(ops[id])}</Button>)}
           </div>
-          <Detail value={selected} />
-        </aside>
-      )}
+          <div className="px-4 pb-6"><Detail value={selected} /></div>
+        </SheetContent>
+      </Sheet>}
 
-      {dialog && <OpDialog d={dialog} setD={setDialog} onDone={(res) => finish(dialog.op, res)} />}
-      {result && (
-        <Modal title={result.title} onClose={() => setResult(null)} wide>
-          <p className="muted">Shown once where it contains a secret (join link, relay token). Copy it now.</p>
-          {Array.isArray(result.value) ? <pre>{JSON.stringify(result.value, null, 2)}</pre> : <Detail value={result.value} />}
-        </Modal>
-      )}
+      {dialog && <OpDialog d={dialog} setD={setDialog} onDone={(response) => void finish(dialog.op, response)} />}
+      {result && <Modal title={result.title} onClose={() => setResult(null)} wide><p className="text-sm text-muted-foreground">Shown once where it contains a secret. Copy it now.</p>{Array.isArray(result.value) ? <pre className="mt-4 max-h-96 overflow-auto rounded-md bg-muted p-3 text-xs">{JSON.stringify(result.value, null, 2)}</pre> : <Detail value={result.value} />}</Modal>}
     </section>
   );
 }
 
-function OpDialog({ d, setD, onDone }: { d: DialogState; setD: (d: DialogState | null) => void; onDone: (res: unknown) => void }) {
+function OpDialog({ d, setD, onDone }: { d: DialogState; setD: (value: DialogState | null) => void; onDone: (result: unknown) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const missing = d.op.pathParams.filter((p) => !(p in d.path));
-  const [extraPath, setExtraPath] = useState<Record<string, string>>(Object.fromEntries(missing.map((p) => [p, ""])));
+  const missing = d.op.pathParams.filter((parameter) => !(parameter in d.path));
+  const [extraPath, setExtraPath] = useState<Record<string, string>>(Object.fromEntries(missing.map((parameter) => [parameter, ""])));
   const submit = async () => {
     setBusy(true);
     setError("");
     try {
       const query: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(d.query)) if (v !== "" && v !== false) query[k] = v;
+      for (const [key, value] of Object.entries(d.query)) if (value !== "" && value !== false) query[key] = value;
       const body = d.op.body ? prune(d.op.body, d.body) : undefined;
       onDone(await call(d.op.id, { path: { ...d.path, ...extraPath }, query, body, surface: d.surface }));
     } catch (e) {
@@ -218,36 +194,17 @@ function OpDialog({ d, setD, onDone }: { d: DialogState; setD: (d: DialogState |
   };
   const destructive = d.op.method === "DELETE";
   return (
-    <Modal title={d.title} onClose={() => setD(null)} wide={!!d.op.body}>
-      {d.op.description && <p className="muted pre">{d.op.description.trim().split("\n")[0]}</p>}
-      <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        {missing.map((p) => (
-          <label key={p} className="field">
-            <span className="field-name">{p}<span className="req">*</span></span>
-            <Input value={extraPath[p]} onChange={(e) => setExtraPath({ ...extraPath, [p]: e.target.value })} required />
-          </label>
-        ))}
-        {d.op.query.map((q) => (
-          q.schema.type === "boolean" ? (
-            <label key={q.name} className="field check">
-              <Input type="checkbox" checked={!!d.query[q.name]} onChange={(e) => setD({ ...d, query: { ...d.query, [q.name]: e.target.checked } })} />
-              <span className="field-name">{q.name}</span>
-              {q.description && <div className="help">{q.description}</div>}
-            </label>
-          ) : (
-            <label key={q.name} className="field">
-              <span className="field-name">{q.name}</span>
-            <Input value={String(d.query[q.name] ?? "")} onChange={(e) => setD({ ...d, query: { ...d.query, [q.name]: e.target.value } })} />
-            </label>
-          )
-        ))}
-        {d.op.body && <SchemaForm schema={d.op.body} value={d.body} onChange={(v) => setD({ ...d, body: v })} />}
-        {destructive && <p className="warn">This cannot be undone.</p>}
-        {error && <div className="error">{error}</div>}
-        <div className="form-actions">
-          <Button type="button" variant="secondary" onClick={() => setD(null)}>cancel</Button>
-          <Button type="submit" variant={destructive ? "destructive" : "default"} disabled={busy}>{busy ? "…" : destructive ? "delete" : "submit"}</Button>
-        </div>
+    <Modal title={d.title} onClose={() => setD(null)} wide={Boolean(d.op.body)}>
+      {d.op.description && <p className="whitespace-pre-wrap text-sm text-muted-foreground">{d.op.description.trim().split("\n")[0]}</p>}
+      <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+        {missing.map((parameter) => <label key={parameter} className="grid gap-2 text-sm font-medium"><span>{parameter}<span className="ml-0.5 text-destructive">*</span></span><Input value={extraPath[parameter]} onChange={(event) => setExtraPath({ ...extraPath, [parameter]: event.target.value })} required /></label>)}
+        {d.op.query.map((query) => query.schema.type === "boolean" ? (
+          <label key={query.name} className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={Boolean(d.query[query.name])} onCheckedChange={(checked) => setD({ ...d, query: { ...d.query, [query.name]: checked === true } })} /><span>{query.name}</span>{query.description && <span className="text-xs font-normal text-muted-foreground">{query.description}</span>}</label>
+        ) : <label key={query.name} className="grid gap-2 text-sm font-medium"><span>{query.name}</span><Input value={String(d.query[query.name] ?? "")} onChange={(event) => setD({ ...d, query: { ...d.query, [query.name]: event.target.value } })} /></label>)}
+        {d.op.body && <SchemaForm schema={d.op.body} value={d.body} onChange={(value) => setD({ ...d, body: value })} />}
+        {destructive && <Alert variant="destructive"><AlertDescription>This cannot be undone.</AlertDescription></Alert>}
+        {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+        <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setD(null)}>Cancel</Button><Button type="submit" variant={destructive ? "destructive" : "default"} disabled={busy}>{busy ? "…" : destructive ? "Delete" : "Submit"}</Button></div>
       </form>
     </Modal>
   );

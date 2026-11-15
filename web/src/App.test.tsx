@@ -62,7 +62,8 @@ describe("console", () => {
 
   it("renders every generated resource", async () => {
     render(<App />);
-    await screen.findByRole("option", { name: "home" });
+    await screen.findByRole("combobox");
+    await screen.findByText("home");
     const expectText: Record<string, string> = {
       domains: "agentsrv.test", "dns-providers": "nothing here yet", "certificate-issuers": "letsencrypt", "auth-providers": "corp", users: "corp|alice", certificates: "workspace:home", server: "test", workspaces: "home.agentsrv.test", tokens: "t1", members: "corp|alice", nodes: "laptop", groups: "pc", routes: "suffix:example.com", policies: "p1",
       services: "nas.home.agentsrv.test", certs: "selfsigned", relays: "relay-1", "relays-tokens": "rt1",
@@ -79,10 +80,10 @@ describe("console", () => {
     history.pushState({}, "", "/admin/tokens/home");
     render(<App />);
     await screen.findByText("t1");
-    fireEvent.click(screen.getByText("+ new"));
-    const name = await screen.findByText("name", { selector: ".field-name" });
-    fireEvent.change(name.parentElement!.querySelector("input")!, { target: { value: "dorm" } });
-    fireEvent.click(screen.getByText("submit"));
+    fireEvent.click(screen.getByText("New"));
+    const name = await screen.findByLabelText("name");
+    fireEvent.change(name, { target: { value: "dorm" } });
+    fireEvent.click(screen.getByText("Submit"));
     await screen.findByText(/agentd:\/\/home\.agentsrv\.test\/dorm/);
     const post = calls.find((c) => c.method === "POST");
     expect(JSON.parse(post!.body)).toEqual({ name: "dorm" });
@@ -92,12 +93,12 @@ describe("console", () => {
     history.pushState({}, "", "/admin/policies/home");
     render(<App />);
     await screen.findByText("p1");
-    fireEvent.click(screen.getByText("+ new"));
-    fireEvent.click((await screen.findAllByText("+ add PolicyTarget", { exact: false }))[0]);
+    fireEvent.click(screen.getByText("New"));
+    fireEvent.click((await screen.findAllByText("Add PolicyTarget", { exact: false }))[0]);
     for (const field of ["egress", "exec", "service"]) {
-      const labels = await screen.findAllByText(field, { selector: ".field-name" });
-      const input = labels[0].closest(".field")!.querySelector("input");
+      const input = await screen.findByLabelText(field);
       expect(input, `${field} should be a text input`).toBeTruthy();
+      expect((input as HTMLInputElement).type).toBe("text");
     }
   });
 });

@@ -1,14 +1,15 @@
 import type { ReactNode } from "react";
-import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className={wide ? "wide" : undefined} aria-label={title}>
-        <header>
+      <DialogContent className={wide ? "max-w-3xl" : "max-w-lg"} aria-label={title}>
+        <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-        </header>
-        <div className="modal-body">{children}</div>
+          <DialogDescription className="sr-only">{title}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">{children}</div>
       </DialogContent>
     </Dialog>
   );
