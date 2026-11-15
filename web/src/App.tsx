@@ -4,7 +4,6 @@ import {
   FolderKanban,
   LogOut,
   Moon,
-  ShieldCheck,
   Sun,
 } from "lucide-react";
 import { meta } from "./api/meta.gen";
@@ -84,10 +83,10 @@ export function App() {
   const [authenticated, setAuthenticated] = useState(() => Boolean(initialToken));
   const [authError, setAuthError] = useState("");
   const [identity, setIdentity] = useState<AuthMe | null>(null);
-  const [adminMode, setAdminMode] = useState(() => initialRoute.admin || (initialRoute.view === "overview" && (localStorage.getItem("agentd.adminMode") === "true" || Boolean(initialToken))));
+  const [adminMode, setAdminMode] = useState(() => initialRoute.admin || Boolean(initialToken) || (initialRoute.view === "overview" && localStorage.getItem("agentd.adminMode") === "true"));
   const [dark, setDark] = useState(() => localStorage.getItem("agentd.theme") === "dark");
   const [wsList, setWsList] = useState<WorkspaceOption[]>([]);
-  const [{ view, ws }, setRoute] = useState<RouteState>(initialRoute);
+  const [{ admin, view, ws }, setRoute] = useState<RouteState>(initialRoute);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -105,7 +104,7 @@ export function App() {
       setIdentity(me);
       if (me) {
         setAuthenticated(true);
-        if (me.instance_admin && localStorage.getItem("agentd.adminMode") === null) setAdminMode(true);
+        if (me.instance_admin) setAdminMode(true);
       }
     }).catch(() => undefined);
     void authConfig().catch(() => undefined);
@@ -116,6 +115,16 @@ export function App() {
     if (location.pathname !== nextPath) history.pushState({}, "", nextPath);
     window.dispatchEvent(new PopStateEvent("popstate"));
   }, [adminMode, ws]);
+
+  useEffect(() => {
+    const instanceAdmin = Boolean(token) || Boolean(identity?.instance_admin);
+    if (admin || !instanceAdmin) return;
+    const nextView = view === "workspaces" ? "workspaces" : view === "overview" ? "overview" : view;
+    const nextWs = nextView === "workspaces" || nextView === "overview" ? "" : ws;
+    setAdminMode(true);
+    localStorage.setItem("agentd.adminMode", "true");
+    go(nextView, nextWs, true);
+  }, [admin, go, identity?.instance_admin, token, view, ws]);
 
   const loadWs = useCallback(async () => {
     try {
@@ -144,12 +153,6 @@ export function App() {
   useEffect(() => {
     if (authenticated) void loadWs();
   }, [authenticated, loadWs]);
-
-  const setMode = (admin: boolean) => {
-    setAdminMode(admin);
-    localStorage.setItem("agentd.adminMode", String(admin));
-    go(admin ? "overview" : "members", ws, admin);
-  };
 
   const logout = () => {
     void fetch("/auth/logout", { credentials: "same-origin" });
@@ -250,7 +253,7 @@ export function App() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <UserMenu identity={identity} adminMode={adminMode} canAdmin={Boolean(identity?.instance_admin || token)} dark={dark} onDark={setDark} onAdmin={() => setMode(!adminMode)} onLogout={logout} />
+              <UserMenu identity={identity} canAdmin={Boolean(identity?.instance_admin || token)} dark={dark} onDark={setDark} onLogout={logout} />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
@@ -277,7 +280,7 @@ function UserHome({ identity }: { identity: AuthMe | null }) {
   );
 }
 
-function UserMenu({ identity, adminMode, canAdmin, dark, onDark, onAdmin, onLogout }: { identity: AuthMe | null; adminMode: boolean; canAdmin: boolean; dark: boolean; onDark: (value: boolean) => void; onAdmin: () => void; onLogout: () => void }) {
+function UserMenu({ identity, canAdmin, dark, onDark, onLogout }: { identity: AuthMe | null; canAdmin: boolean; dark: boolean; onDark: (value: boolean) => void; onLogout: () => void }) {
   const label = identity?.name || identity?.email || (canAdmin ? "Instance admin" : "User");
   const initials = label.slice(0, 1).toUpperCase();
   return (
@@ -293,7 +296,6 @@ function UserMenu({ identity, adminMode, canAdmin, dark, onDark, onAdmin, onLogo
         <DropdownMenuLabel className="p-0 font-normal"><div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm"><Avatar size="sm" className="rounded-lg"><AvatarImage src={identity?.picture} alt="" /><AvatarFallback className="rounded-lg">{initials}</AvatarFallback></Avatar><div className="grid flex-1 text-left text-sm leading-tight"><span className="truncate font-semibold">{label}</span>{identity?.email && <span className="truncate text-xs text-muted-foreground">{identity.email}</span>}</div></div></DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => onDark(!dark)}>{dark ? <Sun /> : <Moon />}{dark ? "Light mode" : "Dark mode"}</DropdownMenuItem>
-        {canAdmin && <DropdownMenuItem onSelect={onAdmin}><ShieldCheck />{adminMode ? "Workspace mode" : "Admin mode"}</DropdownMenuItem>}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onLogout}><LogOut />Log out</DropdownMenuItem>
       </DropdownMenuContent>

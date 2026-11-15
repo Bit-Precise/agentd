@@ -37,15 +37,19 @@ beforeEach(() => {
   calls = [];
   localStorage.setItem("agentd.adminToken", "secret-token");
   history.replaceState({}, "", "/");
-  vi.stubGlobal("fetch", async (input: Request) => {
-    const url = new URL(input.url);
-    const k = `${input.method} ${url.pathname}`;
-    calls.push({ method: input.method, url: url.pathname, body: input.method === "GET" ? "" : await input.clone().text(), auth: input.headers.get("Authorization") });
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+    const request = input instanceof Request ? input : null;
+    const url = new URL(request ? request.url : String(input), location.origin);
+    const method = request?.method || "GET";
+    const k = `${method} ${url.pathname}`;
+    if (url.pathname === "/auth/me") return new Response(JSON.stringify({ email: "user@example.com", subject: "oidc|alice", instance_admin: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (url.pathname === "/auth/config") return new Response(JSON.stringify({ oidc_enabled: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+    calls.push({ method, url: url.pathname, body: method === "GET" ? "" : request ? await request.clone().text() : "", auth: request?.headers.get("Authorization") || null });
     // New OpenAPI resources such as audit events do not need a populated row
     // for this generic console smoke test; return an empty collection so the
     // generated view can still be exercised.
     if (!(k in fixtures)) return new Response(JSON.stringify(k.includes("/audit/events") ? { items: [] } : []), { status: 200, headers: { "Content-Type": "application/json" } });
-    return new Response(JSON.stringify(fixtures[k]), { status: input.method === "POST" ? 201 : 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(fixtures[k]), { status: method === "POST" ? 201 : 200, headers: { "Content-Type": "application/json" } });
   });
 });
 afterEach(() => {
@@ -68,11 +72,20 @@ describe("console", () => {
     expect(location.pathname).toBe("/admin");
   });
 
+  it("redirects a bootstrap admin away from the user API surface", async () => {
+    history.replaceState({}, "", "/workspaces/home/members");
+    render(<App />);
+    await screen.findByRole("heading", { name: "members" });
+    expect(location.pathname).toBe("/admin/members/home");
+    expect(calls.some((call) => call.url.startsWith("/api/v1/") && !call.url.startsWith("/api/v1/admin/"))).toBe(false);
+  });
+
   it("renders the user workspace index at /workspaces", async () => {
+    localStorage.removeItem("agentd.adminToken");
     history.replaceState({}, "", "/workspaces");
     render(<App />);
     await screen.findByRole("heading", { name: "workspaces" });
-    expect(screen.getByText("home")).toBeTruthy();
+    expect(screen.getAllByText("home").length).toBeGreaterThan(0);
     expect(location.pathname).toBe("/workspaces");
   });
 
