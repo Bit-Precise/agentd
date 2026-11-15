@@ -654,6 +654,12 @@ func (a *Admin) CreateWorkspace(ctx context.Context, req adminapi.CreateWorkspac
 	if a.C.certs != nil {
 		a.C.certs.Ensure(context.Background(), ws, true)
 	}
+	if relays, e := a.C.st.ListRelays(ctx); e == nil {
+		for _, relay := range relays {
+			a.C.pushRelayState(ctx, relay.Name)
+		}
+	}
+	a.C.pushCertsForWorkspace(ctx, ws.Name)
 	return adminapi.CreateWorkspace201JSONResponse(a.apiWorkspace(ctx, ws)), nil
 }
 func (a *Admin) GetWorkspace(ctx context.Context, req adminapi.GetWorkspaceRequestObject) (adminapi.GetWorkspaceResponseObject, error) {
@@ -760,6 +766,12 @@ func (a *Admin) CreateToken(ctx context.Context, req adminapi.CreateTokenRequest
 		return nil, err
 	}
 	link := identity.JoinLink{Workspace: ws.BaseDomain, Name: name, Key: ws.PublicKey, Token: tok}
+	// The deprecated join_link keeps a bootstrap relay for older agentd
+	// clients. The token itself remains unbound; current clients use join_token
+	// with /api/v1/join/candidates and choose from the full pool.
+	if relays, e := a.C.st.ListRelays(ctx); e == nil && len(relays) > 0 {
+		link.RelayURL = relays[0].URL
+	}
 	out := adminapi.TokenCreated{Id: idFor("token", ws.Name+"/"+t.ID), Roles: apiRoles(roles), Status: adminapi.JoinTokenStatus("active"), ExpiresAt: t.ExpiresAt, CreatedAt: time.Now(), JoinToken: tok}
 	linkString := link.String()
 	out.JoinLink = linkString
