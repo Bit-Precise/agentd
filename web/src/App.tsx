@@ -104,8 +104,13 @@ export function App() {
     void authMe().then((me) => {
       setIdentity(me);
       if (me) {
+        // An OIDC browser session is the active principal. Do not let a
+        // bootstrap token left in localStorage override its workspace mode.
+        setToken("");
+        setTok("");
         setAuthenticated(true);
         if (me.instance_admin && initialRoute.admin) setAdminMode(true);
+        else if (!initialRoute.admin) setAdminMode(false);
       }
     }).catch(() => undefined);
     void authConfig().catch(() => undefined);
@@ -184,6 +189,10 @@ export function App() {
   };
 
   const setMode = (nextAdmin: boolean) => {
+    if (!nextAdmin) {
+      setToken("");
+      setTok("");
+    }
     setAdminMode(nextAdmin);
     localStorage.setItem("agentd.adminMode", String(nextAdmin));
     const nextView = view === "overview" ? (nextAdmin ? "overview" : "workspaces") : view;
@@ -262,7 +271,7 @@ export function App() {
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <UserMenu identity={identity} adminMode={adminMode} canSwitchMode={Boolean(identity?.instance_admin && !token)} dark={dark} onDark={setDark} onMode={() => setMode(!adminMode)} onLogout={logout} />
+              <UserMenu identity={identity} adminMode={adminMode} canSwitchMode={Boolean(identity?.instance_admin)} dark={dark} onDark={setDark} onMode={() => setMode(!adminMode)} onLogout={logout} />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

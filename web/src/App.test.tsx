@@ -42,7 +42,10 @@ beforeEach(() => {
     const url = new URL(request ? request.url : String(input), location.origin);
     const method = request?.method || "GET";
     const k = `${method} ${url.pathname}`;
-    if (url.pathname === "/auth/me") return new Response(JSON.stringify({ email: "user@example.com", subject: "oidc|alice", instance_admin: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (url.pathname === "/auth/me") {
+      if (localStorage.getItem("agentd.adminToken")) return new Response("", { status: 401 });
+      return new Response(JSON.stringify({ email: "user@example.com", subject: "oidc|alice", instance_admin: false }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/auth/config") return new Response(JSON.stringify({ oidc_enabled: false }), { status: 200, headers: { "Content-Type": "application/json" } });
     calls.push({ method, url: url.pathname, body: method === "GET" ? "" : request ? await request.clone().text() : "", auth: request?.headers.get("Authorization") || null });
     // New OpenAPI resources such as audit events do not need a populated row
