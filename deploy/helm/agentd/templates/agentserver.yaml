@@ -24,6 +24,16 @@ data:
     tls: { mode: file, cert_file: /etc/agentserver/tls/tls.crt, key_file: /etc/agentserver/tls/tls.key }
     selfsigned_ca: { cert_file: /etc/agentserver/tls/ca.crt, key_file: /etc/agentserver/tls/ca.key }
     default_dns_provider: {{ $s.defaultDnsProvider }}
+    {{- if $s.oidc.enabled }}
+    oidc:
+      enabled: true
+      issuer: {{ required "agentserver.oidc.issuer is required when OIDC is enabled" $s.oidc.issuer | quote }}
+      client_id: {{ required "agentserver.oidc.clientId is required when OIDC is enabled" $s.oidc.clientId | quote }}
+      client_secret_env: OIDC_CLIENT_SECRET
+      redirect_url: {{ required "agentserver.oidc.redirectUrl is required when OIDC is enabled" $s.oidc.redirectUrl | quote }}
+      scopes: {{ toJson $s.oidc.scopes }}
+      instance_admin_emails: {{ toJson $s.oidc.instanceAdminEmails }}
+    {{- end }}
     {{- if $s.dnsProviders }}
     dns_providers:
       {{- range $name, $p := $s.dnsProviders }}
@@ -68,6 +78,10 @@ spec:
             - { name: AGENTSERVER_STATE_KEY, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" . }}, key: state-key } } }
             - { name: AGENTSERVER_RELAY_TOKEN, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" . }}, key: relay-join-token } } }
             - { name: AGENTSERVER_DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $dbSecret }}, key: url } } }
+            {{- if $s.oidc.enabled }}
+            {{- if empty $s.oidc.clientSecretSecret.name }}{{ fail "agentserver.oidc.clientSecretSecret.name is required when OIDC is enabled" }}{{ end }}
+            - { name: OIDC_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $s.oidc.clientSecretSecret.name }}, key: {{ $s.oidc.clientSecretSecret.key }} } } }
+            {{- end }}
             {{- range $name, $p := $s.dnsProviders }}
             {{- $env := $name | upper | replace "-" "_" }}
             {{- if $p.tokenSecret }}

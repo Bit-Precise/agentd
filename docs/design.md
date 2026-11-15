@@ -1576,6 +1576,9 @@ agentserver 配置和状态库；它有自己的 `instance_admin`。instance adm
 - **auth providers**：这是可扩展的认证 provider 集合，第一期只实现 `kind: oidc`，可以配置多个 issuer、client、scope 和 claim mapping；
   API 写入时接收 client secret，读取响应不返回；bootstrap 配置可使用 secret 引用。
 
+浏览器控制台的登录由 bootstrap 配置的 OIDC provider 完成；`instance_admin_emails` 是实例级 allowlist，只有这些经过 OIDC userinfo
+确认的邮箱可以访问 instance admin API。chart 同时可以声明 Gateway API `HTTPRoute`，把控制台域名路由到 agentserver 的 admin port。
+
 instance admin 还管理全局 users、workspaces、nodes、routes、policies 和 relay，并对任意
 workspace 拥有 break-glass 管理权限。默认域名属于 instance，不属于任何 workspace；workspace
 workspace 创建时可选择 instance domain 的 `domain_id`；省略时使用默认 domain。`base_domain` 始终由 agentserver 根据 domain 与 workspace name 生成，不能由请求直接填写。

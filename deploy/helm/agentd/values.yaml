@@ -45,6 +45,21 @@ agentserver:
   #    accountKeySecret: {}     # optional PEM ACME account key; default: generated and kept in the database
   #    propagationWait: ""      # wait before asking the CA to validate; default 30s
   relayCertTTL: 720h
+  oidc:
+    enabled: false
+    issuer: ""
+    clientId: ""
+    clientSecretSecret: { name: "", key: client-secret }
+    redirectUrl: ""
+    scopes: [openid, profile, email]
+    instanceAdminEmails: []
+  httpRoute:
+    enabled: false
+    hostnames: []
+    parentRefs: []
+    annotations: {}
+    labels: {}
+    path: /
   log: { level: info, format: json }
   resources: {}
   nodeSelector: {}

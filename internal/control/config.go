@@ -29,8 +29,9 @@ type ServerConfig struct {
 	TLS        tlsutil.Config    `yaml:"tls"`        // certificate of `domain`
 	Transports map[string]string `yaml:"transports"` // relay session endpoints
 
-	AdminListen   string `yaml:"admin_listen"`    // admin API and web console (plain HTTP); default 127.0.0.1:7800
-	AdminTokenEnv string `yaml:"admin_token_env"` // default AGENTSERVER_ADMIN_TOKEN
+	AdminListen   string     `yaml:"admin_listen"`    // admin API and web console (plain HTTP); default 127.0.0.1:7800
+	AdminTokenEnv string     `yaml:"admin_token_env"` // default AGENTSERVER_ADMIN_TOKEN
+	OIDC          OIDCConfig `yaml:"oidc"`            // optional browser login and instance-admin allowlist
 
 	Database          DatabaseConfig `yaml:"database"`
 	StateKeyEnv       string         `yaml:"state_key_env"`        // default AGENTSERVER_STATE_KEY
@@ -54,6 +55,19 @@ type ServerConfig struct {
 type DatabaseConfig struct {
 	URL    string `yaml:"url"`
 	URLEnv string `yaml:"url_env"` // default AGENTSERVER_DATABASE_URL; wins over url when set
+}
+
+// OIDCConfig configures the browser login used by the admin and user surfaces.
+// The provider userinfo endpoint supplies the verified identity; only emails
+// in InstanceAdminEmails may use the instance-admin API.
+type OIDCConfig struct {
+	Enabled             bool     `yaml:"enabled"`
+	Issuer              string   `yaml:"issuer"`
+	ClientID            string   `yaml:"client_id"`
+	ClientSecretEnv     string   `yaml:"client_secret_env"`
+	RedirectURL         string   `yaml:"redirect_url"`
+	Scopes              []string `yaml:"scopes"`
+	InstanceAdminEmails []string `yaml:"instance_admin_emails"`
 }
 
 // DNSProvider issues workspace wildcard certificates. A workspace uses the
@@ -129,6 +143,9 @@ func (c *ServerConfig) SetDefaults() {
 	if c.DefaultDNSProvider == "" {
 		c.DefaultDNSProvider = "selfsigned"
 	}
+	if len(c.OIDC.Scopes) == 0 {
+		c.OIDC.Scopes = []string{"openid", "profile", "email"}
+	}
 }
 
 // Validate checks the configuration.
@@ -200,6 +217,23 @@ func (c *ServerConfig) Validate() error {
 	if c.DefaultDNSProvider != "selfsigned" {
 		if _, ok := c.DNSProviders[c.DefaultDNSProvider]; !ok {
 			return fmt.Errorf("default_dns_provider %q is not defined", c.DefaultDNSProvider)
+		}
+	}
+	if c.OIDC.Enabled {
+		if c.OIDC.Issuer == "" || c.OIDC.ClientID == "" || c.OIDC.ClientSecretEnv == "" || c.OIDC.RedirectURL == "" {
+			return errors.New("oidc requires issuer, client_id, client_secret_env and redirect_url")
+		}
+		if u, err := url.Parse(c.OIDC.Issuer); err != nil || u.Scheme != "https" || u.Host == "" {
+			return errors.New("oidc.issuer must be an https URL")
+		}
+		if u, err := url.Parse(c.OIDC.RedirectURL); err != nil || u.Host == "" || (u.Scheme != "https" && !(u.Scheme == "http" && strings.HasPrefix(u.Host, "127.0.0.1"))) {
+			return errors.New("oidc.redirect_url must be an https URL")
+		}
+		if len(c.OIDC.InstanceAdminEmails) == 0 {
+			return errors.New("oidc.instance_admin_emails must contain at least one email")
+		}
+		for i, email := range c.OIDC.InstanceAdminEmails {
+			c.OIDC.InstanceAdminEmails[i] = strings.ToLower(strings.TrimSpace(email))
 		}
 	}
 	return nil

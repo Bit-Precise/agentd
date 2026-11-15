@@ -32,6 +32,7 @@ type Admin struct {
 	C      *Coordinator
 	Config *ServerConfig
 	Domain string
+	OIDC   *OIDCAuth
 }
 
 var _ adminapi.StrictServerInterface = (*Admin)(nil)
@@ -95,10 +96,17 @@ func writeJSONError(w http.ResponseWriter, status int, code, message string) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]string{"code": code, "message": message}})
 }
 
-func requireToken(token string, next http.Handler) http.Handler {
+func requireToken(token string, oidc *OIDCAuth, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		if token == "" || subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
+	allowed := oidc == nil || !oidc.Enabled()
+	allowed = allowed && token != "" && subtle.ConstantTimeCompare([]byte(got), []byte(token)) == 1
+		if !allowed && oidc != nil {
+			if s, ok := oidc.Session(r); ok && s.InstanceAdmin {
+				allowed = true
+			}
+		}
+		if !allowed {
 			writeJSONError(w, http.StatusUnauthorized, "UNAUTHORIZED", "missing or wrong admin token")
 			return
 		}
@@ -122,14 +130,21 @@ func (a *Admin) Handler(token string, ui http.Handler) http.Handler {
 	}})
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok\n")) })
-	mux.Handle("/api/v1/admin/", a.auditWrites(requireToken(token, api)))
+	mux.Handle("/api/v1/admin/", a.auditWrites(requireToken(token, a.OIDC, api)))
 	// Compatibility aggregate used by older clients; it is not in the current
 	// OpenAPI document and is read-only.
-	mux.Handle("/api/v1/admin/instance", requireToken(token, http.HandlerFunc(a.compatInstance)))
-	mux.Handle("/api/v1/admin/audit/events", requireToken(token, http.HandlerFunc(a.auditEventsHTTP)))
-	mux.Handle("/api/v1/admin/audit/events/", requireToken(token, http.HandlerFunc(a.auditEventHTTP)))
+	mux.Handle("/api/v1/admin/instance", requireToken(token, a.OIDC, http.HandlerFunc(a.compatInstance)))
+	mux.Handle("/api/v1/admin/audit/events", requireToken(token, a.OIDC, http.HandlerFunc(a.auditEventsHTTP)))
+	mux.Handle("/api/v1/admin/audit/events/", requireToken(token, a.OIDC, http.HandlerFunc(a.auditEventHTTP)))
 	mux.HandleFunc("/api/v1/join/candidates", a.joinCandidates)
-	mux.Handle("/api/v1/", a.auditUserWrites(a.userHandler(token)))
+	mux.Handle("/api/v1/", a.auditUserWrites(a.userHandler(token, a.OIDC)))
+	if a.OIDC != nil {
+		mux.HandleFunc("/auth/login", a.oidcLogin)
+		mux.HandleFunc("/auth/callback", a.oidcCallback)
+		mux.HandleFunc("/auth/logout", a.oidcLogout)
+		mux.HandleFunc("/auth/me", a.oidcMe)
+	}
+	mux.HandleFunc("/auth/config", func(w http.ResponseWriter, r *http.Request) { w.Header().Set("Content-Type", "application/json"); _ = json.NewEncoder(w).Encode(map[string]bool{"oidc_enabled": a.OIDC != nil && a.OIDC.Enabled()}) })
 	mux.HandleFunc("/api/admin/openapi.json", func(w http.ResponseWriter, r *http.Request) {
 		sw, err := adminapi.GetSwagger()
 		if err != nil {

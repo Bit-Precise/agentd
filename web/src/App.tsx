@@ -15,9 +15,15 @@ function readHash() {
 
 export function App() {
   const [token, setTok] = useState(getToken());
+  const [authenticated, setAuthenticated] = useState(() => !!getToken());
   const [authError, setAuthError] = useState("");
   const [wsList, setWsList] = useState<{ id: string; name: string }[]>([]);
   const [{ view, ws }, setRoute] = useState(readHash());
+
+  useEffect(() => {
+    if (token) { setAuthenticated(true); return; }
+    fetch("/auth/me", { credentials: "same-origin" }).then((r) => setAuthenticated(r.ok)).catch(() => setAuthenticated(false));
+  }, [token]);
 
   useEffect(() => {
     const f = () => setRoute(readHash());
@@ -51,7 +57,7 @@ export function App() {
     if (token) loadWs();
   }, [token, loadWs]);
 
-  if (!token) return <Login error={authError} onLogin={(t) => { setToken(t); setTok(t); }} />;
+  if (!authenticated) return <Login error={authError} onLogin={(t) => { setToken(t); setTok(t); setAuthenticated(true); }} />;
 
   const global = meta.resources.filter((r) => r.scope === "global");
   const scoped = meta.resources.filter((r) => r.scope === "workspace");
@@ -76,7 +82,7 @@ export function App() {
           <a key={r.key} className={view === r.key ? "active" : ""} onClick={() => go(r.key)}>{r.label}</a>
         ))}
         <div className="spacer" />
-        <Button variant="ghost" className="muted" onClick={() => { setToken(""); setTok(""); }}>sign out</Button>
+        <Button variant="ghost" className="muted" onClick={() => { fetch("/auth/logout", { credentials: "same-origin" }).catch(() => undefined); setToken(""); setTok(""); setAuthenticated(false); }}>sign out</Button>
         <div className="muted small">API {meta.version}</div>
       </nav>
       <main>
@@ -88,14 +94,22 @@ export function App() {
 
 function Login({ onLogin, error }: { onLogin: (t: string) => void; error: string }) {
   const [t, setT] = useState("");
+  const [oidc, setOidc] = useState(false);
+  useEffect(() => { fetch("/auth/config", { credentials: "same-origin" }).then((r) => r.json()).then((v) => setOidc(!!v.oidc_enabled)).catch(() => undefined); }, []);
   return (
     <div className="login">
       <form onSubmit={(e) => { e.preventDefault(); if (t.trim()) onLogin(t.trim()); }}>
         <h1>agentserver</h1>
-        <p className="muted">Enter the admin token (the value of AGENTSERVER_ADMIN_TOKEN).</p>
-        <Input type="password" autoFocus value={t} onChange={(e) => setT(e.target.value)} placeholder="admin token" />
-        {error && <div className="error">{error}</div>}
-        <Button type="submit">sign in</Button>
+        {oidc ? <>
+          <p className="muted">Sign in with the configured OIDC provider.</p>
+          <Button asChild><a href="/auth/login">Sign in with OIDC</a></Button>
+        </> : <>
+          <p className="muted">Enter the admin token (the value of AGENTSERVER_ADMIN_TOKEN).</p>
+          <Input type="password" autoFocus value={t} onChange={(e) => setT(e.target.value)} placeholder="admin token" />
+          {error && <div className="error">{error}</div>}
+          <Button type="submit">sign in</Button>
+          <a className="oidc-login" href="/auth/login">Sign in with OIDC</a>
+        </>}
       </form>
     </div>
   );

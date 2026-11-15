@@ -227,7 +227,11 @@ func (s *Server) Run(ctx context.Context) error {
 	defer s.Close()
 	errLog := log.New(&slogWriter{s.log}, "", 0)
 	relaySrv := &http.Server{Handler: s.Coordinator.RelayHandler(s.Config.Transports), TLSConfig: s.TLS.TLSConfig(nil), ReadHeaderTimeout: 10 * time.Second, ErrorLog: errLog}
-	admin := &Admin{C: s.Coordinator, Config: s.Config, Domain: s.Config.Domain}
+	oidc := NewOIDCAuth(s.Config.OIDC)
+	admin := &Admin{C: s.Coordinator, Config: s.Config, Domain: s.Config.Domain, OIDC: oidc}
+	if oidc != nil {
+		oidc.SetIdentityHook(admin.oidcIdentityHook)
+	}
 	adminSrv := &http.Server{Handler: admin.Handler(s.token, s.ui), ReadHeaderTimeout: 10 * time.Second, ErrorLog: errLog}
 
 	go s.Coordinator.RenewLoop(ctx)

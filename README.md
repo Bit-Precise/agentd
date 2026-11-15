@@ -48,6 +48,23 @@ helm install agentd deploy/helm/agentd \
   --set relays[0].name=relay-1 --set relays[0].domain=relay-1.agentsrv.example.com
 ```
 
+使用 Gateway API 的集群可以改用 chart 的 `agentserver.httpRoute`，OIDC 登录和 instance admin 邮箱也在同一段配置中：
+
+```yaml
+agentserver:
+  httpRoute:
+    enabled: true
+    hostnames: [console.example.com]
+    parentRefs: [{ name: istio-gateway, namespace: istio-ingress, sectionName: https-example }]
+  oidc:
+    enabled: true
+    issuer: https://login.example.com
+    clientId: agentserver
+    clientSecretSecret: { name: oidc-client, key: client-secret }
+    redirectUrl: https://console.example.com/auth/callback
+    instanceAdminEmails: [admin@example.com]
+```
+
 安装后的说明（取 admin 令牌、端口转发控制台、DNS 指向 relay）会由 chart 打印。生产环境把 relay 的 `tls.mode` 设为 `acme` 或 `file`，并在 `agentserver.dnsProviders` 配置 Cloudflare 或 DNSPod 以签发受信任的 workspace 通配证书（CA 默认 Let's Encrypt，可用 `acmeDirectory` 换成 Google Trust Services 等，要求外部账号绑定的 CA 另配 `eabKeyIdSecret` / `eabHmacKeySecret`）；`deploy/helm/agentd/ci/production-values.yaml` 是一份完整示例。镜像由 CI 推到 `ghcr.io/bit-precise/agentd/{agentserver,agentrelay,agentd}`：每次推送 main 更新 `edge` 标签，仓库里的 chart 默认就用它；发布版的 chart 固定为对应版本的镜像。
 
 再加一个 relay：chart 里给 `relays` 加一项，它启动后用引导令牌自注册。在别处运行的 `agentrelay` 要连得到 agentserver 的 relay 端点，登记方式二选一，都在控制台的 relay tokens / relays 页里，或经 admin API（`api` 的定义见上一节）：

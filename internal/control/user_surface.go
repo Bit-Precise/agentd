@@ -14,14 +14,25 @@ import (
 // validation is deployment-specific; until an auth provider is configured the
 // bearer is accepted as a user id/subject, while the bootstrap admin token has
 // break-glass access to every workspace.
-func (a *Admin) userHandler(adminToken string) http.Handler {
+func (a *Admin) userHandler(adminToken string, oidc *OIDCAuth) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || strings.HasPrefix(r.URL.Path, "/api/v1/join/") {
 			http.NotFound(w, r)
 			return
 		}
 		bearer := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		if bearer == "" {
+		isOIDC := false
+		if oidc != nil {
+			if session, ok := oidc.Session(r); ok {
+				if session.InstanceAdmin {
+					writeJSONError(w, http.StatusForbidden, "FORBIDDEN", "use the instance admin API for the bootstrap administrator")
+					return
+				}
+				bearer = session.UserSubject
+				isOIDC = true
+			}
+		}
+		if bearer == "" || (oidc != nil && oidc.Enabled() && !isOIDC) {
 			writeJSONError(w, http.StatusUnauthorized, "UNAUTHORIZED", "user bearer required")
 			return
 		}
