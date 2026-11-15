@@ -9,6 +9,7 @@ WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY docs/agentserver-openapi.yaml /src/docs/agentserver-openapi.yaml
+COPY docs/agentserver-user-openapi.yaml /src/docs/agentserver-user-openapi.yaml
 COPY web/ ./
 RUN pnpm build
 
