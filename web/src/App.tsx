@@ -13,9 +13,11 @@ type WorkspaceOption = { id: string; name: string };
 function readRoute() {
   const path = decodeURIComponent(location.pathname.replace(/^\/+|\/+$/g, ""));
   const parts = path.split("/");
-  return { view: parts[0] || "overview", ws: parts[1] || "" };
+  if (parts[0] === "admin") return { admin: true, view: parts[1] || "overview", ws: parts[2] || "" };
+  return { admin: false, view: parts[0] || "overview", ws: parts[1] || "" };
 }
-function routePath(view: string, ws: string) {
+function routePath(view: string, ws: string, admin: boolean) {
+  if (admin) return view === "overview" ? "/admin" : "/admin/" + encodeURIComponent(view) + (ws ? "/" + encodeURIComponent(ws) : "");
   if (view === "overview") return "/";
   return ws ? "/" + encodeURIComponent(view) + "/" + encodeURIComponent(ws) : "/" + encodeURIComponent(view);
 }
@@ -26,16 +28,17 @@ export function App() {
   const [authenticated, setAuthenticated] = useState(() => !!initialToken);
   const [authError, setAuthError] = useState("");
   const [identity, setIdentity] = useState<AuthMe | null>(null);
-  const [adminMode, setAdminMode] = useState(() => localStorage.getItem("agentd.adminMode") === "true" || !!initialToken);
+  const initialRoute = readRoute();
+  const [adminMode, setAdminMode] = useState(() => initialRoute.admin || (initialRoute.view === "overview" && (localStorage.getItem("agentd.adminMode") === "true" || !!initialToken)));
   const [dark, setDark] = useState(() => localStorage.getItem("agentd.theme") === "dark");
   const [wsList, setWsList] = useState<WorkspaceOption[]>([]);
-  const [{ view, ws }, setRoute] = useState(readRoute());
+  const [{ view, ws }, setRoute] = useState(initialRoute);
 
   useEffect(() => { document.documentElement.dataset.theme = dark ? "dark" : "light"; localStorage.setItem("agentd.theme", dark ? "dark" : "light"); }, [dark]);
   useEffect(() => { const update = () => setRoute(readRoute()); addEventListener("popstate", update); return () => removeEventListener("popstate", update); }, []);
   useEffect(() => { authMe().then((me) => { setIdentity(me); if (me) { setAuthenticated(true); if (me.instance_admin && localStorage.getItem("agentd.adminMode") === null) setAdminMode(true); } }).catch(() => undefined); authConfig().catch(() => undefined); }, []);
 
-  const go = useCallback((nextView: string, nextWs = ws) => { history.pushState({}, "", routePath(nextView, nextWs)); dispatchEvent(new PopStateEvent("popstate")); }, [ws]);
+  const go = useCallback((nextView: string, nextWs = ws, mode = adminMode) => { history.pushState({}, "", routePath(nextView, nextWs, mode)); dispatchEvent(new PopStateEvent("popstate")); }, [adminMode, ws]);
   const loadWs = useCallback(async () => {
     try {
       const list = adminMode ? await workspaces() : await userWorkspaces();
@@ -51,8 +54,8 @@ export function App() {
   }, [adminMode, go, view, ws]);
   useEffect(() => { if (authenticated) loadWs(); }, [authenticated, loadWs]);
 
-  const setMode = (admin: boolean) => { setAdminMode(admin); localStorage.setItem("agentd.adminMode", String(admin)); go(admin ? "overview" : "members", ws); };
-  const logout = () => { fetch("/auth/logout", { credentials: "same-origin" }).catch(() => undefined); setToken(""); setTok(""); setAuthenticated(false); setIdentity(null); go("overview", ""); };
+  const setMode = (admin: boolean) => { setAdminMode(admin); localStorage.setItem("agentd.adminMode", String(admin)); go(admin ? "overview" : "members", ws, admin); };
+  const logout = () => { fetch("/auth/logout", { credentials: "same-origin" }).catch(() => undefined); setToken(""); setTok(""); setAuthenticated(false); setIdentity(null); go("overview", "", false); };
   if (!authenticated) return <Login error={authError} onLogin={(t) => { setToken(t); setTok(t); setAuthenticated(true); setAdminMode(true); }} />;
 
   const global = adminMode ? meta.resources.filter((r) => r.scope === "global") : [];

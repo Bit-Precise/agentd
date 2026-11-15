@@ -68,7 +68,7 @@ describe("console", () => {
       services: "nas.home.agentsrv.test", certs: "selfsigned", relays: "relay-1", "relays-tokens": "rt1",
     };
     for (const r of meta.resources) {
-      history.pushState({}, "", `/${r.key}/home`);
+      history.pushState({}, "", `/admin/${r.key}/home`);
       window.dispatchEvent(new PopStateEvent("popstate"));
       await screen.findByRole("heading", { name: r.label });
       await screen.findAllByText(expectText[r.key] ?? "nothing here yet", { exact: false });
@@ -76,7 +76,7 @@ describe("console", () => {
   });
 
   it("creates a join token from the generated form and shows the link once", async () => {
-    history.pushState({}, "", "/tokens/home");
+    history.pushState({}, "", "/admin/tokens/home");
     render(<App />);
     await screen.findByText("t1");
     fireEvent.click(screen.getByText("+ new"));
@@ -89,7 +89,7 @@ describe("console", () => {
   });
 
   it("renders string fields of nested policy targets as inputs", async () => {
-    history.pushState({}, "", "/policies/home");
+    history.pushState({}, "", "/admin/policies/home");
     render(<App />);
     await screen.findByText("p1");
     fireEvent.click(screen.getByText("+ new"));
