@@ -42,6 +42,10 @@ export const api = createClient<paths>({
   fetch: (req: Request) => globalThis.fetch(req),
 });
 api.use(auth);
+export const userApi = createClient<paths>({
+  baseUrl: new URL("/api/v1", location.origin).toString(),
+  fetch: (req: Request) => globalThis.fetch(req),
+});
 
 export class ApiError extends Error {
   constructor(
@@ -62,6 +66,7 @@ export interface CallArgs {
   path?: Record<string, string>;
   query?: Record<string, unknown>;
   body?: unknown;
+  surface?: "admin" | "user";
 }
 
 // call runs an operation by its operationId.
@@ -70,7 +75,8 @@ export async function call(opId: string, args: CallArgs = {}): Promise<unknown> 
   if (!op) throw new Error(`unknown operation ${opId}`);
   // Dynamic dispatch over the typed client; paths come from the same spec.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn = (api as any)[op.method] as (url: string, init: unknown) => Promise<{ data?: unknown; error?: unknown; response: Response }>;
+  const client = args.surface === "user" ? userApi : api;
+  const fn = (client as any)[op.method] as (url: string, init: unknown) => Promise<{ data?: unknown; error?: unknown; response: Response }>;
   const { data, error, response } = await fn(op.path, {
     params: { path: args.path || {}, query: args.query || {} },
     body: args.body,
@@ -96,4 +102,22 @@ export async function workspaces() {
   const { data, error, response } = await api.GET("/workspaces");
   if (!response.ok || !data) throw toError(response.status, error);
   return data;
+}
+
+export async function userWorkspaces() {
+  const { data, error, response } = await userApi.GET("/workspaces");
+  if (!response.ok || !data) throw toError(response.status, error);
+  return data;
+}
+
+export interface AuthMe { email: string; subject: string; name?: string; picture?: string; instance_admin?: boolean }
+export async function authMe(): Promise<AuthMe | null> {
+  const response = await fetch("/auth/me", { credentials: "same-origin" });
+  if (!response.ok) return null;
+  return response.json() as Promise<AuthMe>;
+}
+export async function authConfig(): Promise<{ oidc_enabled: boolean }> {
+  const response = await fetch("/auth/config", { credentials: "same-origin" });
+  if (!response.ok) return { oidc_enabled: false };
+  return response.json() as Promise<{ oidc_enabled: boolean }>;
 }

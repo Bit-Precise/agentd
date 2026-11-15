@@ -6994,7 +6994,7 @@ export const meta: Meta = {
     {
       "key": "auth-providers",
       "tag": "auth-providers",
-      "title": "instance 级认证服务配置（仅 instance admin）",
+      "title": "bootstrap OIDC provider 状态（只读；由 AgentserverConfiguration/Helm 管理）",
       "scope": "global",
       "list": "listAuthProviders",
       "item": {

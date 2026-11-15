@@ -54,9 +54,10 @@ interface DialogState {
   query: Record<string, unknown>;
   title: string;
   after?: (result: unknown) => void;
+  surface: "admin" | "user";
 }
 
-export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; onChanged?: () => void }) {
+export function ResourceView({ r, ws, surface = "admin", readOnly = false, onChanged }: { r: Resource; ws: string; surface?: "admin" | "user"; readOnly?: boolean; onChanged?: () => void }) {
   const [data, setData] = useState<unknown>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,13 +77,13 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
     setLoading(true);
     setError("");
     try {
-      setData(await call(r.list, { path: baseParams }));
+      setData(await call(r.list, { path: baseParams, surface }));
     } catch (e) {
       setError(e instanceof ApiError ? `${e.code}: ${e.message}` : String(e));
     } finally {
       setLoading(false);
     }
-  }, [r.list, r.scope, ws, baseParams]);
+  }, [r.list, r.scope, ws, baseParams, surface]);
 
   useEffect(() => {
     setSelected(null);
@@ -106,7 +107,7 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
     const op = ops[opId];
     const q: Record<string, unknown> = {};
     for (const p of op.query) q[p.name] = p.schema.type === "boolean" ? false : "";
-    setDialog({ op, path, body: body ?? (op.body ? emptyValue(op.body) : undefined), query: q, title: title || verb(op), after });
+    setDialog({ op, path, body: body ?? (op.body ? emptyValue(op.body) : undefined), query: q, title: title || verb(op), after, surface });
   };
 
   const finish = (op: Operation, res: unknown) => {
@@ -128,13 +129,13 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
         </div>
         <div className="actions">
           <Button variant="secondary" onClick={load} disabled={loading}>{loading ? "loading…" : "refresh"}</Button>
-          {r.collectionActions.map((id) => (
+          {!readOnly && r.collectionActions.map((id) => (
             <Button key={id} variant="secondary" onClick={() => open(id, baseParams, undefined)}>{verb(ops[id])}</Button>
           ))}
-          {r.replace && (
+          {r.replace && !readOnly && (
             <Button variant="secondary" onClick={() => open(r.replace!, baseParams, fit(ops[r.replace!].body, data), undefined, "edit all")}>edit all</Button>
           )}
-          {r.create && <Button onClick={() => open(r.create!, baseParams, undefined, undefined, "create")}>+ new</Button>}
+          {r.create && !readOnly && <Button onClick={() => open(r.create!, baseParams, undefined, undefined, "create")}>+ new</Button>}
         </div>
       </header>
       {r.scope === "workspace" && !ws && <div className="notice">Choose or create a workspace first.</div>}
@@ -156,7 +157,7 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
               <TableRow key={String(displayValue(row, r.idField) ?? i)} onClick={() => setSelected(row)} className={selected === row ? "sel" : ""}>
                 {cols.map((c) => <TableCell key={c}><Cell value={displayValue(row, c)} /></TableCell>)}
                 <TableCell className="row-actions">
-                  {r.remove && (
+                  {r.remove && !readOnly && (
                     <Button variant="link" className="danger" onClick={(e) => { e.stopPropagation(); open(r.remove!, itemPath(row), undefined, undefined, `${verb(ops[r.remove!])}: ${displayValue(row, r.idField)}`); }}>delete</Button>
                   )}
                 </TableCell>
@@ -176,8 +177,8 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
             <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>✕</Button>
           </header>
           <div className="actions">
-            {r.update && <Button variant="secondary" onClick={() => open(r.update!, itemPath(selected), fit(ops[r.update!].body, selected), undefined, "edit")}>edit</Button>}
-            {r.itemActions.map((id) => (
+            {r.update && !readOnly && <Button variant="secondary" onClick={() => open(r.update!, itemPath(selected), fit(ops[r.update!].body, selected), undefined, "edit")}>edit</Button>}
+            {!readOnly && r.itemActions.map((id) => (
               <Button key={id} variant="secondary" onClick={() => open(id, itemPath(selected), undefined)}>{verb(ops[id])}</Button>
             ))}
           </div>
@@ -208,7 +209,7 @@ function OpDialog({ d, setD, onDone }: { d: DialogState; setD: (d: DialogState |
       const query: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(d.query)) if (v !== "" && v !== false) query[k] = v;
       const body = d.op.body ? prune(d.op.body, d.body) : undefined;
-      onDone(await call(d.op.id, { path: { ...d.path, ...extraPath }, query, body }));
+      onDone(await call(d.op.id, { path: { ...d.path, ...extraPath }, query, body, surface: d.surface }));
     } catch (e) {
       setError(e instanceof ApiError ? `${e.code}: ${e.message}` : String(e));
     } finally {

@@ -1,7 +1,7 @@
 // Renders the console against a fake admin API and walks every resource the
 // generator derived from the OpenAPI document.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { App } from "./App";
 import { meta } from "./api/meta.gen";
 
@@ -35,7 +35,7 @@ let calls: { method: string; url: string; body: string; auth: string | null }[] 
 beforeEach(() => {
   calls = [];
   localStorage.setItem("agentd.adminToken", "secret-token");
-  location.hash = "";
+  history.replaceState({}, "", "/");
   vi.stubGlobal("fetch", async (input: Request) => {
     const url = new URL(input.url);
     const k = `${input.method} ${url.pathname}`;
@@ -62,21 +62,21 @@ describe("console", () => {
 
   it("renders every generated resource", async () => {
     render(<App />);
-    await waitFor(() => expect(location.hash).toContain("@home"));
+    await screen.findByRole("option", { name: "home" });
     const expectText: Record<string, string> = {
       domains: "agentsrv.test", "dns-providers": "nothing here yet", "certificate-issuers": "letsencrypt", "auth-providers": "corp", users: "corp|alice", certificates: "workspace:home", server: "test", workspaces: "home.agentsrv.test", tokens: "t1", members: "corp|alice", nodes: "laptop", groups: "pc", routes: "suffix:example.com", policies: "p1",
       services: "nas.home.agentsrv.test", certs: "selfsigned", relays: "relay-1", "relays-tokens": "rt1",
     };
     for (const r of meta.resources) {
-      location.hash = `/${r.key}@home`;
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
+      history.pushState({}, "", `/${r.key}/home`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
       await screen.findByRole("heading", { name: r.label });
       await screen.findAllByText(expectText[r.key] ?? "nothing here yet", { exact: false });
     }
   });
 
   it("creates a join token from the generated form and shows the link once", async () => {
-    location.hash = "/tokens@home";
+    history.pushState({}, "", "/tokens/home");
     render(<App />);
     await screen.findByText("t1");
     fireEvent.click(screen.getByText("+ new"));
@@ -89,7 +89,7 @@ describe("console", () => {
   });
 
   it("renders string fields of nested policy targets as inputs", async () => {
-    location.hash = "/policies@home";
+    history.pushState({}, "", "/policies/home");
     render(<App />);
     await screen.findByText("p1");
     fireEvent.click(screen.getByText("+ new"));

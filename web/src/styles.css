@@ -30,6 +30,10 @@
     --code: #232834;
   }
 }
+[data-theme="dark"] {
+  --bg: #12151b; --panel: #1a1e26; --text: #e6e8ec; --muted: #9aa3b2; --line: #2a303b;
+  --accent: #6f8cff; --accent-text: #0d1020; --danger: #ff7a62; --ok: #4cc38a; --sel: #222a3d; --code: #232834;
+}
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); }
 .ui-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); cursor: pointer; transition: background .15s, border-color .15s, opacity .15s; }
@@ -52,12 +56,22 @@ body { margin: 0; background: var(--bg); }
 .ui-dialog-content { position: fixed; left: 50%; top: 8vh; transform: translateX(-50%); z-index: 11; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; width: min(480px, calc(100vw - 32px)); max-height: 84vh; overflow: auto; padding: 16px 18px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
 .ui-dialog-content.wide { width: min(760px, calc(100vw - 32px)); }
 .ui-dialog-close { position: absolute; right: 14px; top: 14px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; }
+.ui-menu { min-width: 220px; padding: 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); box-shadow: 0 12px 30px rgba(0,0,0,.2); z-index: 30; }
+.ui-menu-item { display: flex; align-items: center; border-radius: 5px; padding: 7px 9px; outline: none; cursor: pointer; font-size: 13px; }
+.ui-menu-item:focus, .ui-menu-item:hover { background: var(--sel); }
+.ui-menu-separator { height: 1px; margin: 5px 0; background: var(--line); }
 a { cursor: pointer; }
 code, pre, textarea.json { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
 pre { background: var(--code); padding: 8px 10px; border-radius: 6px; overflow: auto; margin: 0; max-height: 320px; }
 .app { display: flex; min-height: 100vh; }
 .sidebar { width: 210px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; }
 .sidebar .brand { font-weight: 700; font-size: 16px; margin: 0 8px 14px; }
+.identity-menu { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.identity-menu:hover { background: var(--sel); }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 999px; background: var(--accent); color: var(--accent-text); font-weight: 700; }
+.identity-copy { display: flex; min-width: 0; flex-direction: column; overflow: hidden; }
+.identity-copy b, .identity-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.identity-copy small { color: var(--muted); font-size: 11px; }
 .sidebar a { padding: 6px 8px; border-radius: 6px; color: var(--text); text-decoration: none; }
 .sidebar a:hover { background: var(--sel); }
 .sidebar a.active { background: var(--sel); color: var(--accent); font-weight: 600; }

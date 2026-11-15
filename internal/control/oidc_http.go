@@ -39,7 +39,7 @@ func (a *Admin) oidcMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"email": identity.Email, "subject": identity.Subject, "instance_admin": identity.InstanceAdmin})
+	_ = json.NewEncoder(w).Encode(map[string]any{"email": identity.Email, "subject": identity.Subject, "name": identity.Name, "picture": identity.Picture, "instance_admin": identity.InstanceAdmin})
 }
 
 func (a *Admin) oidcIdentityHook(ctx context.Context, identity OIDCIdentity) (bool, error) {
