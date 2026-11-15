@@ -193,6 +193,12 @@ func (o *OIDCAuth) Callback(w http.ResponseWriter, r *http.Request) (OIDCIdentit
 			return OIDCIdentity{}, err
 		}
 	}
+	// The identity hook persists the canonical user, but its argument is passed
+	// by value. Derive the same stable subject here before storing the browser
+	// session so user-surface requests can resolve workspace membership.
+	if identity.UserSubject == "" {
+		identity.UserSubject = "email|" + strings.ToLower(strings.TrimSpace(identity.Email))
+	}
 	session := randomOpaque(32)
 	o.mu.Lock()
 	o.sessions[session] = oidcSession{OIDCIdentity: identity, ExpiresAt: time.Now().Add(8 * time.Hour)}
