@@ -43,6 +43,7 @@ func (a *Admin) oidcMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Admin) oidcIdentityHook(ctx context.Context, identity OIDCIdentity) (bool, error) {
+	identity.UserSubject = "email|" + strings.ToLower(strings.TrimSpace(identity.Email))
 	admin := false
 	if a.Config != nil {
 		for _, email := range a.Config.OIDC.InstanceAdminEmails {
@@ -57,6 +58,9 @@ func (a *Admin) oidcIdentityHook(ctx context.Context, identity OIDCIdentity) (bo
 		return false, err
 	}
 	if err := a.C.st.SetUserInstanceAdmin(ctx, identity.UserSubject, admin); err != nil {
+		return false, err
+	}
+	if err := a.C.st.AddUserIdentity(ctx, store.UserIdentity{UserSubject: identity.UserSubject, ProviderID: identity.Provider, Subject: identity.Subject, Status: "active"}); err != nil {
 		return false, err
 	}
 	return admin, nil

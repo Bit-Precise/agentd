@@ -71,7 +71,7 @@ CREATE TABLE autocert_cache (key text PRIMARY KEY, data bytea NOT NULL, updated_
 CREATE TABLE instance_settings (
     id int PRIMARY KEY CHECK (id = 1), domain text NOT NULL, domains jsonb NOT NULL DEFAULT '[]',
     dns_providers jsonb NOT NULL DEFAULT '[]', certificate_issuers jsonb NOT NULL DEFAULT '[]',
-    auth_providers jsonb NOT NULL DEFAULT '[]', updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE users (
     id text NOT NULL UNIQUE, subject text PRIMARY KEY, provider text NOT NULL, display_name text NOT NULL DEFAULT '',

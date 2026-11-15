@@ -129,11 +129,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 列出认证 providers */
+        /**
+         * 查看 bootstrap 配置的认证 provider
+         * @description OIDC providers are configured by AgentserverConfiguration or the Helm chart and are read-only here; client secrets are never persisted in the state database.
+         */
         get: operations["listAuthProviders"];
         put?: never;
-        /** 创建认证 provider */
-        post: operations["createAuthProvider"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -151,11 +153,9 @@ export interface paths {
         };
         /** 查看认证 provider */
         get: operations["getAuthProvider"];
-        /** 更新认证 provider */
-        put: operations["updateAuthProvider"];
+        put?: never;
         post?: never;
-        /** 删除认证 provider */
-        delete: operations["deleteAuthProvider"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2076,32 +2076,6 @@ export interface operations {
             };
         };
     };
-    createAuthProvider: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AuthProviderWrite"];
-            };
-        };
-        responses: {
-            /** @description 已保存 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthProvider"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            409: components["responses"]["Conflict"];
-        };
-    };
     getAuthProvider: {
         parameters: {
             query?: never;
@@ -2123,56 +2097,6 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
-        };
-    };
-    updateAuthProvider: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                providerId: components["schemas"]["Uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AuthProviderWrite"];
-            };
-        };
-        responses: {
-            /** @description 已更新 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthProvider"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    deleteAuthProvider: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                providerId: components["schemas"]["Uuid"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 已删除 */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
         };
     };
     listUsers: {

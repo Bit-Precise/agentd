@@ -1,5 +1,6 @@
 {{- $full := include "agentd.fullname" . -}}
 {{- $s := .Values.agentserver -}}
+{{- $oidcSecret := default (printf "%s-oidc" $full) $s.oidc.clientSecretSecret.name -}}
 {{- $dbSecret := ternary (printf "%s-postgresql" $full) (default (printf "%s-database" $full) .Values.externalDatabase.existingSecret) .Values.postgresql.enabled -}}
 {{- if and (not .Values.postgresql.enabled) (not .Values.externalDatabase.url) (not .Values.externalDatabase.existingSecret) -}}
 {{- fail "set postgresql.enabled, externalDatabase.url or externalDatabase.existingSecret" -}}
@@ -79,8 +80,8 @@ spec:
             - { name: AGENTSERVER_RELAY_TOKEN, valueFrom: { secretKeyRef: { name: {{ include "agentd.serverSecret" . }}, key: relay-join-token } } }
             - { name: AGENTSERVER_DATABASE_URL, valueFrom: { secretKeyRef: { name: {{ $dbSecret }}, key: url } } }
             {{- if $s.oidc.enabled }}
-            {{- if empty $s.oidc.clientSecretSecret.name }}{{ fail "agentserver.oidc.clientSecretSecret.name is required when OIDC is enabled" }}{{ end }}
-            - { name: OIDC_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $s.oidc.clientSecretSecret.name }}, key: {{ $s.oidc.clientSecretSecret.key }} } } }
+            {{- if and (empty $s.oidc.clientSecret) (empty $s.oidc.clientSecretSecret.name) }}{{ fail "set agentserver.oidc.clientSecret or clientSecretSecret when OIDC is enabled" }}{{ end }}
+            - { name: OIDC_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: {{ $oidcSecret }}, key: {{ $s.oidc.clientSecretSecret.key }} } } }
             {{- end }}
             {{- range $name, $p := $s.dnsProviders }}
             {{- $env := $name | upper | replace "-" "_" }}

@@ -49,6 +49,9 @@ agentserver:
     enabled: false
     issuer: ""
     clientId: ""
+    # Optional convenience for a private values file. Prefer clientSecretSecret
+    # in shared GitOps values so the secret is not stored in the Helm release.
+    clientSecret: ""
     clientSecretSecret: { name: "", key: client-secret }
     redirectUrl: ""
     scopes: [openid, profile, email]

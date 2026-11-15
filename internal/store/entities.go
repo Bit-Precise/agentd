@@ -124,26 +124,24 @@ type InstanceSettings struct {
 	DomainsJSON            []byte
 	DNSProvidersJSON       []byte
 	CertificateIssuersJSON []byte
-	AuthProvidersJSON      []byte
 	UpdatedAt              time.Time
 }
 
 // GetInstanceSettings returns the persisted instance settings.
 func (s *Store) GetInstanceSettings(ctx context.Context) (InstanceSettings, error) {
 	var out InstanceSettings
-	err := s.pool.QueryRow(ctx, `SELECT domain, domains, dns_providers, certificate_issuers, auth_providers, updated_at
-		FROM instance_settings WHERE id=1`).Scan(&out.Domain, &out.DomainsJSON, &out.DNSProvidersJSON, &out.CertificateIssuersJSON, &out.AuthProvidersJSON, &out.UpdatedAt)
+	err := s.pool.QueryRow(ctx, `SELECT domain, domains, dns_providers, certificate_issuers, updated_at
+		FROM instance_settings WHERE id=1`).Scan(&out.Domain, &out.DomainsJSON, &out.DNSProvidersJSON, &out.CertificateIssuersJSON, &out.UpdatedAt)
 	return out, notFound(err)
 }
 
 // SetInstanceSettings stores the persisted instance settings.
 func (s *Store) SetInstanceSettings(ctx context.Context, settings InstanceSettings) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO instance_settings(id, domain, domains, dns_providers, certificate_issuers, auth_providers)
-		VALUES (1,$1,COALESCE($2::jsonb,'[]'::jsonb),COALESCE($3::jsonb,'[]'::jsonb),COALESCE($4::jsonb,'[]'::jsonb),COALESCE($5::jsonb,'[]'::jsonb))
+	_, err := s.pool.Exec(ctx, `INSERT INTO instance_settings(id, domain, domains, dns_providers, certificate_issuers)
+		VALUES (1,$1,COALESCE($2::jsonb,'[]'::jsonb),COALESCE($3::jsonb,'[]'::jsonb),COALESCE($4::jsonb,'[]'::jsonb))
 		ON CONFLICT (id) DO UPDATE SET domain=EXCLUDED.domain, domains=EXCLUDED.domains,
-		dns_providers=EXCLUDED.dns_providers, certificate_issuers=EXCLUDED.certificate_issuers,
-		auth_providers=EXCLUDED.auth_providers, updated_at=now()`, settings.Domain,
-		settings.DomainsJSON, settings.DNSProvidersJSON, settings.CertificateIssuersJSON, settings.AuthProvidersJSON)
+		dns_providers=EXCLUDED.dns_providers, certificate_issuers=EXCLUDED.certificate_issuers, updated_at=now()`, settings.Domain,
+		settings.DomainsJSON, settings.DNSProvidersJSON, settings.CertificateIssuersJSON)
 	return err
 }
 
@@ -255,10 +253,9 @@ func (s *Store) AddUserIdentity(ctx context.Context, v UserIdentity) error {
 	if v.ID == "" {
 		v.ID = uuid.NewSHA1(uuid.NameSpaceURL, []byte("agentd/identity/"+v.ProviderID+"/"+v.Subject)).String()
 	}
-	_, err := s.pool.Exec(ctx, `INSERT INTO user_identities(id,user_subject,provider_id,subject,status,email_verified,last_login_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`, v.ID, v.UserSubject, v.ProviderID, v.Subject, orString(v.Status, "active"), v.EmailVerified, v.LastLoginAt)
-	if isUnique(err) {
-		return ErrConflict
-	}
+	_, err := s.pool.Exec(ctx, `INSERT INTO user_identities(id,user_subject,provider_id,subject,status,email_verified,last_login_at) VALUES ($1,$2,$3,$4,$5,$6,$7)
+		ON CONFLICT (provider_id, subject) DO UPDATE SET user_subject=EXCLUDED.user_subject, status=EXCLUDED.status,
+		email_verified=EXCLUDED.email_verified, last_login_at=EXCLUDED.last_login_at`, v.ID, v.UserSubject, v.ProviderID, v.Subject, orString(v.Status, "active"), v.EmailVerified, v.LastLoginAt)
 	if isFK(err) {
 		return ErrNotFound
 	}

@@ -186,7 +186,7 @@ func (o *OIDCAuth) Callback(w http.ResponseWriter, r *http.Request) (OIDCIdentit
 	if claims.Sub == "" || claims.Email == "" {
 		return OIDCIdentity{}, errors.New("OIDC userinfo must contain sub and email")
 	}
-	identity := OIDCIdentity{Subject: claims.Sub, Email: strings.ToLower(strings.TrimSpace(claims.Email)), Name: claims.Name, Picture: claims.Picture, Provider: o.cfg.Issuer, UserSubject: "oidc|" + claims.Sub}
+	identity := OIDCIdentity{Subject: claims.Sub, Email: strings.ToLower(strings.TrimSpace(claims.Email)), Name: claims.Name, Picture: claims.Picture, Provider: o.cfg.Issuer}
 	if o.onIdentity != nil {
 		identity.InstanceAdmin, err = o.onIdentity(r.Context(), identity)
 		if err != nil {

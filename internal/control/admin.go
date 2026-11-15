@@ -99,8 +99,8 @@ func writeJSONError(w http.ResponseWriter, status int, code, message string) {
 func requireToken(token string, oidc *OIDCAuth, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-	allowed := oidc == nil || !oidc.Enabled()
-	allowed = allowed && token != "" && subtle.ConstantTimeCompare([]byte(got), []byte(token)) == 1
+		allowed := oidc == nil || !oidc.Enabled()
+		allowed = allowed && token != "" && subtle.ConstantTimeCompare([]byte(got), []byte(token)) == 1
 		if !allowed && oidc != nil {
 			if s, ok := oidc.Session(r); ok && s.InstanceAdmin {
 				allowed = true
@@ -144,7 +144,10 @@ func (a *Admin) Handler(token string, ui http.Handler) http.Handler {
 		mux.HandleFunc("/auth/logout", a.oidcLogout)
 		mux.HandleFunc("/auth/me", a.oidcMe)
 	}
-	mux.HandleFunc("/auth/config", func(w http.ResponseWriter, r *http.Request) { w.Header().Set("Content-Type", "application/json"); _ = json.NewEncoder(w).Encode(map[string]bool{"oidc_enabled": a.OIDC != nil && a.OIDC.Enabled()}) })
+	mux.HandleFunc("/auth/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]bool{"oidc_enabled": a.OIDC != nil && a.OIDC.Enabled()})
+	})
 	mux.HandleFunc("/api/admin/openapi.json", func(w http.ResponseWriter, r *http.Request) {
 		sw, err := adminapi.GetSwagger()
 		if err != nil {
@@ -918,12 +921,15 @@ func (a *Admin) instanceCollections(ctx context.Context) ([]adminapi.InstanceDom
 			}
 			issuers = append(issuers, adminapi.CertificateIssuer{Id: ptr(idFor("issuer", name)), Name: name, Kind: kind, Directory: directory, Status: ptr(adminapi.CertificateIssuerStatusActive), AccountStatus: ptr(adminapi.IssuerAccountStatus("not_created"))})
 		}
+		if a.Config.OIDC.Enabled {
+			name := "oidc"
+			auth = append(auth, adminapi.AuthProvider{Id: ptr(idFor("auth-provider", a.Config.OIDC.Issuer)), Name: name, Kind: adminapi.AuthProviderKindOidc, Issuer: a.Config.OIDC.Issuer, ClientId: a.Config.OIDC.ClientID, Scopes: ptr(append([]string(nil), a.Config.OIDC.Scopes...)), Status: ptr(adminapi.AuthProviderStatusActive)})
+		}
 	}
 	if s, err := a.C.st.GetInstanceSettings(ctx); err == nil {
 		domains = decodeDomains(s.DomainsJSON, domains)
 		dns = decodeDNSProviders(s.DNSProvidersJSON, dns)
 		issuers = decodeIssuers(s.CertificateIssuersJSON, issuers)
-		auth = decodeAuthProviders(s.AuthProvidersJSON, auth)
 	}
 	for i := range dns {
 		dns[i].Credentials = nil
@@ -957,19 +963,11 @@ func decodeIssuers(b []byte, def []adminapi.CertificateIssuer) []adminapi.Certif
 	}
 	return def
 }
-func decodeAuthProviders(b []byte, def []adminapi.AuthProvider) []adminapi.AuthProvider {
-	var v []adminapi.AuthProvider
-	if len(b) > 0 && json.Unmarshal(b, &v) == nil {
-		return v
-	}
-	return def
-}
-func (a *Admin) saveCollections(ctx context.Context, d []adminapi.InstanceDomain, dns []adminapi.DNSProvider, issuers []adminapi.CertificateIssuer, auth []adminapi.AuthProvider) error {
+func (a *Admin) saveCollections(ctx context.Context, d []adminapi.InstanceDomain, dns []adminapi.DNSProvider, issuers []adminapi.CertificateIssuer, _ ...[]adminapi.AuthProvider) error {
 	db, _ := json.Marshal(d)
 	dp, _ := json.Marshal(dns)
 	ci, _ := json.Marshal(issuers)
-	ap, _ := json.Marshal(auth)
-	return a.C.st.SetInstanceSettings(ctx, store.InstanceSettings{Domain: a.Domain, DomainsJSON: db, DNSProvidersJSON: dp, CertificateIssuersJSON: ci, AuthProvidersJSON: ap})
+	return a.C.st.SetInstanceSettings(ctx, store.InstanceSettings{Domain: a.Domain, DomainsJSON: db, DNSProvidersJSON: dp, CertificateIssuersJSON: ci})
 }
 func (a *Admin) domainByID(ctx context.Context, id string) (adminapi.InstanceDomain, bool) {
 	d, _, _, _ := a.instanceCollections(ctx)
@@ -1006,7 +1004,7 @@ func (a *Admin) CreateInstanceDomain(ctx context.Context, req adminapi.CreateIns
 	if req.Body == nil || !identity.ValidDomain(req.Body.Domain) {
 		return adminapi.CreateInstanceDomain400JSONResponse{BadRequestJSONResponse: badRequest("invalid domain")}, nil
 	}
-	d, dns, ci, auth := a.instanceCollections(ctx)
+	d, dns, ci, _ := a.instanceCollections(ctx)
 	if req.Body.DnsProviderId != nil {
 		found := false
 		for _, p := range dns {
@@ -1043,7 +1041,7 @@ func (a *Admin) CreateInstanceDomain(ctx context.Context, req adminapi.CreateIns
 		}
 	}
 	d = append(d, v)
-	if err := a.saveCollections(ctx, d, dns, ci, auth); err != nil {
+	if err := a.saveCollections(ctx, d, dns, ci); err != nil {
 		return nil, err
 	}
 	return adminapi.CreateInstanceDomain201JSONResponse(v), nil
@@ -1059,7 +1057,7 @@ func (a *Admin) UpdateInstanceDomain(ctx context.Context, req adminapi.UpdateIns
 	if req.Body == nil || !identity.ValidDomain(req.Body.Domain) {
 		return adminapi.UpdateInstanceDomain400JSONResponse{BadRequestJSONResponse: badRequest("invalid domain")}, nil
 	}
-	d, dns, ci, auth := a.instanceCollections(ctx)
+	d, dns, ci, _ := a.instanceCollections(ctx)
 	i, ok := findDomain(d, req.DomainId)
 	if !ok {
 		return adminapi.UpdateInstanceDomain404JSONResponse{NotFoundJSONResponse: notFoundErr("domain")}, nil
@@ -1100,13 +1098,13 @@ func (a *Admin) UpdateInstanceDomain(ctx context.Context, req adminapi.UpdateIns
 			}
 		}
 	}
-	if err := a.saveCollections(ctx, d, dns, ci, auth); err != nil {
+	if err := a.saveCollections(ctx, d, dns, ci); err != nil {
 		return nil, err
 	}
 	return adminapi.UpdateInstanceDomain200JSONResponse(d[i]), nil
 }
 func (a *Admin) DeleteInstanceDomain(ctx context.Context, req adminapi.DeleteInstanceDomainRequestObject) (adminapi.DeleteInstanceDomainResponseObject, error) {
-	d, dns, ci, auth := a.instanceCollections(ctx)
+	d, dns, ci, _ := a.instanceCollections(ctx)
 	i, ok := findDomain(d, req.DomainId)
 	if !ok {
 		return adminapi.DeleteInstanceDomain404JSONResponse{NotFoundJSONResponse: notFoundErr("domain")}, nil
@@ -1115,7 +1113,7 @@ func (a *Admin) DeleteInstanceDomain(ctx context.Context, req adminapi.DeleteIns
 		return adminapi.DeleteInstanceDomain409JSONResponse{ConflictJSONResponse: conflictErr("CONFLICT", "default domain cannot be deleted")}, nil
 	}
 	d = append(d[:i], d[i+1:]...)
-	if err := a.saveCollections(ctx, d, dns, ci, auth); err != nil {
+	if err := a.saveCollections(ctx, d, dns, ci); err != nil {
 		return nil, err
 	}
 	return adminapi.DeleteInstanceDomain204Response{}, nil
@@ -1129,7 +1127,7 @@ func (a *Admin) CreateDNSProvider(ctx context.Context, req adminapi.CreateDNSPro
 	if req.Body == nil || !identity.ValidLabel(req.Body.Name) || !req.Body.Kind.Valid() || len(req.Body.Zones) == 0 {
 		return adminapi.CreateDNSProvider400JSONResponse{BadRequestJSONResponse: badRequest("invalid DNS provider")}, nil
 	}
-	domains, d, ci, auth := a.instanceCollections(ctx)
+	domains, d, ci, _ := a.instanceCollections(ctx)
 	for _, v := range d {
 		if v.Name == req.Body.Name {
 			return adminapi.CreateDNSProvider409JSONResponse{ConflictJSONResponse: conflictErr("CONFLICT", "provider already exists")}, nil
@@ -1137,7 +1135,7 @@ func (a *Admin) CreateDNSProvider(ctx context.Context, req adminapi.CreateDNSPro
 	}
 	v := adminapi.DNSProvider{Id: ptr(uuid.NewString()), Name: req.Body.Name, Kind: adminapi.DNSProviderKind(req.Body.Kind), Zones: req.Body.Zones, Status: ptr(adminapi.DNSProviderStatusActive), Credentials: req.Body.Credentials}
 	d = append(d, v)
-	if err := a.saveCollections(ctx, domains, d, ci, auth); err != nil {
+	if err := a.saveCollections(ctx, domains, d, ci); err != nil {
 		return nil, err
 	}
 	v.Credentials = nil
@@ -1172,24 +1170,24 @@ func (a *Admin) UpdateDNSProvider(ctx context.Context, req adminapi.UpdateDNSPro
 	if req.Body == nil {
 		return adminapi.UpdateDNSProvider400JSONResponse{BadRequestJSONResponse: badRequest("empty body")}, nil
 	}
-	domains, dp, ci, au, i, ok := a.dnsProvider(ctx, req.ProviderId)
+	domains, dp, ci, _, i, ok := a.dnsProvider(ctx, req.ProviderId)
 	if !ok {
 		return adminapi.UpdateDNSProvider404JSONResponse{NotFoundJSONResponse: notFoundErr("DNS provider")}, nil
 	}
 	dp[i] = adminapi.DNSProvider{Id: dp[i].Id, Name: req.Body.Name, Kind: adminapi.DNSProviderKind(req.Body.Kind), Zones: req.Body.Zones, Status: ptr(adminapi.DNSProviderStatusActive), Credentials: req.Body.Credentials}
-	if err := a.saveCollections(ctx, domains, dp, ci, au); err != nil {
+	if err := a.saveCollections(ctx, domains, dp, ci); err != nil {
 		return nil, err
 	}
 	dp[i].Credentials = nil
 	return adminapi.UpdateDNSProvider200JSONResponse(dp[i]), nil
 }
 func (a *Admin) DeleteDNSProvider(ctx context.Context, req adminapi.DeleteDNSProviderRequestObject) (adminapi.DeleteDNSProviderResponseObject, error) {
-	domains, dp, ci, au, i, ok := a.dnsProvider(ctx, req.ProviderId)
+	domains, dp, ci, _, i, ok := a.dnsProvider(ctx, req.ProviderId)
 	if !ok {
 		return adminapi.DeleteDNSProvider404JSONResponse{NotFoundJSONResponse: notFoundErr("DNS provider")}, nil
 	}
 	dp = append(dp[:i], dp[i+1:]...)
-	if err := a.saveCollections(ctx, domains, dp, ci, au); err != nil {
+	if err := a.saveCollections(ctx, domains, dp, ci); err != nil {
 		return nil, err
 	}
 	return adminapi.DeleteDNSProvider204Response{}, nil
@@ -1203,7 +1201,7 @@ func (a *Admin) CreateCertificateIssuer(ctx context.Context, req adminapi.Create
 	if req.Body == nil || !identity.ValidLabel(req.Body.Name) || !req.Body.Kind.Valid() {
 		return adminapi.CreateCertificateIssuer400JSONResponse{BadRequestJSONResponse: badRequest("invalid certificate issuer")}, nil
 	}
-	d, dp, ci, au := a.instanceCollections(ctx)
+	d, dp, ci, _ := a.instanceCollections(ctx)
 	for _, v := range ci {
 		if v.Name == req.Body.Name {
 			return adminapi.CreateCertificateIssuer409JSONResponse{ConflictJSONResponse: conflictErr("CONFLICT", "issuer already exists")}, nil
@@ -1211,7 +1209,7 @@ func (a *Admin) CreateCertificateIssuer(ctx context.Context, req adminapi.Create
 	}
 	v := adminapi.CertificateIssuer{Id: ptr(uuid.NewString()), Name: req.Body.Name, Kind: adminapi.CertificateIssuerKind(req.Body.Kind), Directory: req.Body.Directory, Email: req.Body.Email, Status: ptr(adminapi.CertificateIssuerStatusActive), AccountStatus: ptr(adminapi.IssuerAccountStatus("not_created")), EabKeyId: req.Body.EabKeyId, EabHmacKey: req.Body.EabHmacKey}
 	ci = append(ci, v)
-	if err := a.saveCollections(ctx, d, dp, ci, au); err != nil {
+	if err := a.saveCollections(ctx, d, dp, ci); err != nil {
 		return nil, err
 	}
 	v.EabKeyId = nil
@@ -1248,12 +1246,12 @@ func (a *Admin) UpdateCertificateIssuer(ctx context.Context, req adminapi.Update
 	if req.Body == nil {
 		return adminapi.UpdateCertificateIssuer400JSONResponse{BadRequestJSONResponse: badRequest("empty body")}, nil
 	}
-	d, dp, ci, au, i, ok := a.issuer(ctx, req.IssuerId)
+	d, dp, ci, _, i, ok := a.issuer(ctx, req.IssuerId)
 	if !ok {
 		return adminapi.UpdateCertificateIssuer404JSONResponse{NotFoundJSONResponse: notFoundErr("certificate issuer")}, nil
 	}
 	ci[i] = adminapi.CertificateIssuer{Id: ci[i].Id, Name: req.Body.Name, Kind: adminapi.CertificateIssuerKind(req.Body.Kind), Directory: req.Body.Directory, Email: req.Body.Email, Status: ptr(adminapi.CertificateIssuerStatusActive), AccountStatus: ci[i].AccountStatus, EabKeyId: req.Body.EabKeyId, EabHmacKey: req.Body.EabHmacKey}
-	if err := a.saveCollections(ctx, d, dp, ci, au); err != nil {
+	if err := a.saveCollections(ctx, d, dp, ci); err != nil {
 		return nil, err
 	}
 	ci[i].EabKeyId = nil
@@ -1261,12 +1259,12 @@ func (a *Admin) UpdateCertificateIssuer(ctx context.Context, req adminapi.Update
 	return adminapi.UpdateCertificateIssuer200JSONResponse(ci[i]), nil
 }
 func (a *Admin) DeleteCertificateIssuer(ctx context.Context, req adminapi.DeleteCertificateIssuerRequestObject) (adminapi.DeleteCertificateIssuerResponseObject, error) {
-	d, dp, ci, au, i, ok := a.issuer(ctx, req.IssuerId)
+	d, dp, ci, _, i, ok := a.issuer(ctx, req.IssuerId)
 	if !ok {
 		return adminapi.DeleteCertificateIssuer404JSONResponse{NotFoundJSONResponse: notFoundErr("certificate issuer")}, nil
 	}
 	ci = append(ci[:i], ci[i+1:]...)
-	if err := a.saveCollections(ctx, d, dp, ci, au); err != nil {
+	if err := a.saveCollections(ctx, d, dp, ci); err != nil {
 		return nil, err
 	}
 	return adminapi.DeleteCertificateIssuer204Response{}, nil
@@ -1276,67 +1274,16 @@ func (a *Admin) ListAuthProviders(ctx context.Context, _ adminapi.ListAuthProvid
 	_, _, _, v := a.instanceCollections(ctx)
 	return adminapi.ListAuthProviders200JSONResponse(v), nil
 }
-func (a *Admin) CreateAuthProvider(ctx context.Context, req adminapi.CreateAuthProviderRequestObject) (adminapi.CreateAuthProviderResponseObject, error) {
-	if req.Body == nil || !identity.ValidLabel(req.Body.Name) || req.Body.Kind != adminapi.AuthProviderWriteKindOidc || req.Body.Issuer == "" || req.Body.ClientId == "" {
-		return adminapi.CreateAuthProvider400JSONResponse{BadRequestJSONResponse: badRequest("invalid auth provider")}, nil
-	}
-	d, dp, ci, au := a.instanceCollections(ctx)
-	for _, v := range au {
-		if v.Name == req.Body.Name {
-			return adminapi.CreateAuthProvider409JSONResponse{ConflictJSONResponse: conflictErr("CONFLICT", "auth provider already exists")}, nil
-		}
-	}
-	v := adminapi.AuthProvider{Id: ptr(uuid.NewString()), Name: req.Body.Name, Kind: adminapi.AuthProviderKindOidc, Issuer: req.Body.Issuer, ClientId: req.Body.ClientId, ClientSecret: req.Body.ClientSecret, Scopes: req.Body.Scopes, ClaimMapping: req.Body.ClaimMapping, Status: ptr(adminapi.AuthProviderStatusActive)}
-	au = append(au, v)
-	if err := a.saveCollections(ctx, d, dp, ci, au); err != nil {
-		return nil, err
-	}
-	v.ClientSecret = nil
-	return adminapi.CreateAuthProvider200JSONResponse(v), nil
-}
-func (a *Admin) authProvider(ctx context.Context, id string) ([]adminapi.InstanceDomain, []adminapi.DNSProvider, []adminapi.CertificateIssuer, []adminapi.AuthProvider, int, bool) {
-	d, dp, ci, au := a.instanceCollections(ctx)
-	i, ok := findNamed(au, id, func(v adminapi.AuthProvider) (string, string) {
-		if v.Id == nil {
-			return v.Name, ""
-		}
-		return v.Name, *v.Id
-	})
-	return d, dp, ci, au, i, ok
-}
+
 func (a *Admin) GetAuthProvider(ctx context.Context, req adminapi.GetAuthProviderRequestObject) (adminapi.GetAuthProviderResponseObject, error) {
-	_, _, _, v, i, ok := a.authProvider(ctx, req.ProviderId)
-	if !ok {
-		return adminapi.GetAuthProvider404JSONResponse{NotFoundJSONResponse: notFoundErr("auth provider")}, nil
+	_, _, _, providers := a.instanceCollections(ctx)
+	for _, provider := range providers {
+		if provider.Id != nil && *provider.Id == req.ProviderId || provider.Name == req.ProviderId {
+			provider.ClientSecret = nil
+			return adminapi.GetAuthProvider200JSONResponse(provider), nil
+		}
 	}
-	v[i].ClientSecret = nil
-	return adminapi.GetAuthProvider200JSONResponse(v[i]), nil
-}
-func (a *Admin) UpdateAuthProvider(ctx context.Context, req adminapi.UpdateAuthProviderRequestObject) (adminapi.UpdateAuthProviderResponseObject, error) {
-	if req.Body == nil {
-		return adminapi.UpdateAuthProvider400JSONResponse{BadRequestJSONResponse: badRequest("empty body")}, nil
-	}
-	d, dp, ci, au, i, ok := a.authProvider(ctx, req.ProviderId)
-	if !ok {
-		return adminapi.UpdateAuthProvider404JSONResponse{NotFoundJSONResponse: notFoundErr("auth provider")}, nil
-	}
-	au[i] = adminapi.AuthProvider{Id: au[i].Id, Name: req.Body.Name, Kind: adminapi.AuthProviderKindOidc, Issuer: req.Body.Issuer, ClientId: req.Body.ClientId, ClientSecret: req.Body.ClientSecret, Scopes: req.Body.Scopes, ClaimMapping: req.Body.ClaimMapping, Status: ptr(adminapi.AuthProviderStatusActive)}
-	if err := a.saveCollections(ctx, d, dp, ci, au); err != nil {
-		return nil, err
-	}
-	au[i].ClientSecret = nil
-	return adminapi.UpdateAuthProvider200JSONResponse(au[i]), nil
-}
-func (a *Admin) DeleteAuthProvider(ctx context.Context, req adminapi.DeleteAuthProviderRequestObject) (adminapi.DeleteAuthProviderResponseObject, error) {
-	d, dp, ci, au, i, ok := a.authProvider(ctx, req.ProviderId)
-	if !ok {
-		return adminapi.DeleteAuthProvider404JSONResponse{NotFoundJSONResponse: notFoundErr("auth provider")}, nil
-	}
-	au = append(au[:i], au[i+1:]...)
-	if err := a.saveCollections(ctx, d, dp, ci, au); err != nil {
-		return nil, err
-	}
-	return adminapi.DeleteAuthProvider204Response{}, nil
+	return adminapi.GetAuthProvider404JSONResponse{NotFoundJSONResponse: notFoundErr("auth provider")}, nil
 }
 
 // The remaining resource handlers live in admin_config.go and admin_nodes.go.

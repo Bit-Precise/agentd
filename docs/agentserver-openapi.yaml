@@ -52,7 +52,7 @@ x-rbac:
     本文档的每个 operation 都要求 instance_admin。普通用户的 workspace role 只在 user API 文档中出现；当前部署的静态
     AdminToken 是 instance_admin，UserBearer 在接入 OIDC 后映射到 users 与 workspace_members。
 x-instance-admin:
-  managed_resources: [domains, dns_providers, certificate_issuers, auth_providers, users, workspaces, nodes, routes, policies, relays]
+  managed_resources: [domains, dns_providers, certificate_issuers, users, workspaces, nodes, routes, policies, relays]
   provider_support:
     dns: [dnspod, cloudflare]
     certificate_issuer: [lets_encrypt, google_trust_services]
@@ -159,7 +159,7 @@ tags:
   - name: certificate-issuers
     description: instance 级证书签发方配置（仅 instance admin）
   - name: auth-providers
-    description: instance 级认证服务配置（仅 instance admin）
+    description: bootstrap OIDC provider 状态（只读；由 AgentserverConfiguration/Helm 管理）
   - name: users
     description: instance 级 用户目录（仅 instance admin）
   - name: server
@@ -458,7 +458,10 @@ paths:
       operationId: listAuthProviders
       x-audience: [web_user]
       x-authorization: { scope: instance, roles: [instance_admin] }
-      summary: 列出认证 providers
+      summary: 查看 bootstrap 配置的认证 provider
+      description: >-
+        OIDC providers are configured by AgentserverConfiguration or the Helm chart and are read-only here;
+        client secrets are never persisted in the state database.
       responses:
         "200":
           description: OK
@@ -467,27 +470,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/AuthProvider" }
-    post:
-      tags: [auth-providers]
-      operationId: createAuthProvider
-      x-audit: required
-      x-audience: [web_user]
-      x-authorization: { scope: instance, roles: [instance_admin] }
-      summary: 创建认证 provider
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/AuthProviderWrite" }
-      responses:
-        "200":
-          description: 已保存
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AuthProvider" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
   /auth-providers/{providerId}:
     parameters:
       - name: providerId
@@ -507,38 +489,6 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AuthProvider" }
         "404": { $ref: "#/components/responses/NotFound" }
-    put:
-      tags: [auth-providers]
-      operationId: updateAuthProvider
-      x-audit: required
-      x-audience: [web_user]
-      x-authorization: { scope: instance, roles: [instance_admin] }
-      summary: 更新认证 provider
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/AuthProviderWrite" }
-      responses:
-        "200":
-          description: 已更新
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AuthProvider" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    delete:
-      tags: [auth-providers]
-      operationId: deleteAuthProvider
-      x-audit: required
-      x-audience: [web_user]
-      x-authorization: { scope: instance, roles: [instance_admin] }
-      summary: 删除认证 provider
-      responses:
-        "204": { description: 已删除 }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
   /users:
     get:
       tags: [users]

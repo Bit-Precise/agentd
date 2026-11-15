@@ -1554,7 +1554,7 @@ agentserver 与 agentrelay 是服务端程序，只有上面这几个子命令�
 | domains | 独立管理 instance 域名、用途、默认域名和 provider 绑定（仅 instance admin） |
 | dns providers | 独立管理 DNSPod / Cloudflare 凭据、zones 和公网解析开关（仅 instance admin） |
 | cert issuers | 独立管理 Let's Encrypt / GTS 账号、EAB 和签发配置（仅 instance admin） |
-| auth providers | 独立管理可扩展认证 provider；第一期 `kind: oidc`（仅 instance admin） |
+| auth providers | 查看 bootstrap OIDC provider 状态；配置来自 AgentserverConfiguration/Helm，不写入状态库 |
 | users | 管理 instance 级用户目录和外部 identities；workspace members 只引用 user_id（仅 instance admin） |
 | audit | instance admin 查询全局审计；workspace owner/maintainer 在 user API 按 workspace 查询审计（只读） |
 | workspace members | 维护 用户的 `owner`、`maintainer`、`member` 角色；workspace 至少保留一个 owner |
