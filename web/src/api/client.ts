@@ -4,7 +4,9 @@
 // metadata.
 import createClient, { type Middleware } from "openapi-fetch";
 import type { paths } from "./schema.gen";
+import type { paths as userPaths } from "./user-schema.gen";
 import { meta } from "./meta.gen";
+import { userMeta } from "./user-meta.gen";
 
 const TOKEN_KEY = "agentd.adminToken";
 
@@ -42,7 +44,7 @@ export const api = createClient<paths>({
   fetch: (req: Request) => globalThis.fetch(req),
 });
 api.use(auth);
-export const userApi = createClient<paths>({
+export const userApi = createClient<userPaths>({
   baseUrl: new URL("/api/v1", location.origin).toString(),
   fetch: (req: Request) => globalThis.fetch(req),
 });
@@ -71,7 +73,8 @@ export interface CallArgs {
 
 // call runs an operation by its operationId.
 export async function call(opId: string, args: CallArgs = {}): Promise<unknown> {
-  const op = meta.operations[opId];
+  const operationMeta = args.surface === "user" ? userMeta : meta;
+  const op = operationMeta.operations[opId];
   if (!op) throw new Error(`unknown operation ${opId}`);
   // Dynamic dispatch over the typed client; paths come from the same spec.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

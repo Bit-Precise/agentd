@@ -42,6 +42,8 @@ type AuditFilter struct {
 	WorkspaceID  string
 	Action       string
 	Outcome      string
+	Since        *time.Time
+	Until        *time.Time
 	Limit        int
 }
 
@@ -108,7 +110,9 @@ func (s *Store) ListAuditEvents(ctx context.Context, f AuditFilter) ([]AuditEven
 		FROM audit_events
 		WHERE ($1='' OR actor_id=$1) AND ($2='' OR resource_type=$2) AND ($3='' OR resource_id=$3)
 		  AND ($4='' OR workspace_id=$4) AND ($5='' OR action=$5) AND ($6='' OR outcome=$6)
-		ORDER BY occurred_at DESC, id DESC LIMIT $7`, f.ActorID, f.ResourceType, f.ResourceID, f.WorkspaceID, f.Action, f.Outcome, limit)
+		  AND ($7::timestamptz IS NULL OR occurred_at >= $7)
+		  AND ($8::timestamptz IS NULL OR occurred_at <= $8)
+		ORDER BY occurred_at DESC, id DESC LIMIT $9`, f.ActorID, f.ResourceType, f.ResourceID, f.WorkspaceID, f.Action, f.Outcome, f.Since, f.Until, limit)
 	if err != nil {
 		return nil, err
 	}

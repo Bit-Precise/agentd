@@ -2,235 +2,113 @@ package control
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
-	"agentd/internal/adminapi"
 	"agentd/internal/store"
+	"agentd/internal/userapi"
 )
 
-// userHandler implements the deliberately smaller user OpenAPI surface.  OIDC
-// validation is deployment-specific; until an auth provider is configured the
-// bearer is accepted as a user id/subject, while the bootstrap admin token has
-// break-glass access to every workspace.
+// userPrincipal is attached to requests after authentication and is consumed
+// by the generated user-surface handlers. Keeping authentication outside the
+// generated router lets the OpenAPI handler remain responsible for paths,
+// methods, parameter binding, request decoding, and response status codes.
+type userPrincipal struct {
+	subject       string
+	instanceAdmin bool
+}
+
+type userPrincipalKey struct{}
+
+func withUserPrincipal(ctx context.Context, p userPrincipal) context.Context {
+	return context.WithValue(ctx, userPrincipalKey{}, p)
+}
+
+func currentUserPrincipal(ctx context.Context) (userPrincipal, bool) {
+	p, ok := ctx.Value(userPrincipalKey{}).(userPrincipal)
+	return p, ok
+}
+
+// userHandler mounts the generated user OpenAPI surface. Authentication is a
+// middleware around that surface; the route table itself comes only from
+// docs/agentserver-user-openapi.yaml via oapi-codegen.
 func (a *Admin) userHandler(adminToken string, oidc *OIDCAuth) http.Handler {
+	api := userapi.HandlerWithOptions(
+		userapi.NewStrictHandlerWithOptions(a, nil, userapi.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+				writeJSONError(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+			},
+			ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+				writeJSONError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			},
+		}),
+		userapi.StdHTTPServerOptions{
+			BaseURL: "/api/v1",
+			ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+				writeJSONError(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+			},
+		},
+	)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/v1/admin/") || strings.HasPrefix(r.URL.Path, "/api/v1/join/") {
 			http.NotFound(w, r)
 			return
 		}
-		bearer := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		isOIDC := false
-		if oidc != nil {
-			if session, ok := oidc.Session(r); ok {
-				if session.InstanceAdmin {
-					writeJSONError(w, http.StatusForbidden, "FORBIDDEN", "use the instance admin API for the bootstrap administrator")
-					return
-				}
-				bearer = session.UserSubject
-				isOIDC = true
-			}
-		}
-		if bearer == "" || (oidc != nil && oidc.Enabled() && !isOIDC) {
+		p, ok := a.authenticateUser(r, adminToken, oidc)
+		if !ok {
 			writeJSONError(w, http.StatusUnauthorized, "UNAUTHORIZED", "user bearer required")
 			return
 		}
-		if adminToken != "" && bearer == adminToken {
+		if p.instanceAdmin {
 			writeJSONError(w, http.StatusForbidden, "FORBIDDEN", "use the instance admin API for the bootstrap administrator")
 			return
 		}
-		parts := strings.Split(strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/v1/"), "/"), "/")
-		if len(parts) == 1 && parts[0] == "workspaces" && r.Method == http.MethodGet {
-			a.userListWorkspaces(w, r, bearer)
-			return
-		}
-		if len(parts) < 2 || parts[0] != "workspaces" {
-			http.NotFound(w, r)
-			return
-		}
-		ws, err := a.resolveWorkspace(r.Context(), parts[1])
-		if err != nil {
-			writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "workspace not found")
-			return
-		}
-		role := store.WorkspaceRole("")
-		role = a.userRole(r.Context(), ws.Name, bearer)
-		if role == "" {
-			writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "workspace not found")
-			return
-		}
-		if len(parts) == 2 && r.Method == http.MethodGet {
-			a.userJSON(w, http.StatusOK, a.apiWorkspace(r.Context(), ws))
-			return
-		}
-		if len(parts) < 3 {
-			http.NotFound(w, r)
-			return
-		}
-		switch parts[2] {
-		case "members":
-			a.userMembers(w, r, ws, role, false, parts[3:])
-		case "nodes":
-			a.userNodes(w, r, ws, parts[3:])
-		case "routes":
-			a.userRoutes(w, r, ws, role, parts[3:])
-		case "policies":
-			a.userPolicies(w, r, ws, role, parts[3:])
-		case "services":
-			if r.Method == http.MethodGet {
-				v, _ := a.ListServices(r.Context(), adminapi.ListServicesRequestObject{WorkspaceId: idFor("workspace", ws.Name)})
-				a.userJSON(w, http.StatusOK, v)
-			} else {
-				http.NotFound(w, r)
-			}
-		default:
-			http.NotFound(w, r)
-		}
+		r = r.WithContext(withUserPrincipal(r.Context(), p))
+		api.ServeHTTP(w, r)
 	})
 }
 
-func (a *Admin) userJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	if status == http.StatusNoContent {
-		w.WriteHeader(status)
-		return
+func (a *Admin) authenticateUser(r *http.Request, adminToken string, oidc *OIDCAuth) (userPrincipal, bool) {
+	if oidc != nil {
+		if session, ok := oidc.Session(r); ok {
+			return userPrincipal{subject: session.UserSubject, instanceAdmin: session.InstanceAdmin}, true
+		}
+		// When OIDC is configured, a raw bearer is not a validated user
+		// principal. Browser requests must use the OIDC session above.
+		return userPrincipal{}, false
 	}
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	bearer := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	if bearer == "" {
+		return userPrincipal{}, false
+	}
+	if adminToken != "" && bearer == adminToken {
+		return userPrincipal{instanceAdmin: true}, true
+	}
+	return userPrincipal{subject: bearer}, true
 }
-func (a *Admin) userRole(ctx context.Context, ws, bearer string) store.WorkspaceRole {
-	if m, err := a.C.st.GetWorkspaceMember(ctx, ws, bearer); err == nil {
+
+func userRole(ctx context.Context, a *Admin, workspace string) (store.WorkspaceRole, bool) {
+	p, ok := currentUserPrincipal(ctx)
+	if !ok || p.subject == "" {
+		return "", false
+	}
+	role := a.userRole(ctx, workspace, p.subject)
+	return role, role != ""
+}
+
+func (a *Admin) userRole(ctx context.Context, workspace, bearer string) store.WorkspaceRole {
+	if m, err := a.C.st.GetWorkspaceMember(ctx, workspace, bearer); err == nil {
 		return m.Role
 	}
 	if users, err := a.C.st.ListUsers(ctx); err == nil {
 		for _, u := range users {
 			if u.ID == bearer || u.Email == bearer || u.Subject == bearer {
-				if m, e := a.C.st.GetWorkspaceMember(ctx, ws, u.Subject); e == nil {
+				if m, err := a.C.st.GetWorkspaceMember(ctx, workspace, u.Subject); err == nil {
 					return m.Role
 				}
 			}
 		}
 	}
 	return ""
-}
-func (a *Admin) userListWorkspaces(w http.ResponseWriter, r *http.Request, bearer string) {
-	wss, _ := a.C.st.ListWorkspaces(r.Context())
-	out := adminapi.ListWorkspaces200JSONResponse{}
-	for _, ws := range wss {
-		if a.userRole(r.Context(), ws.Name, bearer) != "" {
-			out = append(out, a.apiWorkspace(r.Context(), ws))
-		}
-	}
-	a.userJSON(w, http.StatusOK, out)
-}
-
-func (a *Admin) userMembers(w http.ResponseWriter, r *http.Request, ws store.Workspace, role store.WorkspaceRole, admin bool, tail []string) {
-	if len(tail) == 0 && r.Method == http.MethodGet {
-		v, _ := a.ListWorkspaceMembers(r.Context(), adminapi.ListWorkspaceMembersRequestObject{WorkspaceId: idFor("workspace", ws.Name)})
-		a.userJSON(w, 200, v)
-		return
-	}
-	if len(tail) == 0 && r.Method == http.MethodPost {
-		if role != store.WorkspaceOwner && !admin {
-			writeJSONError(w, 404, "NOT_FOUND", "workspace not found")
-			return
-		}
-		var b adminapi.UpsertWorkspaceMemberJSONRequestBody
-		if json.NewDecoder(r.Body).Decode(&b) != nil {
-			writeJSONError(w, 400, "BAD_REQUEST", "invalid JSON")
-			return
-		}
-		v, e := a.UpsertWorkspaceMember(r.Context(), adminapi.UpsertWorkspaceMemberRequestObject{WorkspaceId: idFor("workspace", ws.Name), Body: &b})
-		if e != nil {
-			writeJSONError(w, 500, "INTERNAL", e.Error())
-			return
-		}
-		a.userJSON(w, 200, v)
-		return
-	}
-	if len(tail) == 1 && r.Method == http.MethodDelete {
-		if role != store.WorkspaceOwner && !admin {
-			writeJSONError(w, 404, "NOT_FOUND", "workspace not found")
-			return
-		}
-		v, e := a.RemoveWorkspaceMember(r.Context(), adminapi.RemoveWorkspaceMemberRequestObject{WorkspaceId: idFor("workspace", ws.Name), MemberId: tail[0]})
-		if e != nil {
-			writeJSONError(w, 500, "INTERNAL", e.Error())
-			return
-		}
-		a.userJSON(w, 204, v)
-		return
-	}
-	http.NotFound(w, r)
-}
-func (a *Admin) userNodes(w http.ResponseWriter, r *http.Request, ws store.Workspace, tail []string) {
-	if r.Method != http.MethodGet || len(tail) > 0 {
-		http.NotFound(w, r)
-		return
-	}
-	v, _ := a.ListNodes(r.Context(), adminapi.ListNodesRequestObject{WorkspaceId: idFor("workspace", ws.Name)})
-	a.userJSON(w, 200, v)
-}
-func (a *Admin) userRoutes(w http.ResponseWriter, r *http.Request, ws store.Workspace, role store.WorkspaceRole, tail []string) {
-	id := idFor("workspace", ws.Name)
-	if len(tail) == 0 && r.Method == http.MethodGet {
-		v, e := a.GetRouteTable(r.Context(), adminapi.GetRouteTableRequestObject{WorkspaceId: id})
-		if e != nil {
-			writeJSONError(w, 500, "INTERNAL", e.Error())
-			return
-		}
-		a.userJSON(w, 200, v)
-		return
-	}
-	if len(tail) == 0 && r.Method == http.MethodPut {
-		if role == store.WorkspaceRoleMember {
-			writeJSONError(w, 404, "NOT_FOUND", "workspace not found")
-			return
-		}
-		var b adminapi.ReplaceRouteTableJSONRequestBody
-		if json.NewDecoder(r.Body).Decode(&b) != nil {
-			writeJSONError(w, 400, "BAD_REQUEST", "invalid JSON")
-			return
-		}
-		v, e := a.ReplaceRouteTable(r.Context(), adminapi.ReplaceRouteTableRequestObject{WorkspaceId: id, Body: &b})
-		if e != nil {
-			writeJSONError(w, 500, "INTERNAL", e.Error())
-			return
-		}
-		a.userJSON(w, 200, v)
-		return
-	}
-	http.NotFound(w, r)
-}
-func (a *Admin) userPolicies(w http.ResponseWriter, r *http.Request, ws store.Workspace, role store.WorkspaceRole, tail []string) {
-	id := idFor("workspace", ws.Name)
-	if len(tail) == 0 && r.Method == http.MethodGet {
-		v, e := a.ListPolicies(r.Context(), adminapi.ListPoliciesRequestObject{WorkspaceId: id})
-		if e != nil {
-			writeJSONError(w, 500, "INTERNAL", e.Error())
-			return
-		}
-		a.userJSON(w, 200, v)
-		return
-	}
-	if len(tail) == 0 && r.Method == http.MethodPut {
-		if role == store.WorkspaceRoleMember {
-			writeJSONError(w, 404, "NOT_FOUND", "workspace not found")
-			return
-		}
-		var b adminapi.ReplacePoliciesJSONBody
-		if json.NewDecoder(r.Body).Decode(&b) != nil {
-			writeJSONError(w, 400, "BAD_REQUEST", "invalid JSON")
-			return
-		}
-		v, e := a.ReplacePolicies(r.Context(), adminapi.ReplacePoliciesRequestObject{WorkspaceId: id, Body: &b})
-		if e != nil {
-			writeJSONError(w, 500, "INTERNAL", e.Error())
-			return
-		}
-		a.userJSON(w, 200, v)
-		return
-	}
-	http.NotFound(w, r)
 }

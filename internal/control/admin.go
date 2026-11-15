@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -134,8 +133,6 @@ func (a *Admin) Handler(token string, ui http.Handler) http.Handler {
 	// Compatibility aggregate used by older clients; it is not in the current
 	// OpenAPI document and is read-only.
 	mux.Handle("/api/v1/admin/instance", requireToken(token, a.OIDC, http.HandlerFunc(a.compatInstance)))
-	mux.Handle("/api/v1/admin/audit/events", requireToken(token, a.OIDC, http.HandlerFunc(a.auditEventsHTTP)))
-	mux.Handle("/api/v1/admin/audit/events/", requireToken(token, a.OIDC, http.HandlerFunc(a.auditEventHTTP)))
 	mux.HandleFunc("/api/v1/join/candidates", a.joinCandidates)
 	mux.Handle("/api/v1/", a.auditUserWrites(a.userHandler(token, a.OIDC)))
 	if a.OIDC != nil {
@@ -276,6 +273,12 @@ func (a *Admin) ListAuditEvents(ctx context.Context, req adminapi.ListAuditEvent
 	if p.Outcome != nil {
 		f.Outcome = string(*p.Outcome)
 	}
+	if p.Since != nil {
+		f.Since = p.Since
+	}
+	if p.Until != nil {
+		f.Until = p.Until
+	}
 	if p.Limit != nil {
 		f.Limit = *p.Limit
 	}
@@ -299,41 +302,6 @@ func (a *Admin) GetAuditEvent(ctx context.Context, req adminapi.GetAuditEventReq
 		return nil, err
 	}
 	return adminapi.GetAuditEvent200JSONResponse(a.auditEventView(e)), nil
-}
-
-func (a *Admin) auditEventsHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "GET required")
-		return
-	}
-	q := r.URL.Query()
-	limit, _ := strconv.Atoi(q.Get("limit"))
-	f := store.AuditFilter{ActorID: q.Get("actor_id"), ResourceType: q.Get("resource_type"), ResourceID: q.Get("resource_id"), WorkspaceID: q.Get("workspace_id"), Action: q.Get("action"), Outcome: q.Get("outcome"), Limit: limit}
-	events, err := a.C.st.ListAuditEvents(r.Context(), f)
-	if err != nil {
-		writeJSONError(w, 500, "INTERNAL", err.Error())
-		return
-	}
-	items := make([]adminapi.AuditEvent, 0, len(events))
-	for _, e := range events {
-		items = append(items, a.auditEventView(e))
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(adminapi.AuditEventPage{Items: items})
-}
-func (a *Admin) auditEventHTTP(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/v1/admin/audit/events/")
-	e, err := a.C.st.GetAuditEvent(r.Context(), id)
-	if errors.Is(err, store.ErrNotFound) {
-		writeJSONError(w, 404, "NOT_FOUND", "audit event not found")
-		return
-	}
-	if err != nil {
-		writeJSONError(w, 500, "INTERNAL", err.Error())
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(a.auditEventView(e))
 }
 
 type auditResponseWriter struct {
@@ -378,7 +346,7 @@ func (a *Admin) auditWrites(next http.Handler) http.Handler {
 		if status >= 400 {
 			outcome = "failure"
 		}
-		_ = a.C.st.RecordAudit(r.Context(), store.AuditEvent{ActorKind: "instance_admin", ActorID: "admin-token", Action: strings.ToLower(r.Method), ResourceType: resourceType, RequestID: requestID, Outcome: outcome, Metadata: map[string]any{"path": r.URL.Path, "status": status}})
+		_ = a.C.st.RecordAudit(r.Context(), store.AuditEvent{ActorKind: "instance_admin", ActorID: a.auditActorID(r, "bootstrap"), Action: strings.ToLower(r.Method), ResourceType: resourceType, RequestID: requestID, Outcome: outcome, Metadata: map[string]any{"path": r.URL.Path, "status": status}})
 	})
 }
 
@@ -398,12 +366,29 @@ func (a *Admin) auditUserWrites(next http.Handler) http.Handler {
 		if status >= 400 {
 			outcome = "failure"
 		}
-		actor := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-		if actor == "" {
-			actor = "unknown"
-		}
-		_ = a.C.st.RecordAudit(r.Context(), store.AuditEvent{ActorKind: "user", ActorID: actor, Action: strings.ToLower(r.Method), ResourceType: "workspace", RequestID: r.Header.Get("X-Request-ID"), Outcome: outcome, Metadata: map[string]any{"path": r.URL.Path, "status": status}})
+		_ = a.C.st.RecordAudit(r.Context(), store.AuditEvent{ActorKind: "user", ActorID: a.auditActorID(r, "unknown"), Action: strings.ToLower(r.Method), ResourceType: "workspace", RequestID: r.Header.Get("X-Request-ID"), Outcome: outcome, Metadata: map[string]any{"path": r.URL.Path, "status": status}})
 	})
+}
+
+// auditActorID never persists a bearer credential. OIDC sessions expose the
+// stable external subject; bootstrap and fallback bearer identities are mapped
+// to non-secret deterministic IDs.
+func (a *Admin) auditActorID(r *http.Request, fallback string) string {
+	if a.OIDC != nil {
+		if identity, ok := a.OIDC.Session(r); ok && identity.UserSubject != "" {
+			return identity.UserSubject
+		}
+	}
+	bearer := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	if bearer == "" {
+		return fallback
+	}
+	if a.C != nil {
+		if user, err := a.C.st.GetUser(r.Context(), bearer); err == nil && user.ID != "" {
+			return user.ID
+		}
+	}
+	return idFor("actor", bearer)
 }
 
 // ---------------------------------------------------------------- server and certificates

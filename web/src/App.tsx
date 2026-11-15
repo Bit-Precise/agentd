@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ChevronsUpDown,
+  FolderKanban,
   LogOut,
   Moon,
   ShieldCheck,
   Sun,
 } from "lucide-react";
 import { meta } from "./api/meta.gen";
+import { userMeta } from "./api/user-meta.gen";
 import {
   ApiError,
   authConfig,
@@ -32,7 +34,6 @@ import {
   DropdownMenuTrigger,
 } from "./components/ui/dropdown-menu";
 import { Input } from "./components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -60,7 +61,10 @@ function readRoute(): RouteState {
   if (!path) return { admin: false, view: "overview", ws: "" };
   const parts = path.split("/");
   if (parts[0] === "admin") return { admin: true, view: parts[1] || "overview", ws: parts[2] || "" };
-  if (parts[0] === "workspaces" && parts[1]) return { admin: false, view: parts[2] || "members", ws: parts[1] };
+  if (parts[0] === "workspaces") {
+    if (!parts[1]) return { admin: false, view: "workspaces", ws: "" };
+    return { admin: false, view: parts[2] || "members", ws: parts[1] };
+  }
   // There is intentionally no hash or legacy path compatibility. Unknown
   // history routes land on the user home page.
   return { admin: false, view: "overview", ws: "" };
@@ -68,11 +72,10 @@ function readRoute(): RouteState {
 
 function routePath(view: string, ws: string, admin: boolean) {
   if (admin) return view === "overview" ? `/admin${ws ? `/overview/${encodeURIComponent(ws)}` : ""}` : `/admin/${encodeURIComponent(view)}${ws ? `/${encodeURIComponent(ws)}` : ""}`;
+  if (view === "workspaces") return "/workspaces";
   if (view === "overview" || !ws) return "/";
   return `/workspaces/${encodeURIComponent(ws)}/${encodeURIComponent(view)}`;
 }
-
-const userResourceKeys = new Set(["members", "nodes", "routes", "policies", "services"]);
 
 export function App() {
   const initialToken = getToken();
@@ -120,9 +123,14 @@ export function App() {
       const items = list.map((w) => ({ id: w.id || w.name, name: w.name }));
       setWsList(items);
       setAuthError("");
+      if (adminMode && view === "overview" && ws) {
+        go("overview", "", true);
+        return;
+      }
       const current = items.find((item) => item.id === ws || item.name === ws);
       if (current && current.id !== ws) go(view, current.id);
-      else if (!ws && items.length) go(view === "overview" ? (adminMode ? "overview" : "members") : view, items[0].id);
+      else if (!ws && !adminMode && view === "overview") go("workspaces", "", false);
+      else if (!ws && items.length && view !== "overview" && view !== "workspaces") go(view, items[0].id);
       else if (ws && !current && view !== "overview") go("overview", "");
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
@@ -158,11 +166,18 @@ export function App() {
     return <Login error={authError} onLogin={(value) => { setToken(value); setTok(value); setAuthenticated(true); setAdminMode(true); }} />;
   }
 
-  const global = adminMode ? meta.resources.filter((r) => r.scope === "global") : [];
-  const scoped = meta.resources.filter((r) => r.scope === "workspace" && (adminMode || userResourceKeys.has(r.key)));
-  const current = meta.resources.find((r) => r.key === view && (adminMode || r.scope === "workspace" && userResourceKeys.has(r.key)));
+  const surfaceMeta = adminMode ? meta : userMeta;
+  const global = adminMode ? surfaceMeta.resources.filter((r) => r.scope === "global") : [];
+  const scoped = surfaceMeta.resources.filter((r) => r.scope === "workspace");
+  const current = surfaceMeta.resources.find((r) => r.key === view);
   const readOnly = !adminMode && ["nodes", "services"].includes(view);
-  const workspaceView = view !== "overview" && (adminMode ? meta.resources.some((r) => r.key === view && r.scope === "workspace") : userResourceKeys.has(view));
+  const workspaceView = view !== "overview" && surfaceMeta.resources.some((r) => r.key === view && r.scope === "workspace");
+  const selectedWorkspace = wsList.find((item) => item.id === ws || item.name === ws);
+  const workspaceLabel = selectedWorkspace?.name || ws || "Select workspace";
+
+  const selectWorkspace = (nextWs: string) => {
+    go(workspaceView ? view : (adminMode ? "workspaces" : "members"), nextWs);
+  };
 
   const navItem = (key: string, label: string, workspace = "") => (
     <SidebarMenuItem key={key}>
@@ -188,17 +203,31 @@ export function App() {
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
+                      <FolderKanban className="size-4" />
+                    </span>
+                    <span className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold">{workspaceLabel}</span>
+                      <span className="truncate text-xs text-sidebar-foreground/70">{wsList.length ? "Workspace" : "No workspaces"}</span>
+                    </span>
+                    <ChevronsUpDown className="ml-auto size-4" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="bottom" align="start" className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg">
+                  {wsList.length ? wsList.map((workspace) => (
+                    <DropdownMenuItem key={workspace.id} onSelect={() => selectWorkspace(workspace.id)}>
+                      <FolderKanban />
+                      <span className="truncate">{workspace.name}</span>
+                    </DropdownMenuItem>
+                  )) : <DropdownMenuItem disabled>No workspaces</DropdownMenuItem>}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
           </SidebarMenu>
-          <Select value={ws || undefined} onValueChange={(value) => {
-            if (value === "__none__") return;
-            go(workspaceView ? view : (adminMode ? "workspaces" : "members"), value);
-          }}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Select workspace" /></SelectTrigger>
-            <SelectContent>
-              {!wsList.length && <SelectItem value="__none__" disabled>No workspaces</SelectItem>}
-              {wsList.map((workspace) => <SelectItem key={workspace.id} value={workspace.id}>{workspace.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </SidebarHeader>
 
         <SidebarContent>
@@ -210,7 +239,10 @@ export function App() {
           )}
           <SidebarGroup>
             <SidebarGroupLabel>{adminMode ? "Workspaces" : "Workspace"}</SidebarGroupLabel>
-            <SidebarGroupContent><SidebarMenu>{scoped.map((resource) => navItem(resource.key, resource.label, ws))}</SidebarMenu></SidebarGroupContent>
+            <SidebarGroupContent><SidebarMenu>
+              {!adminMode && surfaceMeta.resources.some((resource) => resource.key === "workspaces") && navItem("workspaces", "Workspaces")}
+              {scoped.map((resource) => navItem(resource.key, resource.label, ws))}
+            </SidebarMenu></SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
 

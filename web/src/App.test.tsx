@@ -28,6 +28,7 @@ const fixtures: Record<string, unknown> = {
   "GET /api/v1/admin/relays": [{ name: "relay-1", url: "https://relay-1.agentsrv.test", public_key: key, connected: true }],
   "GET /api/v1/admin/relays/tokens": [{ id: "rt1", created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z" }],
   "POST /api/v1/admin/workspaces/home/tokens": { id: "t2", name: "dorm", roles: [], created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z", join_link: "agentd://home.agentsrv.test/dorm?relay=https://relay-1.agentsrv.test&key=" + key + "&token=abc" },
+  "GET /api/v1/workspaces": [{ id: "11111111-1111-4111-8111-111111111111", name: "home", domain_id: "22222222-2222-4222-8222-222222222222", base_domain: "home.agentsrv.test", public_key: key, status: "active", created_at: "2026-11-09T10:00:00Z" }],
 };
 
 let calls: { method: string; url: string; body: string; auth: string | null }[] = [];
@@ -60,10 +61,24 @@ describe("console", () => {
     expect(calls.every((c) => c.auth === "Bearer secret-token")).toBe(true);
   });
 
+  it("keeps /admin instance-scoped instead of selecting the first workspace", async () => {
+    history.replaceState({}, "", "/admin");
+    render(<App />);
+    await screen.findByRole("heading", { name: "Overview" });
+    expect(location.pathname).toBe("/admin");
+  });
+
+  it("renders the user workspace index at /workspaces", async () => {
+    history.replaceState({}, "", "/workspaces");
+    render(<App />);
+    await screen.findByRole("heading", { name: "workspaces" });
+    expect(screen.getByText("home")).toBeTruthy();
+    expect(location.pathname).toBe("/workspaces");
+  });
+
   it("renders every generated resource", async () => {
     render(<App />);
-    await screen.findByRole("combobox");
-    await screen.findByText("home");
+    await screen.findByText("Select workspace");
     const expectText: Record<string, string> = {
       domains: "agentsrv.test", "dns-providers": "nothing here yet", "certificate-issuers": "letsencrypt", "auth-providers": "corp", users: "corp|alice", certificates: "workspace:home", server: "test", workspaces: "home.agentsrv.test", tokens: "t1", members: "corp|alice", nodes: "laptop", groups: "pc", routes: "suffix:example.com", policies: "p1",
       services: "nas.home.agentsrv.test", certs: "selfsigned", relays: "relay-1", "relays-tokens": "rt1",

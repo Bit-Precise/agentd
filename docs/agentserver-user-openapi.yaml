@@ -95,6 +95,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: "./agentserver-openapi.yaml#/components/schemas/WorkspaceMember" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
     post:
       tags: [members]
       operationId: upsertMyWorkspaceMember
@@ -159,6 +160,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: "./agentserver-openapi.yaml#/components/schemas/Node" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
 
   /workspaces/{workspaceId}/routes:
     parameters:
@@ -177,6 +179,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/RouteTable" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
     put:
       tags: [routes]
       operationId: replaceMyRouteTable
@@ -197,6 +200,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/RouteTable" }
+        "400": { $ref: "./agentserver-openapi.yaml#/components/responses/BadRequest" }
         "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
 
   /workspaces/{workspaceId}/policies:
@@ -218,6 +222,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: "./agentserver-openapi.yaml#/components/schemas/PolicyStatement" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
     put:
       tags: [policies]
       operationId: replaceMyPolicies
@@ -242,6 +247,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: "./agentserver-openapi.yaml#/components/schemas/PolicyStatement" }
+        "400": { $ref: "./agentserver-openapi.yaml#/components/responses/BadRequest" }
         "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
 
   /workspaces/{workspaceId}/services:
@@ -263,6 +269,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: "./agentserver-openapi.yaml#/components/schemas/Service" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
 
 components:
   securitySchemes:

@@ -11,10 +11,11 @@ help: ## show targets
 
 all: gen web build ## generate code, build the console and the binaries
 
-gen: ## regenerate protobuf and admin API code
+gen: ## regenerate protobuf and admin/user API code
 	$(GO) run ./tools/protogen
 	cd internal/adminapi && $(GO) tool oapi-codegen -config oapi-codegen.yaml ../../docs/agentserver-openapi.yaml
 	$(GO) run ./tools/adminapi-patch
+	cd internal/userapi && $(GO) tool oapi-codegen -config oapi-codegen.yaml ../../docs/agentserver-user-openapi.yaml
 
 web: ## build the web console (types and UI metadata come from the OpenAPI document)
 	cd web && pnpm install --frozen-lockfile && pnpm build

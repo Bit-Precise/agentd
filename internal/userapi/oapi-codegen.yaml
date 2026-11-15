@@ -1,0 +1,12 @@
+package: userapi
+output: api.gen.go
+import-mapping:
+  ./agentserver-openapi.yaml: agentd/internal/adminapi
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+  embedded-spec: true
+  client: true
+output-options:
+  skip-prune: true

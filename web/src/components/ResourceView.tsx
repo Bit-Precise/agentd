@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { call, ApiError } from "../api/client";
 import { meta } from "../api/meta.gen";
+import { userMeta } from "../api/user-meta.gen";
 import type { Operation, Resource, Schema } from "../api/meta";
 import { emptyValue, prune, SchemaForm } from "./SchemaForm";
 import { Cell, columns, Detail } from "./format";
@@ -61,7 +62,7 @@ export function ResourceView({ r, ws, surface = "admin", readOnly = false, onCha
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [result, setResult] = useState<{ title: string; value: unknown } | null>(null);
-  const ops = meta.operations;
+  const ops = (surface === "user" ? userMeta : meta).operations;
 
   const baseParams = useMemo((): Record<string, string> => {
     if (r.scope !== "workspace") return {};

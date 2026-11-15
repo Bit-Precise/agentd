@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "gen": "openapi-typescript ../docs/agentserver-openapi.yaml -o src/api/schema.gen.ts && node scripts/gen-meta.mjs",
+    "gen": "openapi-typescript ../docs/agentserver-openapi.yaml -o src/api/schema.gen.ts && openapi-typescript ../docs/agentserver-user-openapi.yaml -o src/api/user-schema.gen.ts && node scripts/gen-meta.mjs",
     "dev": "pnpm gen && vite",
     "build": "pnpm gen && tsc --noEmit && vite build && node -e \"require('fs').writeFileSync('dist/.gitkeep','')\"",
     "typecheck": "tsc --noEmit",
