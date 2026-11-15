@@ -133,7 +133,7 @@ tls: { mode: selfsigned }
 	go func() { s.relay.Run(ctx); close(relayDone) }()
 	t.Cleanup(func() { cancel(); <-relayDone; <-srvDone })
 
-	s.admin, _ = adminapi.NewClientWithResponses("http://"+s.srv.AdminAddr().String()+"/api/v1", adminapi.WithRequestEditorFn(func(ctx context.Context, r *http.Request) error {
+	s.admin, _ = adminapi.NewClientWithResponses("http://"+s.srv.AdminAddr().String()+"/api/v1/admin", adminapi.WithRequestEditorFn(func(ctx context.Context, r *http.Request) error {
 		r.Header.Set("Authorization", "Bearer "+adminToken)
 		return nil
 	}))
@@ -160,7 +160,7 @@ func (s *stack) eventually(what string, f func() bool) {
 // vouch for it (relay certificate pushed).
 func (s *stack) workspace(name string) adminapi.Workspace {
 	s.t.Helper()
-	r, err := s.admin.CreateWorkspaceWithResponse(s.ctx, adminapi.WorkspaceCreate{Name: name, Relay: relayName})
+	r, err := s.admin.CreateWorkspaceWithResponse(s.ctx, adminapi.WorkspaceCreate{Name: name})
 	if err != nil || r.JSON201 == nil {
 		s.t.Fatalf("create workspace: %v %s", err, r.Body)
 	}

@@ -173,12 +173,14 @@ func (c *Coordinator) deliver(ws store.Workspace, node []byte, msg *pb.ControlMe
 // invalidate tells the workspace's relay to drop cached answers.
 func (c *Coordinator) invalidate(ws store.Workspace, removed ...[]byte) {
 	c.mu.Lock()
-	rc := c.relays[ws.Relay]
-	c.mu.Unlock()
-	if rc == nil {
-		return
+	conns := make([]*relayConn, 0, len(c.relays))
+	for _, rc := range c.relays {
+		conns = append(conns, rc)
 	}
-	_ = rc.send(&pb.ControlMessage{Msg: &pb.ControlMessage_RelayInvalidate{RelayInvalidate: &pb.RelayInvalidate{Workspace: ws.BaseDomain, Removed: removed}}})
+	c.mu.Unlock()
+	for _, rc := range conns {
+		_ = rc.send(&pb.ControlMessage{Msg: &pb.ControlMessage_RelayInvalidate{RelayInvalidate: &pb.RelayInvalidate{Workspace: ws.BaseDomain, Removed: removed}}})
+	}
 }
 
 // Changed records that something in a workspace changed: relays drop their
@@ -402,10 +404,6 @@ func (c *Coordinator) buildWelcome(ctx context.Context, ws store.Workspace, n st
 	if err != nil {
 		return nil, err
 	}
-	relay, err := c.st.GetRelay(ctx, ws.Relay)
-	if err != nil {
-		return nil, err
-	}
 	keyOf := map[string][]byte{}
 	dir := &pb.Directory{Version: ws.DirectoryVersion, WorkspaceIdentity: ws.PublicKey}
 	for _, m := range nodes {
@@ -420,9 +418,8 @@ func (c *Coordinator) buildWelcome(ctx context.Context, ws store.Workspace, n st
 		dir.Groups = append(dir.Groups, pg)
 	}
 	w := &pb.Welcome{
-		Directory:     dir,
-		Self:          &pb.Self{Identity: n.PublicKey, Name: n.Name, Workspace: ws.BaseDomain, RoleCaps: pbRoles(n.RoleCaps)},
-		AssignedRelay: relay.PublicKey,
+		Directory: dir,
+		Self:      &pb.Self{Identity: n.PublicKey, Name: n.Name, Workspace: ws.BaseDomain, RoleCaps: pbRoles(n.RoleCaps)},
 	}
 	ready := c.certReady(ctx, ws)
 	for _, sv := range svcs {
@@ -448,8 +445,12 @@ func (c *Coordinator) buildWelcome(ctx context.Context, ws store.Workspace, n st
 		}
 	}
 	w.Memberships = c.memberships(ctx, ws, n, groups)
-	if rc, err := c.relayCert(ws, relay); err == nil {
-		w.Relays = []*pb.RelayCert{rc}
+	if relays, err := c.st.ListRelays(ctx); err == nil {
+		for _, relay := range relays {
+			if rc, err := c.relayCert(ws, relay); err == nil {
+				w.Relays = append(w.Relays, rc)
+			}
+		}
 	}
 	return w, nil
 }
@@ -498,6 +499,44 @@ func (c *Coordinator) unregisterRelay(rc *relayConn) {
 	}
 }
 
+// errNoRelay means no relay is registered yet.
+var errNoRelay = errors.New("no relay is registered; start an agentrelay and let it register first")
+
+// pickRelay chooses the relay of a new workspace (design 5.9): among the
+// connected relays, or among all registered ones when none is connected, the
+// one serving the fewest workspaces; the name breaks ties.
+func (c *Coordinator) pickRelay(ctx context.Context) (string, error) {
+	relays, err := c.st.ListRelays(ctx) // ordered by name
+	if err != nil {
+		return "", err
+	}
+	if len(relays) == 0 {
+		return "", errNoRelay
+	}
+	load, err := c.st.RelayLoads(ctx)
+	if err != nil {
+		return "", err
+	}
+	c.mu.Lock()
+	connected := make(map[string]bool, len(c.relays))
+	for name := range c.relays {
+		connected[name] = true
+	}
+	c.mu.Unlock()
+	best := relays[0].Name
+	for _, r := range relays[1:] {
+		switch {
+		case connected[r.Name] != connected[best]:
+			if connected[r.Name] {
+				best = r.Name
+			}
+		case load[r.Name] < load[best]:
+			best = r.Name
+		}
+	}
+	return best, nil
+}
+
 // pushRelayState sends a relay its certificates for every assigned workspace.
 func (c *Coordinator) pushRelayState(ctx context.Context, relayName string) {
 	c.mu.Lock()
@@ -510,7 +549,7 @@ func (c *Coordinator) pushRelayState(ctx context.Context, relayName string) {
 	if err != nil {
 		return
 	}
-	wss, err := c.st.WorkspacesOfRelay(ctx, relayName)
+	wss, err := c.st.ListWorkspaces(ctx)
 	if err != nil {
 		return
 	}
@@ -545,11 +584,14 @@ func (c *Coordinator) pushCertsForWorkspace(ctx context.Context, wsName string) 
 	if err != nil {
 		return
 	}
-	c.mu.Lock()
-	rc := c.relays[ws.Relay]
-	c.mu.Unlock()
-	if rc != nil {
-		if wc := c.workspaceCert(ctx, ws); wc != nil {
+	if wc := c.workspaceCert(ctx, ws); wc != nil {
+		c.mu.Lock()
+		conns := make([]*relayConn, 0, len(c.relays))
+		for _, rc := range c.relays {
+			conns = append(conns, rc)
+		}
+		c.mu.Unlock()
+		for _, rc := range conns {
 			_ = rc.send(&pb.ControlMessage{Msg: &pb.ControlMessage_WorkspaceCerts{WorkspaceCerts: &pb.WorkspaceCerts{Certs: []*pb.WorkspaceCert{wc}}}})
 		}
 	}
@@ -560,7 +602,7 @@ func (c *Coordinator) pushCertsForWorkspace(ctx context.Context, wsName string) 
 func (c *Coordinator) handlePresence(ctx context.Context, relay string, p *pb.RelayPresence) {
 	for _, k := range p.Online {
 		n, ws, err := c.st.GetNodeByKey(ctx, k)
-		if err != nil || ws.Relay != relay {
+		if err != nil {
 			continue
 		}
 		c.mu.Lock()

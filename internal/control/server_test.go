@@ -56,7 +56,7 @@ tls: { mode: selfsigned, names: ["127.0.0.1"] }
 	done := make(chan struct{})
 	go func() { srv.Run(ctx); close(done) }()
 	t.Cleanup(func() { cancel(); <-done })
-	cl, err := adminapi.NewClientWithResponses("http://"+srv.AdminAddr().String()+"/api/v1", adminapi.WithRequestEditorFn(func(ctx context.Context, r *http.Request) error {
+	cl, err := adminapi.NewClientWithResponses("http://"+srv.AdminAddr().String()+"/api/v1/admin", adminapi.WithRequestEditorFn(func(ctx context.Context, r *http.Request) error {
 		r.Header.Set("Authorization", "Bearer "+testAdminToken)
 		return nil
 	}))
@@ -71,7 +71,7 @@ func TestServerAdminAndWellKnown(t *testing.T) {
 	ctx := context.Background()
 
 	// Without the token the API refuses.
-	resp, err := http.Get("http://" + srv.AdminAddr().String() + "/api/v1/workspaces")
+	resp, err := http.Get("http://" + srv.AdminAddr().String() + "/api/v1/admin/workspaces")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestServerAdminAndWellKnown(t *testing.T) {
 	if err != nil || r.JSON201 == nil {
 		t.Fatalf("register relay: %v %s", err, r.Body)
 	}
-	w, err := cl.CreateWorkspaceWithResponse(ctx, adminapi.WorkspaceCreate{Name: "home", Relay: "relay-hk"})
+	w, err := cl.CreateWorkspaceWithResponse(ctx, adminapi.WorkspaceCreate{Name: "home"})
 	if err != nil || w.JSON201 == nil {
 		t.Fatalf("create workspace: %v %s", err, w.Body)
 	}
@@ -97,11 +97,10 @@ func TestServerAdminAndWellKnown(t *testing.T) {
 	if err != nil || tk.JSON201 == nil {
 		t.Fatalf("create token: %v %s", err, tk.Body)
 	}
-	link, err := identity.ParseJoinLink(tk.JSON201.JoinLink)
-	if err != nil || link.RelayURL != "https://relay-hk.agentsrv.test" || link.Name != "laptop" {
-		t.Fatalf("join link %q: %v %+v", tk.JSON201.JoinLink, err, link)
+	if tk.JSON201.JoinLink == "" {
+		t.Fatalf("join token response has no token/link: %s", tk.Body)
 	}
-	if bad, _ := cl.CreateWorkspaceWithResponse(ctx, adminapi.WorkspaceCreate{Name: "Bad_Name", Relay: "relay-hk"}); bad.StatusCode() != http.StatusBadRequest {
+	if bad, _ := cl.CreateWorkspaceWithResponse(ctx, adminapi.WorkspaceCreate{Name: "Bad_Name"}); bad.StatusCode() != http.StatusBadRequest {
 		t.Fatalf("bad workspace name: %d %s", bad.StatusCode(), bad.Body)
 	}
 
@@ -117,6 +116,51 @@ func TestServerAdminAndWellKnown(t *testing.T) {
 	json.NewDecoder(resp.Body).Decode(&wk)
 	if wk.Identity != identity.EncodeKey(srv.PublicKey()) {
 		t.Fatalf("well-known identity %q", wk.Identity)
+	}
+}
+
+func TestInstanceAndWorkspaceRBACResources(t *testing.T) {
+	_, cl := startServer(t)
+	ctx := context.Background()
+
+	inst, err := cl.GetInstanceWithResponse(ctx)
+	if err != nil || inst.JSON200 == nil || len(inst.JSON200.Domains) != 1 || inst.JSON200.Domains[0].Name != "agentsrv.test" {
+		t.Fatalf("get instance: %v %s", err, inst.Body)
+	}
+	if inst.JSON200.Rbac == nil || len(inst.JSON200.Rbac.WorkspaceRoles) != 3 {
+		t.Fatalf("rbac vocabulary missing: %+v", inst.JSON200.Rbac)
+	}
+	key, _ := identity.GenerateKey()
+	if r, err := cl.RegisterRelayWithResponse(ctx, adminapi.RelayCreate{Name: "relay", PublicKey: identity.EncodeKey(identity.Public(key)), Url: "https://relay.control.test"}); err != nil || r.JSON201 == nil {
+		t.Fatalf("register relay: %v %s", err, r.Body)
+	}
+	if r, err := cl.CreateWorkspaceWithResponse(ctx, adminapi.WorkspaceCreate{Name: "home"}); err != nil || r.JSON201 == nil || r.JSON201.BaseDomain != "home.agentsrv.test" {
+		t.Fatalf("create workspace: %v %s", err, r.Body)
+	}
+
+	add := func(subject string, role adminapi.WorkspaceRole) *adminapi.UpsertWorkspaceMemberResponse {
+		t.Helper()
+		r, err := cl.UpsertWorkspaceMemberWithResponse(ctx, "home", adminapi.WorkspaceMemberWrite{Subject: subject, Role: role})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	if r := add("oidc|alice", adminapi.Owner); r.JSON200 == nil || r.JSON200.Role != adminapi.Owner {
+		t.Fatalf("add owner: %s", r.Body)
+	}
+	if r := add("oidc|bob", adminapi.Maintainer); r.JSON200 == nil || r.JSON200.Role != adminapi.Maintainer {
+		t.Fatalf("add maintainer: %s", r.Body)
+	}
+	if r := add("oidc|alice", adminapi.Member); r.StatusCode() != http.StatusConflict || r.JSON409 == nil {
+		t.Fatalf("demote last owner: %d %s", r.StatusCode(), r.Body)
+	}
+	list, err := cl.ListWorkspaceMembersWithResponse(ctx, "home")
+	if err != nil || list.JSON200 == nil || len(*list.JSON200) != 2 {
+		t.Fatalf("list members: %v %s", err, list.Body)
+	}
+	if r, err := cl.RemoveWorkspaceMemberWithResponse(ctx, "home", "oidc|alice"); err != nil || r.StatusCode() != http.StatusConflict {
+		t.Fatalf("remove last owner: %v %s", err, r.Body)
 	}
 }
 
@@ -169,9 +213,23 @@ dns_providers:
 	}
 }
 
-// A workspace's certificate comes from the provider whose zone holds its
-// base domain; the API reports which one.
-func TestWorkspaceDNSProviderFollowsTheDomain(t *testing.T) {
+// Workspace creation does not pin a relay; agentd selects from the relay pool during join.
+func TestCreateWorkspaceDoesNotPinRelay(t *testing.T) {
+	_, cl := startServer(t)
+	ctx := context.Background()
+	r, err := cl.CreateWorkspaceWithResponse(ctx, adminapi.WorkspaceCreate{Name: "home"})
+	if err != nil || r.JSON201 == nil {
+		t.Fatalf("create workspace without relays: %v %s", err, r.Body)
+	}
+	if r.JSON201.Relay != "" {
+		t.Fatalf("workspace unexpectedly pinned relay %q", r.JSON201.Relay)
+	}
+}
+
+// A workspace's certificate comes from the provider whose zone holds its base
+// domain (instance configuration, not a workspace setting); the certificate
+// names it.
+func TestWorkspaceCertificateIssuerFollowsTheDomain(t *testing.T) {
 	_, cl := startServer(t, "dns_providers: {lab: {provider: selfsigned, zones: [lab.test]}}")
 	ctx := context.Background()
 	relayKey, _ := identity.GenerateKey()
@@ -182,24 +240,35 @@ func TestWorkspaceDNSProviderFollowsTheDomain(t *testing.T) {
 		{"home", "", "selfsigned"},
 		{"lab", "lab.lab.test", "lab"},
 	} {
-		body := adminapi.WorkspaceCreate{Name: tc.name, Relay: "relay-1"}
+		body := adminapi.WorkspaceCreate{Name: tc.name}
 		if tc.base != "" {
 			body.BaseDomain = &tc.base
 		}
-		w, err := cl.CreateWorkspaceWithResponse(ctx, body)
-		if err != nil || w.JSON201 == nil {
+		if w, err := cl.CreateWorkspaceWithResponse(ctx, body); err != nil || w.JSON201 == nil {
 			t.Fatalf("create %s: %v %s", tc.name, err, w.Body)
 		}
-		if w.JSON201.DnsProvider == nil || *w.JSON201.DnsProvider != tc.want {
-			t.Fatalf("%s: dns provider %v, want %s", tc.name, w.JSON201.DnsProvider, tc.want)
-		}
-		g, err := cl.GetWorkspaceWithResponse(ctx, tc.name)
-		if err != nil || g.JSON200 == nil || g.JSON200.DnsProvider == nil || *g.JSON200.DnsProvider != tc.want {
-			t.Fatalf("get %s: %v %s", tc.name, err, g.Body)
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			g, err := cl.GetWorkspaceWithResponse(ctx, tc.name)
+			if err != nil || g.JSON200 == nil {
+				t.Fatalf("get %s: %v", tc.name, err)
+			}
+			if c := g.JSON200.Cert; c != nil && c.State == adminapi.CertStateReady {
+				if c.Issuer == nil || *c.Issuer != tc.want {
+					t.Fatalf("%s: certificate issuer %v, want %s", tc.name, c.Issuer, tc.want)
+				}
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s: certificate not issued: %+v", tc.name, g.JSON200.Cert)
+			}
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 }
 
+// PATCH /workspaces/{ws} only reassigns the relay; a body without a change
+// leaves the workspace alone.
 func TestDNSProviderIssuers(t *testing.T) {
 	cfg, err := ParseServerConfig([]byte(`apiVersion: agentd/v1
 kind: AgentserverConfiguration

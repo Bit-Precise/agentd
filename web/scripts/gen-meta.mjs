@@ -86,7 +86,7 @@ const listShape = (s) => {
   }
   return undefined;
 };
-const onlyWs = (o) => o.pathParams.every((p) => p === "ws");
+const onlyWs = (o) => o.pathParams.every((p) => p === "ws" || p === "workspaceId");
 const tagInfo = Object.fromEntries((spec.tags || []).map((t) => [t.name, t.description || t.name]));
 
 const resources = [];
@@ -96,7 +96,7 @@ for (const op of ops) {
   const shape = listShape(op.response);
   if (!shape) continue;
   const c = op.path;
-  const scope = op.pathParams.includes("ws") ? "workspace" : "global";
+  const scope = op.pathParams.some((p) => p === "ws" || p === "workspaceId") ? "workspace" : "global";
   const itemPathRe = new RegExp("^" + c.replace(/[{}]/g, "\\$&") + "/\\{([^}/]+)\\}$");
   const itemOps = ops.filter((o) => itemPathRe.test(o.path));
   const itemPath = itemOps[0]?.path;
@@ -104,7 +104,7 @@ for (const op of ops) {
   const props = shape.item.properties || {};
   const idField = "id" in props ? "id" : "name";
   const r = {
-    key: (op.path.replace("/workspaces/{ws}", "").split("/").filter(Boolean).join("-") || "workspaces"),
+    key: (op.path.replace(/^\/workspaces\/\{(?:ws|workspaceId)\}/, "").split("/").filter(Boolean).join("-") || "workspaces"),
     tag: op.tag,
     title: tagInfo[op.tag] || op.tag,
     scope,

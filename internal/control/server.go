@@ -70,6 +70,19 @@ func NewServer(ctx context.Context, cfg *ServerConfig, o ServerOptions) (*Server
 		}
 		s.ownStore = true
 	}
+	// Persist the instance-scoped domain so it can be managed by the instance
+	// admin API. The file remains the bootstrap source on first start; after
+	// that, the database value is authoritative for workspace defaults.
+	settings, settingsErr := s.Store.GetInstanceSettings(ctx)
+	if errors.Is(settingsErr, store.ErrNotFound) {
+		if err := s.Store.SetInstanceSettings(ctx, store.InstanceSettings{Domain: cfg.Domain}); err != nil {
+			return nil, err
+		}
+	} else if settingsErr != nil {
+		return nil, settingsErr
+	} else if settings.Domain != "" {
+		cfg.Domain = settings.Domain
+	}
 	ok := false
 	defer func() {
 		if !ok {
@@ -214,7 +227,7 @@ func (s *Server) Run(ctx context.Context) error {
 	defer s.Close()
 	errLog := log.New(&slogWriter{s.log}, "", 0)
 	relaySrv := &http.Server{Handler: s.Coordinator.RelayHandler(s.Config.Transports), TLSConfig: s.TLS.TLSConfig(nil), ReadHeaderTimeout: 10 * time.Second, ErrorLog: errLog}
-	admin := &Admin{C: s.Coordinator, Domain: s.Config.Domain}
+	admin := &Admin{C: s.Coordinator, Config: s.Config, Domain: s.Config.Domain}
 	adminSrv := &http.Server{Handler: admin.Handler(s.token, s.ui), ReadHeaderTimeout: 10 * time.Second, ErrorLog: errLog}
 
 	go s.Coordinator.RenewLoop(ctx)

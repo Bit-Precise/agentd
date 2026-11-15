@@ -8,6 +8,9 @@ import type { Operation, Resource, Schema } from "../api/meta";
 import { emptyValue, prune, SchemaForm } from "./SchemaForm";
 import { Cell, columns, Detail } from "./format";
 import { Modal } from "./Modal";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 // fit keeps only the parts of v that schema s describes (prefilling write
 // bodies from read objects).
@@ -23,6 +26,20 @@ function fit(s: Schema | undefined, v: unknown): unknown {
     return o;
   }
   return v;
+}
+
+// A few older agentserver responses used human-readable aliases (name,
+// subject) before every resource received an explicit UUID. Keeping the
+// display fallback here lets the generated console remain useful while a
+// mixed-version control plane is being upgraded.
+function displayValue(row: Record<string, unknown>, key: string): unknown {
+  if (row[key] !== undefined) return row[key];
+  if (key === "id") return row.name ?? row.subject ?? row.workspace ?? row.token;
+  if (key === "domain") return row.name;
+  if (key === "email") return row.subject;
+  if (key === "name") return row.subject;
+  if (key === "node_id") return row.node;
+  return undefined;
 }
 
 function verb(op: Operation): string {
@@ -47,7 +64,12 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [result, setResult] = useState<{ title: string; value: unknown } | null>(null);
   const ops = meta.operations;
-  const baseParams = useMemo((): Record<string, string> => (r.scope === "workspace" ? { ws } : {}), [r.scope, ws]);
+  const baseParams = useMemo((): Record<string, string> => {
+    if (r.scope !== "workspace") return {};
+    const names = ops[r.list]?.pathParams || [];
+    const key = names.includes("workspaceId") ? "workspaceId" : names.includes("ws") ? "ws" : names[0];
+    return key ? { [key]: ws } : {};
+  }, [ops, r.list, r.scope, ws]);
 
   const load = useCallback(async () => {
     if (r.scope === "workspace" && !ws) return;
@@ -78,7 +100,7 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
     return Object.entries(data as Record<string, unknown>).filter(([k]) => k !== r.listField);
   }, [data, r.listField]);
 
-  const itemPath = (row: Record<string, unknown>) => (r.idParam ? { ...baseParams, [r.idParam]: String(row[r.idField]) } : baseParams);
+  const itemPath = (row: Record<string, unknown>) => (r.idParam ? { ...baseParams, [r.idParam]: String(displayValue(row, r.idField)) } : baseParams);
 
   const open = (opId: string, path: Record<string, string>, body: unknown, after?: (x: unknown) => void, title?: string) => {
     const op = ops[opId];
@@ -105,14 +127,14 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
           <p className="muted">{r.title}</p>
         </div>
         <div className="actions">
-          <button className="secondary" onClick={load} disabled={loading}>{loading ? "loading…" : "refresh"}</button>
+          <Button variant="secondary" onClick={load} disabled={loading}>{loading ? "loading…" : "refresh"}</Button>
           {r.collectionActions.map((id) => (
-            <button key={id} className="secondary" onClick={() => open(id, baseParams, undefined)}>{verb(ops[id])}</button>
+            <Button key={id} variant="secondary" onClick={() => open(id, baseParams, undefined)}>{verb(ops[id])}</Button>
           ))}
           {r.replace && (
-            <button className="secondary" onClick={() => open(r.replace!, baseParams, fit(ops[r.replace!].body, data), undefined, "edit all")}>edit all</button>
+            <Button variant="secondary" onClick={() => open(r.replace!, baseParams, fit(ops[r.replace!].body, data), undefined, "edit all")}>edit all</Button>
           )}
-          {r.create && <button onClick={() => open(r.create!, baseParams, undefined, undefined, "create")}>+ new</button>}
+          {r.create && <Button onClick={() => open(r.create!, baseParams, undefined, undefined, "create")}>+ new</Button>}
         </div>
       </header>
       {r.scope === "workspace" && !ws && <div className="notice">Choose or create a workspace first.</div>}
@@ -125,38 +147,38 @@ export function ResourceView({ r, ws, onChanged }: { r: Resource; ws: string; on
         </div>
       )}
       <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>{cols.map((c) => <th key={c}>{c.replace(/_/g, " ")}</th>)}<th /></tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>{cols.map((c) => <TableHead key={c}>{c.replace(/_/g, " ")}</TableHead>)}<TableHead /></TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((row, i) => (
-              <tr key={String(row[r.idField] ?? i)} onClick={() => setSelected(row)} className={selected === row ? "sel" : ""}>
-                {cols.map((c) => <td key={c}><Cell value={row[c]} /></td>)}
-                <td className="row-actions">
+              <TableRow key={String(displayValue(row, r.idField) ?? i)} onClick={() => setSelected(row)} className={selected === row ? "sel" : ""}>
+                {cols.map((c) => <TableCell key={c}><Cell value={displayValue(row, c)} /></TableCell>)}
+                <TableCell className="row-actions">
                   {r.remove && (
-                    <button className="link danger" onClick={(e) => { e.stopPropagation(); open(r.remove!, itemPath(row), undefined, undefined, `${verb(ops[r.remove!])}: ${row[r.idField]}`); }}>delete</button>
+                    <Button variant="link" className="danger" onClick={(e) => { e.stopPropagation(); open(r.remove!, itemPath(row), undefined, undefined, `${verb(ops[r.remove!])}: ${displayValue(row, r.idField)}`); }}>delete</Button>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {!rows.length && !loading && (
-              <tr><td colSpan={cols.length + 1} className="muted center">nothing here yet</td></tr>
+              <TableRow><TableCell colSpan={cols.length + 1} className="muted center">nothing here yet</TableCell></TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {selected && (
         <aside className="detail">
           <header>
-            <h2>{String(selected[r.idField] ?? "")}</h2>
-            <button className="link" onClick={() => setSelected(null)}>✕</button>
+            <h2>{String(displayValue(selected, r.idField) ?? "")}</h2>
+            <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>✕</Button>
           </header>
           <div className="actions">
-            {r.update && <button className="secondary" onClick={() => open(r.update!, itemPath(selected), fit(ops[r.update!].body, selected), undefined, "edit")}>edit</button>}
+            {r.update && <Button variant="secondary" onClick={() => open(r.update!, itemPath(selected), fit(ops[r.update!].body, selected), undefined, "edit")}>edit</Button>}
             {r.itemActions.map((id) => (
-              <button key={id} className="secondary" onClick={() => open(id, itemPath(selected), undefined)}>{verb(ops[id])}</button>
+              <Button key={id} variant="secondary" onClick={() => open(id, itemPath(selected), undefined)}>{verb(ops[id])}</Button>
             ))}
           </div>
           <Detail value={selected} />
@@ -201,20 +223,20 @@ function OpDialog({ d, setD, onDone }: { d: DialogState; setD: (d: DialogState |
         {missing.map((p) => (
           <label key={p} className="field">
             <span className="field-name">{p}<span className="req">*</span></span>
-            <input value={extraPath[p]} onChange={(e) => setExtraPath({ ...extraPath, [p]: e.target.value })} required />
+            <Input value={extraPath[p]} onChange={(e) => setExtraPath({ ...extraPath, [p]: e.target.value })} required />
           </label>
         ))}
         {d.op.query.map((q) => (
           q.schema.type === "boolean" ? (
             <label key={q.name} className="field check">
-              <input type="checkbox" checked={!!d.query[q.name]} onChange={(e) => setD({ ...d, query: { ...d.query, [q.name]: e.target.checked } })} />
+              <Input type="checkbox" checked={!!d.query[q.name]} onChange={(e) => setD({ ...d, query: { ...d.query, [q.name]: e.target.checked } })} />
               <span className="field-name">{q.name}</span>
               {q.description && <div className="help">{q.description}</div>}
             </label>
           ) : (
             <label key={q.name} className="field">
               <span className="field-name">{q.name}</span>
-              <input value={String(d.query[q.name] ?? "")} onChange={(e) => setD({ ...d, query: { ...d.query, [q.name]: e.target.value } })} />
+            <Input value={String(d.query[q.name] ?? "")} onChange={(e) => setD({ ...d, query: { ...d.query, [q.name]: e.target.value } })} />
             </label>
           )
         ))}
@@ -222,8 +244,8 @@ function OpDialog({ d, setD, onDone }: { d: DialogState; setD: (d: DialogState |
         {destructive && <p className="warn">This cannot be undone.</p>}
         {error && <div className="error">{error}</div>}
         <div className="form-actions">
-          <button type="button" className="secondary" onClick={() => setD(null)}>cancel</button>
-          <button type="submit" className={destructive ? "danger" : ""} disabled={busy}>{busy ? "…" : destructive ? "delete" : "submit"}</button>
+          <Button type="button" variant="secondary" onClick={() => setD(null)}>cancel</Button>
+          <Button type="submit" variant={destructive ? "destructive" : "default"} disabled={busy}>{busy ? "…" : destructive ? "delete" : "submit"}</Button>
         </div>
       </form>
     </Modal>

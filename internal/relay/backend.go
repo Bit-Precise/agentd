@@ -113,7 +113,7 @@ func (b *Backend) Run(ctx context.Context) {
 		}
 		var he *session.HelloError
 		if errors.As(err, &he) && (he.Hello.Status == pb.Status_TOKEN_INVALID || he.Hello.Status == pb.Status_NOT_A_MEMBER) {
-			b.Log.Error("agentserver rejected this relay; register its key (agentserver relay add) or set a relay join token", "status", he.Hello.Status, "message", he.Hello.Message)
+			b.Log.Error("agentserver rejected this relay; register its public key (admin API POST /relays, or the console) or give it a relay join token", "status", he.Hello.Status, "message", he.Hello.Message)
 		} else {
 			b.Log.Warn("control session down", "err", err)
 		}

@@ -17,7 +17,7 @@ import (
 const usage = `agentrelay — agentd data plane
 
   agentrelay run [-c config.yaml]        serve node sessions, forwarding and the edge
-  agentrelay key show [-c config.yaml]   print the relay public key (for agentserver relay add)
+  agentrelay key show [-c config.yaml]   print the relay public key (to register the relay with agentserver)
   agentrelay version
 `
 

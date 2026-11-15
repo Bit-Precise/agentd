@@ -259,8 +259,8 @@ func (s *Store) SetCA(ctx context.Context, certPEM, keyPEM []byte) error {
 }
 
 // backupTables lists the tables exported by Backup, parents first.
-var backupTables = []string{"schema_migrations", "server_state", "ca", "relays", "relay_tokens", "workspaces", "join_tokens", "nodes",
-	"groups", "group_members", "routes", "policies", "services", "certs", "revocations", "acme_accounts", "autocert_cache"}
+var backupTables = []string{"schema_migrations", "server_state", "ca", "instance_settings", "users", "user_identities", "relays", "relay_tokens", "workspaces", "workspace_members", "join_tokens", "nodes",
+	"groups", "group_members", "routes", "policies", "services", "certs", "revocations", "acme_accounts", "autocert_cache", "audit_events"}
 
 // Backup writes every table as JSON lines {"table":…,"row":…}. Private keys
 // stay sealed by the state key, so the export is only as sensitive as that.

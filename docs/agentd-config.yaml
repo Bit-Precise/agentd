@@ -28,7 +28,7 @@
 # 本机环境类字段（端口、workdir、target 等）永远是本地的，不属于策略。
 
 apiVersion: agentd/v1              # [必填] 配置格式版本，k8s 风格的 <group>/<version>；不认识的值拒绝启动
-kind: AgentdConfiguration          # [必填] 本文件的种类。另外三种：AgentserverConfiguration、AgentrelayConfiguration、Workspace（设计文档 9.1）
+kind: AgentdConfiguration          # [必填] 本文件的种类。另外两种：AgentserverConfiguration、AgentrelayConfiguration（设计文档 9.1）
 
 # ---------------------------------------------------------------------------
 # 1. metadata：本实例是谁（k8s 风格，name 就是实例名）

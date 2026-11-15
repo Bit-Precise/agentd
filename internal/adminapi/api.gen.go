@@ -22,26 +22,420 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for CertState.
+// Defines values for Audience.
 const (
-	CertStateFailed   CertState = "failed"
-	CertStatePending  CertState = "pending"
-	CertStateReady    CertState = "ready"
-	CertStateRenewing CertState = "renewing"
+	AudienceAgentd  Audience = "agentd"
+	AudienceRelay   Audience = "relay"
+	AudienceWebUser Audience = "web_user"
 )
 
-// Valid indicates whether the value is a known member of the CertState enum.
-func (e CertState) Valid() bool {
+// Valid indicates whether the value is a known member of the Audience enum.
+func (e Audience) Valid() bool {
 	switch e {
-	case CertStateFailed:
+	case AudienceAgentd:
 		return true
-	case CertStatePending:
+	case AudienceRelay:
 		return true
-	case CertStateReady:
+	case AudienceWebUser:
 		return true
-	case CertStateRenewing:
+	default:
+		return false
+	}
+}
+
+// Defines values for AuditActorKind.
+const (
+	AuditActorKindAgentd        AuditActorKind = "agentd"
+	AuditActorKindInstanceAdmin AuditActorKind = "instance_admin"
+	AuditActorKindRelay         AuditActorKind = "relay"
+	AuditActorKindSystem        AuditActorKind = "system"
+	AuditActorKindUser          AuditActorKind = "user"
+)
+
+// Valid indicates whether the value is a known member of the AuditActorKind enum.
+func (e AuditActorKind) Valid() bool {
+	switch e {
+	case AuditActorKindAgentd:
+		return true
+	case AuditActorKindInstanceAdmin:
+		return true
+	case AuditActorKindRelay:
+		return true
+	case AuditActorKindSystem:
+		return true
+	case AuditActorKindUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuditOutcome.
+const (
+	Failure AuditOutcome = "failure"
+	Success AuditOutcome = "success"
+)
+
+// Valid indicates whether the value is a known member of the AuditOutcome enum.
+func (e AuditOutcome) Valid() bool {
+	switch e {
+	case Failure:
+		return true
+	case Success:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuthProviderKind.
+const (
+	AuthProviderKindOidc AuthProviderKind = "oidc"
+)
+
+// Valid indicates whether the value is a known member of the AuthProviderKind enum.
+func (e AuthProviderKind) Valid() bool {
+	switch e {
+	case AuthProviderKindOidc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuthProviderStatus.
+const (
+	AuthProviderStatusActive   AuthProviderStatus = "active"
+	AuthProviderStatusDeleted  AuthProviderStatus = "deleted"
+	AuthProviderStatusDisabled AuthProviderStatus = "disabled"
+	AuthProviderStatusFailed   AuthProviderStatus = "failed"
+	AuthProviderStatusPending  AuthProviderStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the AuthProviderStatus enum.
+func (e AuthProviderStatus) Valid() bool {
+	switch e {
+	case AuthProviderStatusActive:
+		return true
+	case AuthProviderStatusDeleted:
+		return true
+	case AuthProviderStatusDisabled:
+		return true
+	case AuthProviderStatusFailed:
+		return true
+	case AuthProviderStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuthProviderWriteKind.
+const (
+	AuthProviderWriteKindOidc AuthProviderWriteKind = "oidc"
+)
+
+// Valid indicates whether the value is a known member of the AuthProviderWriteKind enum.
+func (e AuthProviderWriteKind) Valid() bool {
+	switch e {
+	case AuthProviderWriteKindOidc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CertificateIssuerKind.
+const (
+	CertificateIssuerKindGoogleTrustServices CertificateIssuerKind = "google_trust_services"
+	CertificateIssuerKindLetsEncrypt         CertificateIssuerKind = "lets_encrypt"
+)
+
+// Valid indicates whether the value is a known member of the CertificateIssuerKind enum.
+func (e CertificateIssuerKind) Valid() bool {
+	switch e {
+	case CertificateIssuerKindGoogleTrustServices:
+		return true
+	case CertificateIssuerKindLetsEncrypt:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CertificateIssuerStatus.
+const (
+	CertificateIssuerStatusActive   CertificateIssuerStatus = "active"
+	CertificateIssuerStatusDeleted  CertificateIssuerStatus = "deleted"
+	CertificateIssuerStatusDisabled CertificateIssuerStatus = "disabled"
+	CertificateIssuerStatusFailed   CertificateIssuerStatus = "failed"
+	CertificateIssuerStatusPending  CertificateIssuerStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the CertificateIssuerStatus enum.
+func (e CertificateIssuerStatus) Valid() bool {
+	switch e {
+	case CertificateIssuerStatusActive:
+		return true
+	case CertificateIssuerStatusDeleted:
+		return true
+	case CertificateIssuerStatusDisabled:
+		return true
+	case CertificateIssuerStatusFailed:
+		return true
+	case CertificateIssuerStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CertificateIssuerWriteKind.
+const (
+	CertificateIssuerWriteKindGoogleTrustServices CertificateIssuerWriteKind = "google_trust_services"
+	CertificateIssuerWriteKindLetsEncrypt         CertificateIssuerWriteKind = "lets_encrypt"
+)
+
+// Valid indicates whether the value is a known member of the CertificateIssuerWriteKind enum.
+func (e CertificateIssuerWriteKind) Valid() bool {
+	switch e {
+	case CertificateIssuerWriteKindGoogleTrustServices:
+		return true
+	case CertificateIssuerWriteKindLetsEncrypt:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CertificateKind.
+const (
+	CertificateKindAgentserver       CertificateKind = "agentserver"
+	CertificateKindRelay             CertificateKind = "relay"
+	CertificateKindWorkspaceWildcard CertificateKind = "workspace_wildcard"
+)
+
+// Valid indicates whether the value is a known member of the CertificateKind enum.
+func (e CertificateKind) Valid() bool {
+	switch e {
+	case CertificateKindAgentserver:
+		return true
+	case CertificateKindRelay:
+		return true
+	case CertificateKindWorkspaceWildcard:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CertificateState.
+const (
+	CertificateStateDeleted  CertificateState = "deleted"
+	CertificateStateExpired  CertificateState = "expired"
+	CertificateStateFailed   CertificateState = "failed"
+	CertificateStatePending  CertificateState = "pending"
+	CertificateStateReady    CertificateState = "ready"
+	CertificateStateRenewing CertificateState = "renewing"
+	CertificateStateRevoked  CertificateState = "revoked"
+)
+
+// Valid indicates whether the value is a known member of the CertificateState enum.
+func (e CertificateState) Valid() bool {
+	switch e {
+	case CertificateStateDeleted:
+		return true
+	case CertificateStateExpired:
+		return true
+	case CertificateStateFailed:
+		return true
+	case CertificateStatePending:
+		return true
+	case CertificateStateReady:
+		return true
+	case CertificateStateRenewing:
+		return true
+	case CertificateStateRevoked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DNSProviderKind.
+const (
+	DNSProviderKindCloudflare DNSProviderKind = "cloudflare"
+	DNSProviderKindDnspod     DNSProviderKind = "dnspod"
+)
+
+// Valid indicates whether the value is a known member of the DNSProviderKind enum.
+func (e DNSProviderKind) Valid() bool {
+	switch e {
+	case DNSProviderKindCloudflare:
+		return true
+	case DNSProviderKindDnspod:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DNSProviderStatus.
+const (
+	DNSProviderStatusActive   DNSProviderStatus = "active"
+	DNSProviderStatusDeleted  DNSProviderStatus = "deleted"
+	DNSProviderStatusDisabled DNSProviderStatus = "disabled"
+	DNSProviderStatusFailed   DNSProviderStatus = "failed"
+	DNSProviderStatusPending  DNSProviderStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the DNSProviderStatus enum.
+func (e DNSProviderStatus) Valid() bool {
+	switch e {
+	case DNSProviderStatusActive:
+		return true
+	case DNSProviderStatusDeleted:
+		return true
+	case DNSProviderStatusDisabled:
+		return true
+	case DNSProviderStatusFailed:
+		return true
+	case DNSProviderStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DNSProviderWriteKind.
+const (
+	DNSProviderWriteKindCloudflare DNSProviderWriteKind = "cloudflare"
+	DNSProviderWriteKindDnspod     DNSProviderWriteKind = "dnspod"
+)
+
+// Valid indicates whether the value is a known member of the DNSProviderWriteKind enum.
+func (e DNSProviderWriteKind) Valid() bool {
+	switch e {
+	case DNSProviderWriteKindCloudflare:
+		return true
+	case DNSProviderWriteKindDnspod:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DomainStatus.
+const (
+	DomainStatusActive   DomainStatus = "active"
+	DomainStatusDeleted  DomainStatus = "deleted"
+	DomainStatusDisabled DomainStatus = "disabled"
+	DomainStatusFailed   DomainStatus = "failed"
+	DomainStatusPending  DomainStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the DomainStatus enum.
+func (e DomainStatus) Valid() bool {
+	switch e {
+	case DomainStatusActive:
+		return true
+	case DomainStatusDeleted:
+		return true
+	case DomainStatusDisabled:
+		return true
+	case DomainStatusFailed:
+		return true
+	case DomainStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GroupStatus.
+const (
+	GroupStatusActive   GroupStatus = "active"
+	GroupStatusDeleted  GroupStatus = "deleted"
+	GroupStatusDisabled GroupStatus = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the GroupStatus enum.
+func (e GroupStatus) Valid() bool {
+	switch e {
+	case GroupStatusActive:
+		return true
+	case GroupStatusDeleted:
+		return true
+	case GroupStatusDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for InstanceRole.
+const (
+	InstanceRoleInstanceAdmin InstanceRole = "instance_admin"
+)
+
+// Valid indicates whether the value is a known member of the InstanceRole enum.
+func (e InstanceRole) Valid() bool {
+	switch e {
+	case InstanceRoleInstanceAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IssuerAccountStatus.
+const (
+	IssuerAccountStatusCreating   IssuerAccountStatus = "creating"
+	IssuerAccountStatusFailed     IssuerAccountStatus = "failed"
+	IssuerAccountStatusNotCreated IssuerAccountStatus = "not_created"
+	IssuerAccountStatusReady      IssuerAccountStatus = "ready"
+)
+
+// Valid indicates whether the value is a known member of the IssuerAccountStatus enum.
+func (e IssuerAccountStatus) Valid() bool {
+	switch e {
+	case IssuerAccountStatusCreating:
+		return true
+	case IssuerAccountStatusFailed:
+		return true
+	case IssuerAccountStatusNotCreated:
+		return true
+	case IssuerAccountStatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JoinTokenStatus.
+const (
+	JoinTokenStatusActive  JoinTokenStatus = "active"
+	JoinTokenStatusDeleted JoinTokenStatus = "deleted"
+	JoinTokenStatusExpired JoinTokenStatus = "expired"
+	JoinTokenStatusRevoked JoinTokenStatus = "revoked"
+	JoinTokenStatusUsed    JoinTokenStatus = "used"
+)
+
+// Valid indicates whether the value is a known member of the JoinTokenStatus enum.
+func (e JoinTokenStatus) Valid() bool {
+	switch e {
+	case JoinTokenStatusActive:
+		return true
+	case JoinTokenStatusDeleted:
+		return true
+	case JoinTokenStatusExpired:
+		return true
+	case JoinTokenStatusRevoked:
+		return true
+	case JoinTokenStatusUsed:
 		return true
 	default:
 		return false
@@ -66,6 +460,36 @@ func (e MatchKind) Valid() bool {
 	}
 }
 
+// Defines values for NodeStatus.
+const (
+	NodeStatusActive   NodeStatus = "active"
+	NodeStatusDeleted  NodeStatus = "deleted"
+	NodeStatusDisabled NodeStatus = "disabled"
+	NodeStatusFailed   NodeStatus = "failed"
+	NodeStatusJoining  NodeStatus = "joining"
+	NodeStatusRemoved  NodeStatus = "removed"
+)
+
+// Valid indicates whether the value is a known member of the NodeStatus enum.
+func (e NodeStatus) Valid() bool {
+	switch e {
+	case NodeStatusActive:
+		return true
+	case NodeStatusDeleted:
+		return true
+	case NodeStatusDisabled:
+		return true
+	case NodeStatusFailed:
+		return true
+	case NodeStatusJoining:
+		return true
+	case NodeStatusRemoved:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PolicySource.
 const (
 	Local  PolicySource = "local"
@@ -84,6 +508,27 @@ func (e PolicySource) Valid() bool {
 	}
 }
 
+// Defines values for PolicyStatus.
+const (
+	PolicyStatusActive   PolicyStatus = "active"
+	PolicyStatusDeleted  PolicyStatus = "deleted"
+	PolicyStatusDisabled PolicyStatus = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the PolicyStatus enum.
+func (e PolicyStatus) Valid() bool {
+	switch e {
+	case PolicyStatusActive:
+		return true
+	case PolicyStatusDeleted:
+		return true
+	case PolicyStatusDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Proto.
 const (
 	ProtoSsh Proto = "ssh"
@@ -96,6 +541,63 @@ func (e Proto) Valid() bool {
 	case ProtoSsh:
 		return true
 	case ProtoTls:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RelayStatus.
+const (
+	RelayStatusActive      RelayStatus = "active"
+	RelayStatusDeleted     RelayStatus = "deleted"
+	RelayStatusDisabled    RelayStatus = "disabled"
+	RelayStatusDraining    RelayStatus = "draining"
+	RelayStatusFailed      RelayStatus = "failed"
+	RelayStatusRegistering RelayStatus = "registering"
+)
+
+// Valid indicates whether the value is a known member of the RelayStatus enum.
+func (e RelayStatus) Valid() bool {
+	switch e {
+	case RelayStatusActive:
+		return true
+	case RelayStatusDeleted:
+		return true
+	case RelayStatusDisabled:
+		return true
+	case RelayStatusDraining:
+		return true
+	case RelayStatusFailed:
+		return true
+	case RelayStatusRegistering:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RelayTokenStatus.
+const (
+	RelayTokenStatusActive  RelayTokenStatus = "active"
+	RelayTokenStatusDeleted RelayTokenStatus = "deleted"
+	RelayTokenStatusExpired RelayTokenStatus = "expired"
+	RelayTokenStatusRevoked RelayTokenStatus = "revoked"
+	RelayTokenStatusUsed    RelayTokenStatus = "used"
+)
+
+// Valid indicates whether the value is a known member of the RelayTokenStatus enum.
+func (e RelayTokenStatus) Valid() bool {
+	switch e {
+	case RelayTokenStatusActive:
+		return true
+	case RelayTokenStatusDeleted:
+		return true
+	case RelayTokenStatusExpired:
+		return true
+	case RelayTokenStatusRevoked:
+		return true
+	case RelayTokenStatusUsed:
 		return true
 	default:
 		return false
@@ -123,6 +625,27 @@ func (e Role) Valid() bool {
 	case RoleService:
 		return true
 	case RoleSubmitter:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RouteStatus.
+const (
+	RouteStatusActive   RouteStatus = "active"
+	RouteStatusDeleted  RouteStatus = "deleted"
+	RouteStatusDisabled RouteStatus = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the RouteStatus enum.
+func (e RouteStatus) Valid() bool {
+	switch e {
+	case RouteStatusActive:
+		return true
+	case RouteStatusDeleted:
+		return true
+	case RouteStatusDisabled:
 		return true
 	default:
 		return false
@@ -201,29 +724,393 @@ func (e ServiceState) Valid() bool {
 	}
 }
 
-// Cert defines model for Cert.
-type Cert struct {
-	// Domain 通配名，如 `*.home.agentsrv.example.com`
-	Domain string `json:"domain"`
+// Defines values for ServiceStatus.
+const (
+	ServiceStatusDeleted  ServiceStatus = "deleted"
+	ServiceStatusDisabled ServiceStatus = "disabled"
+	ServiceStatusFailed   ServiceStatus = "failed"
+	ServiceStatusPending  ServiceStatus = "pending"
+	ServiceStatusReady    ServiceStatus = "ready"
+)
 
-	// Issuer CA 名
-	Issuer *string `json:"issuer,omitempty"`
-
-	// LastError state 为 failed 时的 ACME 错误
-	LastError *string    `json:"last_error,omitempty"`
-	NotAfter  *time.Time `json:"not_after,omitempty"`
-	NotBefore *time.Time `json:"not_before,omitempty"`
-
-	// Relays 已持有该证书的 relay 名
-	Relays *[]string `json:"relays,omitempty"`
-	State  CertState `json:"state"`
-
-	// Workspace RFC 1123 label，小写，≤ 63 字符
-	Workspace Label `json:"workspace"`
+// Valid indicates whether the value is a known member of the ServiceStatus enum.
+func (e ServiceStatus) Valid() bool {
+	switch e {
+	case ServiceStatusDeleted:
+		return true
+	case ServiceStatusDisabled:
+		return true
+	case ServiceStatusFailed:
+		return true
+	case ServiceStatusPending:
+		return true
+	case ServiceStatusReady:
+		return true
+	default:
+		return false
+	}
 }
 
-// CertState defines model for Cert.State.
-type CertState string
+// Defines values for UserIdentityStatus.
+const (
+	UserIdentityStatusActive   UserIdentityStatus = "active"
+	UserIdentityStatusDeleted  UserIdentityStatus = "deleted"
+	UserIdentityStatusDisabled UserIdentityStatus = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the UserIdentityStatus enum.
+func (e UserIdentityStatus) Valid() bool {
+	switch e {
+	case UserIdentityStatusActive:
+		return true
+	case UserIdentityStatusDeleted:
+		return true
+	case UserIdentityStatusDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserStatus.
+const (
+	UserStatusActive   UserStatus = "active"
+	UserStatusDeleted  UserStatus = "deleted"
+	UserStatusDisabled UserStatus = "disabled"
+	UserStatusPending  UserStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the UserStatus enum.
+func (e UserStatus) Valid() bool {
+	switch e {
+	case UserStatusActive:
+		return true
+	case UserStatusDeleted:
+		return true
+	case UserStatusDisabled:
+		return true
+	case UserStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserWriteStatus.
+const (
+	UserWriteStatusActive   UserWriteStatus = "active"
+	UserWriteStatusDisabled UserWriteStatus = "disabled"
+)
+
+// Valid indicates whether the value is a known member of the UserWriteStatus enum.
+func (e UserWriteStatus) Valid() bool {
+	switch e {
+	case UserWriteStatusActive:
+		return true
+	case UserWriteStatusDisabled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkspaceMemberStatus.
+const (
+	WorkspaceMemberStatusActive    WorkspaceMemberStatus = "active"
+	WorkspaceMemberStatusDeleted   WorkspaceMemberStatus = "deleted"
+	WorkspaceMemberStatusRevoked   WorkspaceMemberStatus = "revoked"
+	WorkspaceMemberStatusSuspended WorkspaceMemberStatus = "suspended"
+)
+
+// Valid indicates whether the value is a known member of the WorkspaceMemberStatus enum.
+func (e WorkspaceMemberStatus) Valid() bool {
+	switch e {
+	case WorkspaceMemberStatusActive:
+		return true
+	case WorkspaceMemberStatusDeleted:
+		return true
+	case WorkspaceMemberStatusRevoked:
+		return true
+	case WorkspaceMemberStatusSuspended:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkspaceRole.
+const (
+	Maintainer WorkspaceRole = "maintainer"
+	Member     WorkspaceRole = "member"
+	Owner      WorkspaceRole = "owner"
+)
+
+// Valid indicates whether the value is a known member of the WorkspaceRole enum.
+func (e WorkspaceRole) Valid() bool {
+	switch e {
+	case Maintainer:
+		return true
+	case Member:
+		return true
+	case Owner:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkspaceStatus.
+const (
+	WorkspaceStatusActive       WorkspaceStatus = "active"
+	WorkspaceStatusDeleted      WorkspaceStatus = "deleted"
+	WorkspaceStatusDeleting     WorkspaceStatus = "deleting"
+	WorkspaceStatusDisabled     WorkspaceStatus = "disabled"
+	WorkspaceStatusFailed       WorkspaceStatus = "failed"
+	WorkspaceStatusProvisioning WorkspaceStatus = "provisioning"
+)
+
+// Valid indicates whether the value is a known member of the WorkspaceStatus enum.
+func (e WorkspaceStatus) Valid() bool {
+	switch e {
+	case WorkspaceStatusActive:
+		return true
+	case WorkspaceStatusDeleted:
+		return true
+	case WorkspaceStatusDeleting:
+		return true
+	case WorkspaceStatusDisabled:
+		return true
+	case WorkspaceStatusFailed:
+		return true
+	case WorkspaceStatusProvisioning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Audience 预期访问者。agentd 与 relay 的机器接口是 Noise/transport，不走本 admin API。
+type Audience string
+
+// AuditActor defines model for AuditActor.
+type AuditActor struct {
+	// AuthProviderId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	AuthProviderId *Uuid `json:"auth_provider_id,omitempty"`
+
+	// Id actor UUID、external identity 或机器公钥标识
+	Id   string         `json:"id"`
+	Kind AuditActorKind `json:"kind"`
+}
+
+// AuditActorKind defines model for AuditActor.Kind.
+type AuditActorKind string
+
+// AuditEvent defines model for AuditEvent.
+type AuditEvent struct {
+	// Action 例如 workspace.create、certificate.renew、node.remove
+	Action    string     `json:"action"`
+	Actor     AuditActor `json:"actor"`
+	ErrorCode *string    `json:"error_code,omitempty"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
+
+	// Metadata 已脱敏上下文；不会包含 token、密码、凭据、私钥或证书正文。
+	Metadata   *map[string]interface{} `json:"metadata,omitempty"`
+	OccurredAt time.Time               `json:"occurred_at"`
+	Outcome    AuditOutcome            `json:"outcome"`
+
+	// RequestId 同一个 HTTP/协议请求及其后台任务的关联 ID
+	RequestId string `json:"request_id"`
+
+	// ResourceId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	ResourceId   *Uuid  `json:"resource_id,omitempty"`
+	ResourceType string `json:"resource_type"`
+
+	// WorkspaceId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	WorkspaceId *Uuid `json:"workspace_id,omitempty"`
+}
+
+// AuditEventPage defines model for AuditEventPage.
+type AuditEventPage struct {
+	Items      []AuditEvent `json:"items"`
+	NextCursor *string      `json:"next_cursor,omitempty"`
+}
+
+// AuditOutcome defines model for AuditOutcome.
+type AuditOutcome string
+
+// AuthProvider 可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段， 不改变 auth_providers 集合的资源模型。
+type AuthProvider struct {
+	// ClaimMapping 将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。
+	ClaimMapping *map[string]string `json:"claim_mapping,omitempty"`
+	ClientId     string             `json:"client_id"`
+
+	// ClientSecret 写入时提交的 OIDC client secret，不返回明文。
+	ClientSecret *string `json:"client_secret,omitempty"`
+	Id           *Uuid   `json:"id,omitempty"`
+
+	// Issuer OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。
+	Issuer string `json:"issuer"`
+
+	// Kind 第一期开启的认证类型；保留为可扩展 discriminator。
+	Kind AuthProviderKind `json:"kind"`
+
+	// Name RFC 1123 label，小写，≤ 63 字符
+	Name   Label               `json:"name"`
+	Scopes *[]string           `json:"scopes,omitempty"`
+	Status *AuthProviderStatus `json:"status,omitempty"`
+}
+
+// AuthProviderKind 第一期开启的认证类型；保留为可扩展 discriminator。
+type AuthProviderKind string
+
+// AuthProviderStatus defines model for AuthProviderStatus.
+type AuthProviderStatus string
+
+// AuthProviderWrite defines model for AuthProviderWrite.
+type AuthProviderWrite struct {
+	ClaimMapping *map[string]string    `json:"claim_mapping,omitempty"`
+	ClientId     string                `json:"client_id"`
+	ClientSecret *string               `json:"client_secret,omitempty"`
+	Issuer       string                `json:"issuer"`
+	Kind         AuthProviderWriteKind `json:"kind"`
+
+	// Name RFC 1123 label，小写，≤ 63 字符
+	Name   Label     `json:"name"`
+	Scopes *[]string `json:"scopes,omitempty"`
+}
+
+// AuthProviderWriteKind defines model for AuthProviderWrite.Kind.
+type AuthProviderWriteKind string
+
+// Certificate defines model for Certificate.
+type Certificate struct {
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
+
+	// Issuer 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Issuer    Uuid            `json:"issuer"`
+	Kind      CertificateKind `json:"kind"`
+	LastError *string         `json:"last_error,omitempty"`
+	NotAfter  *time.Time      `json:"not_after,omitempty"`
+	NotBefore *time.Time      `json:"not_before,omitempty"`
+
+	// RelayId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	RelayId *Uuid `json:"relay_id,omitempty"`
+
+	// RenewBefore 剩余多久进入自动续期窗口
+	RenewBefore      *string          `json:"renew_before,omitempty"`
+	RevocationReason *string          `json:"revocation_reason,omitempty"`
+	RevokedAt        *time.Time       `json:"revoked_at,omitempty"`
+	State            CertificateState `json:"state"`
+
+	// Subject 证书的 DNS names 或控制面身份
+	Subject   *string    `json:"subject,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+
+	// WorkspaceId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	WorkspaceId *Uuid `json:"workspace_id,omitempty"`
+}
+
+// CertificateIssue defines model for CertificateIssue.
+type CertificateIssue struct {
+	Kind CertificateKind `json:"kind"`
+
+	// WorkspaceId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	WorkspaceId Uuid `json:"workspace_id"`
+}
+
+// CertificateIssuer defines model for CertificateIssuer.
+type CertificateIssuer struct {
+	AccountCreatedAt *time.Time           `json:"account_created_at,omitempty"`
+	AccountStatus    *IssuerAccountStatus `json:"account_status,omitempty"`
+
+	// Directory ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。
+	Directory string `json:"directory"`
+
+	// EabHmacKey 写入时提交的 EAB HMAC secret，不返回。
+	EabHmacKey *string `json:"eab_hmac_key,omitempty"`
+
+	// EabKeyId 写入时提交的 EAB key id，不返回。
+	EabKeyId *string               `json:"eab_key_id,omitempty"`
+	Email    *openapi_types.Email  `json:"email,omitempty"`
+	Id       *Uuid                 `json:"id,omitempty"`
+	Kind     CertificateIssuerKind `json:"kind"`
+
+	// Name RFC 1123 label，小写，≤ 63 字符
+	Name   Label                    `json:"name"`
+	Status *CertificateIssuerStatus `json:"status,omitempty"`
+}
+
+// CertificateIssuerKind defines model for CertificateIssuer.Kind.
+type CertificateIssuerKind string
+
+// CertificateIssuerStatus defines model for CertificateIssuerStatus.
+type CertificateIssuerStatus string
+
+// CertificateIssuerWrite defines model for CertificateIssuerWrite.
+type CertificateIssuerWrite struct {
+	Directory  string                     `json:"directory"`
+	EabHmacKey *string                    `json:"eab_hmac_key,omitempty"`
+	EabKeyId   *string                    `json:"eab_key_id,omitempty"`
+	Email      *openapi_types.Email       `json:"email,omitempty"`
+	Kind       CertificateIssuerWriteKind `json:"kind"`
+
+	// Name RFC 1123 label，小写，≤ 63 字符
+	Name Label `json:"name"`
+}
+
+// CertificateIssuerWriteKind defines model for CertificateIssuerWrite.Kind.
+type CertificateIssuerWriteKind string
+
+// CertificateKind defines model for CertificateKind.
+type CertificateKind string
+
+// CertificateRevoke defines model for CertificateRevoke.
+type CertificateRevoke struct {
+	Reason *string `json:"reason,omitempty"`
+}
+
+// CertificateState defines model for CertificateState.
+type CertificateState string
+
+// DNSProvider defines model for DNSProvider.
+type DNSProvider struct {
+	// Credentials 写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。
+	Credentials *map[string]string `json:"credentials,omitempty"`
+	Id          *Uuid              `json:"id,omitempty"`
+	Kind        DNSProviderKind    `json:"kind"`
+
+	// Name RFC 1123 label，小写，≤ 63 字符
+	Name   Label              `json:"name"`
+	Status *DNSProviderStatus `json:"status,omitempty"`
+
+	// Zones 该账号允许操作的 DNS zone；域名按最长后缀匹配。
+	Zones []string `json:"zones"`
+}
+
+// DNSProviderKind defines model for DNSProvider.Kind.
+type DNSProviderKind string
+
+// DNSProviderStatus defines model for DNSProviderStatus.
+type DNSProviderStatus string
+
+// DNSProviderWrite defines model for DNSProviderWrite.
+type DNSProviderWrite struct {
+	Credentials *map[string]string   `json:"credentials,omitempty"`
+	Kind        DNSProviderWriteKind `json:"kind"`
+
+	// Name RFC 1123 label，小写，≤ 63 字符
+	Name  Label    `json:"name"`
+	Zones []string `json:"zones"`
+}
+
+// DNSProviderWriteKind defines model for DNSProviderWrite.Kind.
+type DNSProviderWriteKind string
+
+// DomainStatus 域名配置状态；pending 表示等待 DNS/证书等准备，active 表示可用，disabled 表示管理员停用。
+type DomainStatus string
 
 // Error defines model for Error.
 type Error struct {
@@ -236,13 +1123,16 @@ type Error struct {
 
 // Group defines model for Group.
 type Group struct {
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id      Uuid    `json:"id"`
 	Members []Label `json:"members"`
 
 	// Name RFC 1123 label，小写，≤ 63 字符
 	Name Label `json:"name"`
 
-	// PublicKey 组公钥；节点规则里写它，持有该组成员证书的节点即命中
-	PublicKey PublicKey `json:"public_key"`
+	// PublicKey 组公钥；节点规则里写它，持有该组 membership 证书的 node 即命中
+	PublicKey PublicKey   `json:"public_key"`
+	Status    GroupStatus `json:"status"`
 
 	// Uri `agentd://<base_domain>/group/<name>`
 	Uri *string `json:"uri,omitempty"`
@@ -255,6 +1145,60 @@ type GroupCreate struct {
 	// Name RFC 1123 label，小写，≤ 63 字符
 	Name Label `json:"name"`
 }
+
+// GroupStatus defines model for GroupStatus.
+type GroupStatus string
+
+// InstanceAdminGrant defines model for InstanceAdminGrant.
+type InstanceAdminGrant struct {
+	InstanceAdmin bool `json:"instance_admin"`
+}
+
+// InstanceDomain defines model for InstanceDomain.
+type InstanceDomain struct {
+	// CertificateIssuerId 为该域名签发证书的 CertificateIssuer.id。
+	CertificateIssuerId *Uuid `json:"certificate_issuer_id,omitempty"`
+
+	// Default 是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。
+	Default bool `json:"default"`
+
+	// DnsProviderId 负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。
+	DnsProviderId *Uuid `json:"dns_provider_id,omitempty"`
+
+	// Domain instance 管理的域名或域名后缀，统一小写且不带末尾点。
+	Domain string `json:"domain"`
+	Id     *Uuid  `json:"id,omitempty"`
+	Name   string `json:"name,omitempty"`
+
+	// LastError status=failed 时的最近错误。
+	LastError *string `json:"last_error,omitempty"`
+
+	// Status agentserver 对该域名配置和证书/DNS 准备情况的状态。
+	Status *DomainStatus `json:"status,omitempty"`
+
+	// VerifiedAt 域名最近一次验证或成功配置的时间。
+	VerifiedAt *time.Time `json:"verified_at,omitempty"`
+}
+
+// InstanceDomainWrite defines model for InstanceDomainWrite.
+type InstanceDomainWrite struct {
+	// CertificateIssuerId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	CertificateIssuerId *Uuid `json:"certificate_issuer_id,omitempty"`
+	Default             bool  `json:"default"`
+
+	// DnsProviderId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	DnsProviderId *Uuid  `json:"dns_provider_id,omitempty"`
+	Domain        string `json:"domain"`
+}
+
+// InstanceRole 实例级管理员，可管理 instance 配置、workspace 生命周期与 relay。
+type InstanceRole string
+
+// IssuerAccountStatus ACME account 由 agentserver 生成和持久化的状态。
+type IssuerAccountStatus string
+
+// JoinTokenStatus defines model for JoinTokenStatus.
+type JoinTokenStatus string
 
 // Label RFC 1123 label，小写，≤ 63 字符
 type Label = string
@@ -279,6 +1223,9 @@ type Node struct {
 		Description *string   `json:"description,omitempty"`
 		Tools       *[]string `json:"tools,omitempty"`
 	} `json:"executor,omitempty"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id       Uuid       `json:"id"`
 	JoinedAt time.Time  `json:"joined_at"`
 	LastSeen *time.Time `json:"last_seen,omitempty"`
 
@@ -299,18 +1246,13 @@ type Node struct {
 	// PublicKey Ed25519 公钥，base64url 无填充，43 字符
 	PublicKey PublicKey `json:"public_key"`
 
-	// Relay 当前所连 relay 名；离线时为空
-	Relay    *string `json:"relay,omitempty"`
-	RoleCaps []Role  `json:"role_caps"`
+	// RelayId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	RelayId  *Uuid  `json:"relay_id,omitempty"`
+	RoleCaps []Role `json:"role_caps"`
 
 	// Services 该节点注册的服务名
-	Services *[]string `json:"services,omitempty"`
-
-	// UriKey `agentd://<公钥>`
-	UriKey *string `json:"uri_key,omitempty"`
-
-	// UriName `agentd://<base_domain>/<name>`
-	UriName *string `json:"uri_name,omitempty"`
+	Services *[]string  `json:"services,omitempty"`
+	Status   NodeStatus `json:"status"`
 }
 
 // NodePatch defines model for NodePatch.
@@ -320,16 +1262,22 @@ type NodePatch struct {
 	RoleCaps *[]Role `json:"role_caps,omitempty"`
 }
 
+// NodeStatus defines model for NodeStatus.
+type NodeStatus string
+
 // PolicySource defines model for PolicySource.
 type PolicySource string
 
 // PolicyStatement defines model for PolicyStatement.
 type PolicyStatement struct {
-	Allow    *[]PolicyTarget `json:"allow,omitempty"`
-	Comment  *string         `json:"comment,omitempty"`
-	Deny     *[]PolicyTarget `json:"deny,omitempty"`
-	Id       string          `json:"id"`
-	Subjects []Subject       `json:"subjects"`
+	Allow   *[]PolicyTarget `json:"allow,omitempty"`
+	Comment *string         `json:"comment,omitempty"`
+	Deny    *[]PolicyTarget `json:"deny,omitempty"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id       Uuid         `json:"id"`
+	Status   PolicyStatus `json:"status"`
+	Subjects []Subject    `json:"subjects"`
 }
 
 // PolicyStatementWrite 一条中央策略语句：若干主体对若干 target 的 allow 与 deny。渲染时每个主体换成公钥（`public` 换成 `*`），按目的角色拆成 (public_key, action, target) 规则
@@ -341,6 +1289,9 @@ type PolicyStatementWrite struct {
 	Deny     *[]PolicyTarget `json:"deny,omitempty"`
 	Subjects []Subject       `json:"subjects"`
 }
+
+// PolicyStatus defines model for PolicyStatus.
+type PolicyStatus string
 
 // PolicyTarget 一条策略的目标，三种之一：写 `egress`（出口节点名，配 proto / domains / ports），写 `exec`（executor 节点名，配 argv / stdin / shell）， 或写 `service`（服务名）。与设计文档里 YAML 的写法相同。
 //
@@ -386,12 +1337,16 @@ type Relay struct {
 	Connected      bool       `json:"connected"`
 	ConnectedSince *time.Time `json:"connected_since,omitempty"`
 
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
+
 	// Name RFC 1123 label，小写，≤ 63 字符
 	Name        Label `json:"name"`
 	NodesOnline *int  `json:"nodes_online,omitempty"`
 
 	// PublicKey Ed25519 公钥，base64url 无填充，43 字符
-	PublicKey PublicKey `json:"public_key"`
+	PublicKey PublicKey   `json:"public_key"`
+	Status    RelayStatus `json:"status"`
 
 	// Stun host:port
 	Stun *string `json:"stun,omitempty"`
@@ -403,9 +1358,19 @@ type Relay struct {
 
 	// Url 基础 URL，如 `https://relay-hk.agentsrv.example.com`
 	Url string `json:"url"`
+}
 
-	// Workspaces 指派给它的 workspace
-	Workspaces *[]Label `json:"workspaces,omitempty"`
+// RelayCandidate defines model for RelayCandidate.
+type RelayCandidate struct {
+	Connected *bool `json:"connected,omitempty"`
+
+	// Preference agentserver 给出的候选顺序，agentd 可结合本地连接质量调整
+	Preference *int `json:"preference,omitempty"`
+
+	// RelayId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	RelayId Uuid        `json:"relay_id"`
+	Status  RelayStatus `json:"status"`
+	Url     string      `json:"url"`
 }
 
 // RelayCert defines model for RelayCert.
@@ -413,13 +1378,17 @@ type RelayCert struct {
 	// Cert base64url 编码的 RelayCert protobuf，与 relay 的 well-known 端点返回的相同
 	Cert      string    `json:"cert"`
 	ExpiresAt time.Time `json:"expires_at"`
-	IssuedAt  time.Time `json:"issued_at"`
 
-	// Relay RFC 1123 label，小写，≤ 63 字符
-	Relay Label `json:"relay"`
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id       Uuid      `json:"id"`
+	IssuedAt time.Time `json:"issued_at"`
 
-	// Workspace RFC 1123 label，小写，≤ 63 字符
-	Workspace Label `json:"workspace"`
+	// RelayId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	RelayId Uuid             `json:"relay_id"`
+	State   CertificateState `json:"state"`
+
+	// WorkspaceId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	WorkspaceId Uuid `json:"workspace_id"`
 }
 
 // RelayCreate defines model for RelayCreate.
@@ -436,11 +1405,17 @@ type RelayCreate struct {
 	Url        string             `json:"url"`
 }
 
+// RelayStatus defines model for RelayStatus.
+type RelayStatus string
+
 // RelayToken defines model for RelayToken.
 type RelayToken struct {
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
-	Id        string    `json:"id"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id     Uuid             `json:"id"`
+	Status RelayTokenStatus `json:"status"`
 }
 
 // RelayTokenCreate defines model for RelayTokenCreate.
@@ -453,11 +1428,17 @@ type RelayTokenCreate struct {
 type RelayTokenCreated struct {
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
-	Id        string    `json:"id"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id     Uuid             `json:"id"`
+	Status RelayTokenStatus `json:"status"`
 
 	// Token 令牌明文，只返回这一次；写进 relay 配置的 control.join_token
 	Token string `json:"token"`
 }
+
+// RelayTokenStatus defines model for RelayTokenStatus.
+type RelayTokenStatus string
 
 // Role defines model for Role.
 type Role string
@@ -468,14 +1449,20 @@ type Route struct {
 
 	// From 源：`node:`、`group:` 或 `workspace`
 	From Subject `json:"from"`
-	Id   string  `json:"id"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
 
 	// Proto 空表示 tls 与 ssh 都适用
-	Proto []Proto `json:"proto"`
+	Proto  []Proto     `json:"proto"`
+	Status RouteStatus `json:"status"`
 
 	// To 目的：某个 egress 节点名、`direct` 或 `reject`
 	To string `json:"to"`
 }
+
+// RouteStatus defines model for RouteStatus.
+type RouteStatus string
 
 // RouteTable defines model for RouteTable.
 type RouteTable struct {
@@ -516,8 +1503,12 @@ type RouteWrite struct {
 
 // ServerInfo defines model for ServerInfo.
 type ServerInfo struct {
-	// Domain agentserver 的域名，也是 workspace 基础域名的默认父域
-	Domain   *string `json:"domain,omitempty"`
+	// Domain 兼容字段；instance 的完整域名配置见 GET /instance.domains
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Domain *string `json:"domain,omitempty"`
+
+	// Domains instance 当前管理的全部域名。
+	Domains  *[]InstanceDomain `json:"domains,omitempty"`
 	Protocol struct {
 		Major *int `json:"major,omitempty"`
 		Max   *int `json:"max,omitempty"`
@@ -535,11 +1526,14 @@ type ServerInfo struct {
 type Service struct {
 	Fqdn string `json:"fqdn"`
 
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
+
 	// Name RFC 1123 label，小写，≤ 63 字符
 	Name Label `json:"name"`
 
-	// Node 所在节点
-	Node       Label `json:"node"`
+	// NodeId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	NodeId     *Uuid `json:"node_id,omitempty"`
 	NodeOnline *bool `json:"node_online,omitempty"`
 
 	// Port 成员访问时的端口：http 443，ssh 22
@@ -547,8 +1541,9 @@ type Service struct {
 	Proto ServiceProto `json:"proto"`
 
 	// Public 该服务节点的生效策略里是否有 `public_key: "*"` 的 allow（只对 http 有意义）
-	Public *bool        `json:"public,omitempty"`
-	State  ServiceState `json:"state"`
+	Public *bool         `json:"public,omitempty"`
+	State  ServiceState  `json:"state"`
+	Status ServiceStatus `json:"status"`
 }
 
 // ServiceProto defines model for Service.Proto.
@@ -556,6 +1551,9 @@ type ServiceProto string
 
 // ServiceState defines model for Service.State.
 type ServiceState string
+
+// ServiceStatus defines model for ServiceStatus.
+type ServiceStatus string
 
 // Status defines model for Status.
 type Status struct {
@@ -580,14 +1578,15 @@ type Token struct {
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
 
-	// Id 令牌记录的标识，不是令牌本身
-	Id string `json:"id"`
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
 
 	// Name 绑定的实例名；为空表示由加入的设备提出
 	Name *Label `json:"name,omitempty"`
 
 	// Roles 角色上限
-	Roles []Role `json:"roles"`
+	Roles  []Role          `json:"roles"`
+	Status JoinTokenStatus `json:"status"`
 }
 
 // TokenCreate defines model for TokenCreate.
@@ -607,87 +1606,223 @@ type TokenCreated struct {
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
 
-	// Id 令牌记录的标识，不是令牌本身
-	Id string `json:"id"`
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
 
-	// JoinLink 完整的加入链接，带 relay、key（workspace 公钥）、token；只返回这一次
+	// JoinLink 完整的加入链接，带 bootstrap relay、key（workspace 公钥）、token；只返回这一次
 	//
-	// Example: agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.com&key=Rt7aB…&token=Qm9…
-	JoinLink string `json:"join_link"`
+	// Example: agentd://home.agentsrv.example.com/dorm?key=Rt7aB…&token=Qm9…
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	JoinLink string `json:"join_link,omitempty"`
+
+	// JoinToken 一次性 join token；只返回这一次，agentd 用它向 machine join API 查询 candidates 并完成加入。
+	JoinToken string `json:"join_token"`
 
 	// Name 绑定的实例名；为空表示由加入的设备提出
 	Name *Label `json:"name,omitempty"`
 
 	// Roles 角色上限
-	Roles []Role `json:"roles"`
+	Roles  []Role          `json:"roles"`
+	Status JoinTokenStatus `json:"status"`
 }
+
+// User defines model for User.
+type User struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Email 归并用户的 canonical email；来自已验证的外部 identity。
+	Email openapi_types.Email `json:"email"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
+
+	// InstanceAdmin 是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。
+	InstanceAdmin *bool `json:"instance_admin,omitempty"`
+
+	// Name 与 OIDC name claim 同步的用户名称。
+	Name *string `json:"name,omitempty"`
+
+	// Picture 与 OIDC picture claim 同步的头像 URL。
+	Picture   *string    `json:"picture,omitempty"`
+	Status    UserStatus `json:"status"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// UserIdentity defines model for UserIdentity.
+type UserIdentity struct {
+	CreatedAt     time.Time `json:"created_at"`
+	EmailVerified *bool     `json:"email_verified,omitempty"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id          Uuid       `json:"id"`
+	LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+
+	// ProviderId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	ProviderId Uuid               `json:"provider_id"`
+	Status     UserIdentityStatus `json:"status"`
+
+	// Subject 该认证 provider 返回的稳定 subject
+	Subject string `json:"subject"`
+
+	// UserId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	UserId Uuid `json:"user_id"`
+}
+
+// UserIdentityStatus defines model for UserIdentityStatus.
+type UserIdentityStatus string
+
+// UserIdentityWrite defines model for UserIdentityWrite.
+type UserIdentityWrite struct {
+	EmailVerified *bool `json:"email_verified,omitempty"`
+
+	// ProviderId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	ProviderId Uuid   `json:"provider_id"`
+	Subject    string `json:"subject"`
+}
+
+// UserStatus defines model for UserStatus.
+type UserStatus string
+
+// UserWrite defines model for UserWrite.
+type UserWrite struct {
+	Email  openapi_types.Email `json:"email"`
+	Status *UserWriteStatus    `json:"status,omitempty"`
+}
+
+// UserWriteStatus defines model for UserWrite.Status.
+type UserWriteStatus string
+
+// Uuid 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+type Uuid = string
 
 // Workspace defines model for Workspace.
 type Workspace struct {
-	// BaseDomain 基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`
-	BaseDomain       string    `json:"base_domain"`
-	Cert             *Cert     `json:"cert,omitempty"`
+	// BaseDomain agentserver 根据 workspace name 和 domain_id 生成的最终基础域名；服务域名是 `<服务名>.<base_domain>`。
+	BaseDomain       string    `json:"base_domain,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 	DirectoryVersion *int      `json:"directory_version,omitempty"`
 
-	// DnsProvider 签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider
-	DnsProvider   *string `json:"dns_provider,omitempty"`
-	Members       *int    `json:"members,omitempty"`
-	MembersOnline *int    `json:"members_online,omitempty"`
+	// DomainId 创建 workspace 时选择的 instance domain。
+	DomainId Uuid `json:"domain_id"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
+
+	// Members workspace 用户成员数，来自 workspace_members
+	Members *int `json:"members,omitempty"`
 
 	// Name RFC 1123 label，小写，≤ 63 字符
 	Name Label `json:"name"`
 
+	// Nodes workspace 中 agentd 节点总数
+	Nodes *int `json:"nodes,omitempty"`
+
+	// NodesOnline 当前与 relay 保持在线会话的 agentd 节点数
+	NodesOnline *int `json:"nodes_online,omitempty"`
+
 	// PublicKey workspace 公钥，成员唯一钉住的信任根；加入链接的 `key`
-	PublicKey PublicKey `json:"public_key"`
-
-	// PublishDns 是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问
-	PublishDns *bool `json:"publish_dns,omitempty"`
-
-	// Relay 指派的 relay 名；MVP 每个 workspace 一个
-	Relay         string `json:"relay"`
-	RoutesVersion *int   `json:"routes_version,omitempty"`
-
-	// Uri 名字形式 `agentd://<base_domain>/`，代表这把公钥
-	Uri *string `json:"uri,omitempty"`
+	PublicKey     PublicKey       `json:"public_key"`
+	RoutesVersion *int            `json:"routes_version,omitempty"`
+	Status        WorkspaceStatus `json:"status"`
+	// Relay and Cert are retained for source compatibility with the v0.30 client.
+	Relay string `json:"relay,omitempty"`
+	Cert  *Cert  `json:"cert,omitempty"`
 }
 
 // WorkspaceCreate defines model for WorkspaceCreate.
 type WorkspaceCreate struct {
-	// BaseDomain 省略则用 `<name>.<agentserver 域名>`；通配证书由基础域名所在 zone 的 DNS 提供方签发
-	BaseDomain *string `json:"base_domain,omitempty"`
+	// DomainId 可选的 instance domain；省略使用 instance 的默认 domain。不能直接提交 base_domain。
+	DomainId *Uuid `json:"domain_id,omitempty"`
 
 	// Name RFC 1123 label，小写，≤ 63 字符
-	Name       Label `json:"name"`
-	PublishDns *bool `json:"publish_dns,omitempty"`
-
-	// Relay 指派的 relay 名
-	Relay string `json:"relay"`
+	Name Label `json:"name"`
+	// BaseDomain was accepted by the pre-UUID API. New clients use DomainId.
+	BaseDomain *string `json:"base_domain,omitempty"`
 }
 
-// WorkspacePatch defines model for WorkspacePatch.
-type WorkspacePatch struct {
-	PublishDns *bool   `json:"publish_dns,omitempty"`
-	Relay      *string `json:"relay,omitempty"`
+// WorkspaceMember defines model for WorkspaceMember.
+type WorkspaceMember struct {
+	CreatedAt time.Time `json:"created_at"`
+
+	// Id 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	Id Uuid `json:"id"`
+
+	// Role workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。
+	Role      WorkspaceRole          `json:"role"`
+	Status    *WorkspaceMemberStatus `json:"status,omitempty"`
+	UpdatedAt time.Time              `json:"updated_at"`
+
+	// UserId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	UserId  Uuid   `json:"user_id"`
+	Subject string `json:"subject,omitempty"`
 }
 
-// GroupName RFC 1123 label，小写，≤ 63 字符
-type GroupName = Label
+// WorkspaceMemberStatus defines model for WorkspaceMemberStatus.
+type WorkspaceMemberStatus string
 
-// NodeName RFC 1123 label，小写，≤ 63 字符
-type NodeName = Label
+// WorkspaceMemberWrite defines model for WorkspaceMemberWrite.
+type WorkspaceMemberWrite struct {
+	// Role workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。
+	Role WorkspaceRole `json:"role"`
 
-// RelayName RFC 1123 label，小写，≤ 63 字符
-type RelayName = Label
+	// UserId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+	UserId  Uuid   `json:"user_id"`
+	Subject string `json:"subject,omitempty"`
+}
 
-// WorkspaceName RFC 1123 label，小写，≤ 63 字符
-type WorkspaceName = Label
+// WorkspaceRole workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。
+type WorkspaceRole string
+
+// WorkspaceStatus defines model for WorkspaceStatus.
+type WorkspaceStatus string
+
+// CertificateId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+type CertificateId = Uuid
+
+// GroupId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+type GroupId = Uuid
+
+// NodeId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+type NodeId = Uuid
+
+// RelayId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+type RelayId = Uuid
+
+// WorkspaceId 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+type WorkspaceId = Uuid
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
+// Conflict defines model for Conflict.
+type Conflict = Error
+
+// Forbidden defines model for Forbidden.
+type Forbidden = Error
+
 // NotFound defines model for NotFound.
 type NotFound = Error
+
+// ListAuditEventsParams defines parameters for ListAuditEvents.
+type ListAuditEventsParams struct {
+	ActorId      *string       `form:"actor_id,omitempty" json:"actor_id,omitempty"`
+	ResourceType *string       `form:"resource_type,omitempty" json:"resource_type,omitempty"`
+	ResourceId   *Uuid         `form:"resource_id,omitempty" json:"resource_id,omitempty"`
+	WorkspaceId  *Uuid         `form:"workspace_id,omitempty" json:"workspace_id,omitempty"`
+	Action       *string       `form:"action,omitempty" json:"action,omitempty"`
+	Outcome      *AuditOutcome `form:"outcome,omitempty" json:"outcome,omitempty"`
+	Since        *time.Time    `form:"since,omitempty" json:"since,omitempty"`
+	Until        *time.Time    `form:"until,omitempty" json:"until,omitempty"`
+	Cursor       *string       `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit        *int          `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListCertificatesParams defines parameters for ListCertificates.
+type ListCertificatesParams struct {
+	Workspace *Label            `form:"workspace,omitempty" json:"workspace,omitempty"`
+	State     *CertificateState `form:"state,omitempty" json:"state,omitempty"`
+	Kind      *CertificateKind  `form:"kind,omitempty" json:"kind,omitempty"`
+}
 
 // DeleteWorkspaceParams defines parameters for DeleteWorkspace.
 type DeleteWorkspaceParams struct {
@@ -704,20 +1839,59 @@ type ListNodesParams struct {
 // ReplacePoliciesJSONBody defines parameters for ReplacePolicies.
 type ReplacePoliciesJSONBody = []PolicyStatementWrite
 
+// CreateAuthProviderJSONRequestBody defines body for CreateAuthProvider for application/json ContentType.
+type CreateAuthProviderJSONRequestBody = AuthProviderWrite
+
+// UpdateAuthProviderJSONRequestBody defines body for UpdateAuthProvider for application/json ContentType.
+type UpdateAuthProviderJSONRequestBody = AuthProviderWrite
+
+// CreateCertificateIssuerJSONRequestBody defines body for CreateCertificateIssuer for application/json ContentType.
+type CreateCertificateIssuerJSONRequestBody = CertificateIssuerWrite
+
+// UpdateCertificateIssuerJSONRequestBody defines body for UpdateCertificateIssuer for application/json ContentType.
+type UpdateCertificateIssuerJSONRequestBody = CertificateIssuerWrite
+
+// IssueCertificateJSONRequestBody defines body for IssueCertificate for application/json ContentType.
+type IssueCertificateJSONRequestBody = CertificateIssue
+
+// RevokeCertificateJSONRequestBody defines body for RevokeCertificate for application/json ContentType.
+type RevokeCertificateJSONRequestBody = CertificateRevoke
+
+// CreateDNSProviderJSONRequestBody defines body for CreateDNSProvider for application/json ContentType.
+type CreateDNSProviderJSONRequestBody = DNSProviderWrite
+
+// UpdateDNSProviderJSONRequestBody defines body for UpdateDNSProvider for application/json ContentType.
+type UpdateDNSProviderJSONRequestBody = DNSProviderWrite
+
+// CreateInstanceDomainJSONRequestBody defines body for CreateInstanceDomain for application/json ContentType.
+type CreateInstanceDomainJSONRequestBody = InstanceDomainWrite
+
+// UpdateInstanceDomainJSONRequestBody defines body for UpdateInstanceDomain for application/json ContentType.
+type UpdateInstanceDomainJSONRequestBody = InstanceDomainWrite
+
 // RegisterRelayJSONRequestBody defines body for RegisterRelay for application/json ContentType.
 type RegisterRelayJSONRequestBody = RelayCreate
 
 // CreateRelayTokenJSONRequestBody defines body for CreateRelayToken for application/json ContentType.
 type CreateRelayTokenJSONRequestBody = RelayTokenCreate
 
+// UpsertUserJSONRequestBody defines body for UpsertUser for application/json ContentType.
+type UpsertUserJSONRequestBody = UserWrite
+
+// LinkUserIdentityJSONRequestBody defines body for LinkUserIdentity for application/json ContentType.
+type LinkUserIdentityJSONRequestBody = UserIdentityWrite
+
+// SetUserInstanceAdminJSONRequestBody defines body for SetUserInstanceAdmin for application/json ContentType.
+type SetUserInstanceAdminJSONRequestBody = InstanceAdminGrant
+
 // CreateWorkspaceJSONRequestBody defines body for CreateWorkspace for application/json ContentType.
 type CreateWorkspaceJSONRequestBody = WorkspaceCreate
 
-// UpdateWorkspaceJSONRequestBody defines body for UpdateWorkspace for application/json ContentType.
-type UpdateWorkspaceJSONRequestBody = WorkspacePatch
-
 // CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
 type CreateGroupJSONRequestBody = GroupCreate
+
+// UpsertWorkspaceMemberJSONRequestBody defines body for UpsertWorkspaceMember for application/json ContentType.
+type UpsertWorkspaceMemberJSONRequestBody = WorkspaceMemberWrite
 
 // UpdateNodeJSONRequestBody defines body for UpdateNode for application/json ContentType.
 type UpdateNodeJSONRequestBody = NodePatch
@@ -811,17 +1985,256 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// ListAuditEvents 查询全局审计记录
+	//
+	// instance admin 可查询整个 instance 的所有写入事件；响应不包含 token、凭据、私钥或其他敏感正文。.
+	//
+	// Corresponds with GET /audit/events (the `ListAuditEvents` operationId).
+	ListAuditEvents(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAuditEvent 查看审计事件
+	//
+	// Corresponds with GET /audit/events/{eventId} (the `GetAuditEvent` operationId).
+	GetAuditEvent(ctx context.Context, eventId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAuthProviders 列出认证 providers
+	//
+	// Corresponds with GET /auth-providers (the `ListAuthProviders` operationId).
+	ListAuthProviders(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAuthProviderWithBody 创建认证 provider
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+	CreateAuthProviderWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAuthProvider 创建认证 provider
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+	CreateAuthProvider(ctx context.Context, body CreateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteAuthProvider 删除认证 provider
+	//
+	// Corresponds with DELETE /auth-providers/{providerId} (the `DeleteAuthProvider` operationId).
+	DeleteAuthProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetAuthProvider 查看认证 provider
+	//
+	// Corresponds with GET /auth-providers/{providerId} (the `GetAuthProvider` operationId).
+	GetAuthProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAuthProviderWithBody 更新认证 provider
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+	UpdateAuthProviderWithBody(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateAuthProvider 更新认证 provider
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+	UpdateAuthProvider(ctx context.Context, providerId Uuid, body UpdateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCertificateIssuers 列出 certificate issuers
+	//
+	// Corresponds with GET /certificate-issuers (the `ListCertificateIssuers` operationId).
+	ListCertificateIssuers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCertificateIssuerWithBody 创建 certificate issuer
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+	CreateCertificateIssuerWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCertificateIssuer 创建 certificate issuer
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+	CreateCertificateIssuer(ctx context.Context, body CreateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteCertificateIssuer 删除 certificate issuer
+	//
+	// Corresponds with DELETE /certificate-issuers/{issuerId} (the `DeleteCertificateIssuer` operationId).
+	DeleteCertificateIssuer(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCertificateIssuer 查看 certificate issuer
+	//
+	// Corresponds with GET /certificate-issuers/{issuerId} (the `GetCertificateIssuer` operationId).
+	GetCertificateIssuer(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCertificateIssuerWithBody 更新 certificate issuer
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+	UpdateCertificateIssuerWithBody(ctx context.Context, issuerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCertificateIssuer 更新 certificate issuer
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+	UpdateCertificateIssuer(ctx context.Context, issuerId Uuid, body UpdateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListCertificates 列出 instance 的全部证书
+	//
+	// 返回 workspace wildcard、relay 和 agentserver 自身证书的统一生命周期视图。私钥和证书链正文不在此接口返回。.
+	//
+	// Corresponds with GET /certificates (the `ListCertificates` operationId).
+	ListCertificates(ctx context.Context, params *ListCertificatesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// IssueCertificateWithBody 签发或重新签发证书
+	//
+	// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+	IssueCertificateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// IssueCertificate 签发或重新签发证书
+	//
+	// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+	IssueCertificate(ctx context.Context, body IssueCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCertificate 查看证书生命周期状态
+	//
+	// Corresponds with GET /certificates/{certificateId} (the `GetCertificate` operationId).
+	GetCertificate(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RenewCertificate 立即续期证书
+	//
+	// 异步触发续期；证书进入 renewing，成功后回到 ready，失败保留旧证书并记录 last_error。 已 revoked 的证书不能自动续期，需先重新签发。.
+	//
+	// Corresponds with POST /certificates/{certificateId}/renew (the `RenewCertificate` operationId).
+	RenewCertificate(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevokeCertificateWithBody 吊销证书
+	//
+	// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+	RevokeCertificateWithBody(ctx context.Context, certificateId CertificateId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevokeCertificate 吊销证书
+	//
+	// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+	RevokeCertificate(ctx context.Context, certificateId CertificateId, body RevokeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListDNSProviders 列出 DNS providers
+	//
+	// Corresponds with GET /dns-providers (the `ListDNSProviders` operationId).
+	ListDNSProviders(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDNSProviderWithBody 创建 DNS provider
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+	CreateDNSProviderWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateDNSProvider 创建 DNS provider
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+	CreateDNSProvider(ctx context.Context, body CreateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteDNSProvider 删除 DNS provider
+	//
+	// Corresponds with DELETE /dns-providers/{providerId} (the `DeleteDNSProvider` operationId).
+	DeleteDNSProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetDNSProvider 查看 DNS provider
+	//
+	// Corresponds with GET /dns-providers/{providerId} (the `GetDNSProvider` operationId).
+	GetDNSProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateDNSProviderWithBody 更新 DNS provider
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+	UpdateDNSProviderWithBody(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateDNSProvider 更新 DNS provider
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+	UpdateDNSProvider(ctx context.Context, providerId Uuid, body UpdateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListInstanceDomains 列出 instance 域名
+	//
+	// Corresponds with GET /domains (the `ListInstanceDomains` operationId).
+	ListInstanceDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateInstanceDomainWithBody 添加 instance 域名
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+	CreateInstanceDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateInstanceDomain 添加 instance 域名
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+	CreateInstanceDomain(ctx context.Context, body CreateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteInstanceDomain 删除 instance 域名
+	//
+	// Corresponds with DELETE /domains/{domainId} (the `DeleteInstanceDomain` operationId).
+	DeleteInstanceDomain(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetInstanceDomain 查看 instance 域名
+	//
+	// Corresponds with GET /domains/{domainId} (the `GetInstanceDomain` operationId).
+	GetInstanceDomain(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateInstanceDomainWithBody 更新 instance 域名
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+	UpdateInstanceDomainWithBody(ctx context.Context, domainId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateInstanceDomain 更新 instance 域名
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+	UpdateInstanceDomain(ctx context.Context, domainId Uuid, body UpdateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListRelays 列出 relay
 	//
-	// 对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。.
+	// `connected` 表示 relay 会话当前在线。.
 	//
 	// Corresponds with GET /relays (the `ListRelays` operationId).
 	ListRelays(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RegisterRelayWithBody 注册 relay
 	//
-	// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-	// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+	// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+	// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -830,8 +2243,8 @@ type ClientInterface interface {
 
 	// RegisterRelay 注册 relay
 	//
-	// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-	// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+	// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+	// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -845,7 +2258,7 @@ type ClientInterface interface {
 
 	// CreateRelayTokenWithBody 签发 relay 注册令牌
 	//
-	// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+	// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -854,7 +2267,7 @@ type ClientInterface interface {
 
 	// CreateRelayToken 签发 relay 注册令牌
 	//
-	// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+	// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -864,30 +2277,30 @@ type ClientInterface interface {
 	// RevokeRelayToken 作废 relay 注册令牌
 	//
 	// Corresponds with DELETE /relays/tokens/{tokenId} (the `RevokeRelayToken` operationId).
-	RevokeRelayToken(ctx context.Context, tokenId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	RevokeRelayToken(ctx context.Context, tokenId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveRelay 注销 relay
 	//
-	// 对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。.
+	// relay 进入 deleted 后不再作为 agentd 候选，关闭 relay 会话；已存在证书按生命周期处理。.
 	//
-	// Corresponds with DELETE /relays/{relay} (the `RemoveRelay` operationId).
-	RemoveRelay(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /relays/{relayId} (the `RemoveRelay` operationId).
+	RemoveRelay(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRelay 查看 relay
 	//
-	// Corresponds with GET /relays/{relay} (the `GetRelay` operationId).
-	GetRelay(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /relays/{relayId} (the `GetRelay` operationId).
+	GetRelay(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListRelayCerts 查看该 relay 在各 workspace 的 relay 证书
+	// ListRelayCerts 查看该 relay 持有的 relay 证书
 	//
-	// 每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。
+	// relay 按需缓存 workspace 证书；证书由 workspace 密钥签发，与 `/.well-known/agentd?workspace=…` 公布的内容一致。
 	//
-	// Corresponds with GET /relays/{relay}/certs (the `ListRelayCerts` operationId).
-	ListRelayCerts(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /relays/{relayId}/certs (the `ListRelayCerts` operationId).
+	ListRelayCerts(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetServer 服务端信息
 	//
-	// 对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
+	// agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
 	//
 	// Corresponds with GET /server (the `GetServer` operationId).
 	GetServer(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -897,15 +2310,92 @@ type ClientInterface interface {
 	// Corresponds with GET /status (the `GetStatus` operationId).
 	GetStatus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListUsers 列出全局用户
+	//
+	// 用户目录是 instance 级资源；workspace 成员关系只保存角色，不复制用户资料。.
+	//
+	// Corresponds with GET /users (the `ListUsers` operationId).
+	ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpsertUserWithBody 创建或更新全局用户
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /users (the `UpsertUser` operationId).
+	UpsertUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpsertUser 创建或更新全局用户
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /users (the `UpsertUser` operationId).
+	UpsertUser(ctx context.Context, body UpsertUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteUser 删除全局用户
+	//
+	// 删除用户目录记录，同时移除其所有 workspace membership；审计记录保留 subject 的不可逆摘要。.
+	//
+	// Corresponds with DELETE /users/{userId} (the `DeleteUser` operationId).
+	DeleteUser(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetUser 查看全局用户
+	//
+	// Corresponds with GET /users/{userId} (the `GetUser` operationId).
+	GetUser(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListUserIdentities 列出用户的外部认证 identity
+	//
+	// Corresponds with GET /users/{userId}/identities (the `ListUserIdentities` operationId).
+	ListUserIdentities(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LinkUserIdentityWithBody 将外部认证 identity 关联到用户
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+	LinkUserIdentityWithBody(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LinkUserIdentity 将外部认证 identity 关联到用户
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+	LinkUserIdentity(ctx context.Context, userId Uuid, body LinkUserIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UnlinkUserIdentity 解除外部认证 identity
+	//
+	// Corresponds with DELETE /users/{userId}/identities/{identityId} (the `UnlinkUserIdentity` operationId).
+	UnlinkUserIdentity(ctx context.Context, userId Uuid, identityId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetUserInstanceAdminWithBody 授予或撤销 instance admin
+	//
+	// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+	SetUserInstanceAdminWithBody(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetUserInstanceAdmin 授予或撤销 instance admin
+	//
+	// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+	SetUserInstanceAdmin(ctx context.Context, userId Uuid, body SetUserInstanceAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListWorkspaces 列出 workspace
+	//
+	// 返回 instance 中的全部 workspace。普通用户的 membership 列表使用普通用户 API 的 `GET /api/v1/workspaces`，不调用此 admin operation。.
 	//
 	// Corresponds with GET /workspaces (the `ListWorkspaces` operationId).
 	ListWorkspaces(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateWorkspaceWithBody 创建 workspace
 	//
-	// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-	// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+	// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+	// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -914,8 +2404,8 @@ type ClientInterface interface {
 
 	// CreateWorkspace 创建 workspace
 	//
-	// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-	// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+	// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+	// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -924,158 +2414,150 @@ type ClientInterface interface {
 
 	// DeleteWorkspace 删除 workspace
 	//
-	// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。.
+	// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书；成员的密钥文件不受影响。.
 	//
-	// Corresponds with DELETE /workspaces/{ws} (the `DeleteWorkspace` operationId).
-	DeleteWorkspace(ctx context.Context, ws WorkspaceName, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /workspaces/{workspaceId} (the `DeleteWorkspace` operationId).
+	DeleteWorkspace(ctx context.Context, workspaceId WorkspaceId, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetWorkspace 查看 workspace（含公钥、证书状态、指派的 relay）
+	// GetWorkspace 查看 workspace（公钥、基础域名、状态和证书）
 	//
-	// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。
+	// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`。
 	//
-	// Corresponds with GET /workspaces/{ws} (the `GetWorkspace` operationId).
-	GetWorkspace(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateWorkspaceWithBody 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-	//
-	// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-	UpdateWorkspaceWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateWorkspace 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-	//
-	// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-	UpdateWorkspace(ctx context.Context, ws WorkspaceName, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ListCerts 查看通配证书
-	//
-	// 对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。.
-	//
-	// Corresponds with GET /workspaces/{ws}/certs (the `ListCerts` operationId).
-	ListCerts(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// RenewCert 立即续期
-	//
-	// 对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。.
-	//
-	// Corresponds with POST /workspaces/{ws}/certs/renew (the `RenewCert` operationId).
-	RenewCert(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId} (the `GetWorkspace` operationId).
+	GetWorkspace(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListGroups 列出组
 	//
-	// Corresponds with GET /workspaces/{ws}/groups (the `ListGroups` operationId).
-	ListGroups(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/groups (the `ListGroups` operationId).
+	ListGroups(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateGroupWithBody 创建组
 	//
-	// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+	// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-	CreateGroupWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+	CreateGroupWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateGroup 创建组
 	//
-	// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+	// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-	CreateGroup(ctx context.Context, ws WorkspaceName, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+	CreateGroup(ctx context.Context, workspaceId WorkspaceId, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteGroup 删除组
 	//
-	// 对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
+	// 向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
 	//
-	// Corresponds with DELETE /workspaces/{ws}/groups/{group} (the `DeleteGroup` operationId).
-	DeleteGroup(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId} (the `DeleteGroup` operationId).
+	DeleteGroup(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetGroup 查看组
 	//
-	// Corresponds with GET /workspaces/{ws}/groups/{group} (the `GetGroup` operationId).
-	GetGroup(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/groups/{groupId} (the `GetGroup` operationId).
+	GetGroup(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// RemoveGroupMember 把成员移出组
+	// RemoveGroupNode 把 node 移出组
 	//
-	// 对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。
+	// 停止续发并推送吊销记录 `(member, issuer, until)`。
 	//
-	// Corresponds with DELETE /workspaces/{ws}/groups/{group}/members/{node} (the `RemoveGroupMember` operationId).
-	RemoveGroupMember(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `RemoveGroupNode` operationId).
+	RemoveGroupNode(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AddGroupMember 把成员加入组
+	// AddGroupNode 把 node 加入组
 	//
-	// 对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
+	// 给该 node 签发 group-node membership 证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
 	//
-	// Corresponds with PUT /workspaces/{ws}/groups/{group}/members/{node} (the `AddGroupMember` operationId).
-	AddGroupMember(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `AddGroupNode` operationId).
+	AddGroupNode(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListWorkspaceMembers 列出 workspace 成员
+	//
+	// Corresponds with GET /workspaces/{workspaceId}/members (the `ListWorkspaceMembers` operationId).
+	ListWorkspaceMembers(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpsertWorkspaceMemberWithBody 添加或调整 用户角色
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+	UpsertWorkspaceMemberWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpsertWorkspaceMember 添加或调整 用户角色
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+	UpsertWorkspaceMember(ctx context.Context, workspaceId WorkspaceId, body UpsertWorkspaceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveWorkspaceMember 移除 workspace 成员
+	//
+	// Corresponds with DELETE /workspaces/{workspaceId}/members/{memberId} (the `RemoveWorkspaceMember` operationId).
+	RemoveWorkspaceMember(ctx context.Context, workspaceId WorkspaceId, memberId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListNodes 列出成员
 	//
-	// 对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
+	// 在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
 	//
-	// Corresponds with GET /workspaces/{ws}/nodes (the `ListNodes` operationId).
-	ListNodes(ctx context.Context, ws WorkspaceName, params *ListNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/nodes (the `ListNodes` operationId).
+	ListNodes(ctx context.Context, workspaceId WorkspaceId, params *ListNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RemoveNode 移除成员
 	//
-	// 对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
+	// 目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
 	// 向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。
 	// 换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。
 	//
-	// Corresponds with DELETE /workspaces/{ws}/nodes/{node} (the `RemoveNode` operationId).
-	RemoveNode(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/nodes/{nodeId} (the `RemoveNode` operationId).
+	RemoveNode(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetNode 查看成员
 	//
-	// Corresponds with GET /workspaces/{ws}/nodes/{node} (the `GetNode` operationId).
-	GetNode(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/nodes/{nodeId} (the `GetNode` operationId).
+	GetNode(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateNodeWithBody 改名或调整角色上限
 	//
-	// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+	// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 	// 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-	UpdateNodeWithBody(ctx context.Context, ws WorkspaceName, node NodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+	UpdateNodeWithBody(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateNode 改名或调整角色上限
 	//
-	// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+	// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 	// 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-	UpdateNode(ctx context.Context, ws WorkspaceName, node NodeName, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+	UpdateNode(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListPolicies 列出中央策略语句
 	//
-	// Corresponds with GET /workspaces/{ws}/policies (the `ListPolicies` operationId).
-	ListPolicies(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/policies (the `ListPolicies` operationId).
+	ListPolicies(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddPolicyWithBody 追加一条策略语句
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-	AddPolicyWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+	AddPolicyWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddPolicy 追加一条策略语句
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-	AddPolicy(ctx context.Context, ws WorkspaceName, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+	AddPolicy(ctx context.Context, workspaceId WorkspaceId, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReplacePoliciesWithBody 整体替换中央策略
 	//
@@ -1083,8 +2565,8 @@ type ClientInterface interface {
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-	ReplacePoliciesWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+	ReplacePoliciesWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReplacePolicies 整体替换中央策略
 	//
@@ -1092,38 +2574,38 @@ type ClientInterface interface {
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-	ReplacePolicies(ctx context.Context, ws WorkspaceName, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+	ReplacePolicies(ctx context.Context, workspaceId WorkspaceId, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeletePolicy 删除一条策略语句
 	//
-	// Corresponds with DELETE /workspaces/{ws}/policies/{policyId} (the `DeletePolicy` operationId).
-	DeletePolicy(ctx context.Context, ws WorkspaceName, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/policies/{policyId} (the `DeletePolicy` operationId).
+	DeletePolicy(ctx context.Context, workspaceId WorkspaceId, policyId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRouteTable 查看路由表
 	//
 	// 路由表只在 agentserver 上；节点收到的是按节点渲染、去掉目的的分流表。.
 	//
-	// Corresponds with GET /workspaces/{ws}/routes (the `GetRouteTable` operationId).
-	GetRouteTable(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/routes (the `GetRouteTable` operationId).
+	GetRouteTable(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddRouteWithBody 追加一条路由
 	//
-	// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+	// 追加到末尾；同等具体时书写顺序靠前的优先。.
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-	AddRouteWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+	AddRouteWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddRoute 追加一条路由
 	//
-	// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+	// 追加到末尾；同等具体时书写顺序靠前的优先。.
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-	AddRoute(ctx context.Context, ws WorkspaceName, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+	AddRoute(ctx context.Context, workspaceId WorkspaceId, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReplaceRouteTableWithBody 整体替换路由表
 	//
@@ -1131,8 +2613,8 @@ type ClientInterface interface {
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-	ReplaceRouteTableWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+	ReplaceRouteTableWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReplaceRouteTable 整体替换路由表
 	//
@@ -1140,63 +2622,670 @@ type ClientInterface interface {
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-	ReplaceRouteTable(ctx context.Context, ws WorkspaceName, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+	ReplaceRouteTable(ctx context.Context, workspaceId WorkspaceId, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteRoute 删除一条路由
 	//
-	// 对应 `agentserver route remove`。.
-	//
-	// Corresponds with DELETE /workspaces/{ws}/routes/{routeId} (the `DeleteRoute` operationId).
-	DeleteRoute(ctx context.Context, ws WorkspaceName, routeId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/routes/{routeId} (the `DeleteRoute` operationId).
+	DeleteRoute(ctx context.Context, workspaceId WorkspaceId, routeId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListServices 列出已注册的服务
 	//
 	// 服务由节点在 `Advertise` 里注册，这里只读；状态 `cert_pending` 表示 workspace 的通配证书还没签下来。.
 	//
-	// Corresponds with GET /workspaces/{ws}/services (the `ListServices` operationId).
-	ListServices(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/services (the `ListServices` operationId).
+	ListServices(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListTokens 列出未使用的加入令牌
 	//
-	// 对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。.
+	// 服务端只存令牌的 SHA-256，列表里没有令牌本身。.
 	//
-	// Corresponds with GET /workspaces/{ws}/tokens (the `ListTokens` operationId).
-	ListTokens(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /workspaces/{workspaceId}/tokens (the `ListTokens` operationId).
+	ListTokens(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTokenWithBody 签发加入令牌并返回加入链接
 	//
-	// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-	// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+	// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+	// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+	// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 	// 令牌明文只在这次响应里出现一次。
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-	CreateTokenWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+	CreateTokenWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateToken 签发加入令牌并返回加入链接
 	//
-	// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-	// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+	// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+	// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+	// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 	// 令牌明文只在这次响应里出现一次。
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-	CreateToken(ctx context.Context, ws WorkspaceName, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+	CreateToken(ctx context.Context, workspaceId WorkspaceId, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RevokeToken 作废未使用的令牌
 	//
-	// 对应 `agentserver token revoke`。.
-	//
-	// Corresponds with DELETE /workspaces/{ws}/tokens/{tokenId} (the `RevokeToken` operationId).
-	RevokeToken(ctx context.Context, ws WorkspaceName, tokenId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/tokens/{tokenId} (the `RevokeToken` operationId).
+	RevokeToken(ctx context.Context, workspaceId WorkspaceId, tokenId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// ListAuditEvents 查询全局审计记录
+//
+// instance admin 可查询整个 instance 的所有写入事件；响应不包含 token、凭据、私钥或其他敏感正文。.
+//
+// Corresponds with GET /audit/events (the `ListAuditEvents` operationId).
+func (c *Client) ListAuditEvents(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAuditEventsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAuditEvent 查看审计事件
+//
+// Corresponds with GET /audit/events/{eventId} (the `GetAuditEvent` operationId).
+func (c *Client) GetAuditEvent(ctx context.Context, eventId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAuditEventRequest(c.Server, eventId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAuthProviders 列出认证 providers
+//
+// Corresponds with GET /auth-providers (the `ListAuthProviders` operationId).
+func (c *Client) ListAuthProviders(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAuthProvidersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAuthProviderWithBody 创建认证 provider
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+func (c *Client) CreateAuthProviderWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAuthProviderRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAuthProvider 创建认证 provider
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+func (c *Client) CreateAuthProvider(ctx context.Context, body CreateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAuthProviderRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteAuthProvider 删除认证 provider
+//
+// Corresponds with DELETE /auth-providers/{providerId} (the `DeleteAuthProvider` operationId).
+func (c *Client) DeleteAuthProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteAuthProviderRequest(c.Server, providerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAuthProvider 查看认证 provider
+//
+// Corresponds with GET /auth-providers/{providerId} (the `GetAuthProvider` operationId).
+func (c *Client) GetAuthProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAuthProviderRequest(c.Server, providerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAuthProviderWithBody 更新认证 provider
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+func (c *Client) UpdateAuthProviderWithBody(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAuthProviderRequestWithBody(c.Server, providerId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateAuthProvider 更新认证 provider
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+func (c *Client) UpdateAuthProvider(ctx context.Context, providerId Uuid, body UpdateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateAuthProviderRequest(c.Server, providerId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListCertificateIssuers 列出 certificate issuers
+//
+// Corresponds with GET /certificate-issuers (the `ListCertificateIssuers` operationId).
+func (c *Client) ListCertificateIssuers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCertificateIssuersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCertificateIssuerWithBody 创建 certificate issuer
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+func (c *Client) CreateCertificateIssuerWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCertificateIssuerRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCertificateIssuer 创建 certificate issuer
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+func (c *Client) CreateCertificateIssuer(ctx context.Context, body CreateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCertificateIssuerRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteCertificateIssuer 删除 certificate issuer
+//
+// Corresponds with DELETE /certificate-issuers/{issuerId} (the `DeleteCertificateIssuer` operationId).
+func (c *Client) DeleteCertificateIssuer(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteCertificateIssuerRequest(c.Server, issuerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCertificateIssuer 查看 certificate issuer
+//
+// Corresponds with GET /certificate-issuers/{issuerId} (the `GetCertificateIssuer` operationId).
+func (c *Client) GetCertificateIssuer(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCertificateIssuerRequest(c.Server, issuerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateCertificateIssuerWithBody 更新 certificate issuer
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+func (c *Client) UpdateCertificateIssuerWithBody(ctx context.Context, issuerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCertificateIssuerRequestWithBody(c.Server, issuerId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateCertificateIssuer 更新 certificate issuer
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+func (c *Client) UpdateCertificateIssuer(ctx context.Context, issuerId Uuid, body UpdateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCertificateIssuerRequest(c.Server, issuerId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListCertificates 列出 instance 的全部证书
+//
+// 返回 workspace wildcard、relay 和 agentserver 自身证书的统一生命周期视图。私钥和证书链正文不在此接口返回。.
+//
+// Corresponds with GET /certificates (the `ListCertificates` operationId).
+func (c *Client) ListCertificates(ctx context.Context, params *ListCertificatesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListCertificatesRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// IssueCertificateWithBody 签发或重新签发证书
+//
+// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+func (c *Client) IssueCertificateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewIssueCertificateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// IssueCertificate 签发或重新签发证书
+//
+// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+func (c *Client) IssueCertificate(ctx context.Context, body IssueCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewIssueCertificateRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCertificate 查看证书生命周期状态
+//
+// Corresponds with GET /certificates/{certificateId} (the `GetCertificate` operationId).
+func (c *Client) GetCertificate(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCertificateRequest(c.Server, certificateId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RenewCertificate 立即续期证书
+//
+// 异步触发续期；证书进入 renewing，成功后回到 ready，失败保留旧证书并记录 last_error。 已 revoked 的证书不能自动续期，需先重新签发。.
+//
+// Corresponds with POST /certificates/{certificateId}/renew (the `RenewCertificate` operationId).
+func (c *Client) RenewCertificate(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRenewCertificateRequest(c.Server, certificateId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevokeCertificateWithBody 吊销证书
+//
+// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+func (c *Client) RevokeCertificateWithBody(ctx context.Context, certificateId CertificateId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeCertificateRequestWithBody(c.Server, certificateId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevokeCertificate 吊销证书
+//
+// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+func (c *Client) RevokeCertificate(ctx context.Context, certificateId CertificateId, body RevokeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeCertificateRequest(c.Server, certificateId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListDNSProviders 列出 DNS providers
+//
+// Corresponds with GET /dns-providers (the `ListDNSProviders` operationId).
+func (c *Client) ListDNSProviders(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListDNSProvidersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDNSProviderWithBody 创建 DNS provider
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+func (c *Client) CreateDNSProviderWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDNSProviderRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateDNSProvider 创建 DNS provider
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+func (c *Client) CreateDNSProvider(ctx context.Context, body CreateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateDNSProviderRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteDNSProvider 删除 DNS provider
+//
+// Corresponds with DELETE /dns-providers/{providerId} (the `DeleteDNSProvider` operationId).
+func (c *Client) DeleteDNSProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteDNSProviderRequest(c.Server, providerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetDNSProvider 查看 DNS provider
+//
+// Corresponds with GET /dns-providers/{providerId} (the `GetDNSProvider` operationId).
+func (c *Client) GetDNSProvider(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetDNSProviderRequest(c.Server, providerId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateDNSProviderWithBody 更新 DNS provider
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+func (c *Client) UpdateDNSProviderWithBody(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateDNSProviderRequestWithBody(c.Server, providerId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateDNSProvider 更新 DNS provider
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+func (c *Client) UpdateDNSProvider(ctx context.Context, providerId Uuid, body UpdateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateDNSProviderRequest(c.Server, providerId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListInstanceDomains 列出 instance 域名
+//
+// Corresponds with GET /domains (the `ListInstanceDomains` operationId).
+func (c *Client) ListInstanceDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListInstanceDomainsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateInstanceDomainWithBody 添加 instance 域名
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+func (c *Client) CreateInstanceDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInstanceDomainRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateInstanceDomain 添加 instance 域名
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+func (c *Client) CreateInstanceDomain(ctx context.Context, body CreateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateInstanceDomainRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteInstanceDomain 删除 instance 域名
+//
+// Corresponds with DELETE /domains/{domainId} (the `DeleteInstanceDomain` operationId).
+func (c *Client) DeleteInstanceDomain(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteInstanceDomainRequest(c.Server, domainId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetInstanceDomain 查看 instance 域名
+//
+// Corresponds with GET /domains/{domainId} (the `GetInstanceDomain` operationId).
+func (c *Client) GetInstanceDomain(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInstanceDomainRequest(c.Server, domainId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateInstanceDomainWithBody 更新 instance 域名
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+func (c *Client) UpdateInstanceDomainWithBody(ctx context.Context, domainId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateInstanceDomainRequestWithBody(c.Server, domainId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateInstanceDomain 更新 instance 域名
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+func (c *Client) UpdateInstanceDomain(ctx context.Context, domainId Uuid, body UpdateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateInstanceDomainRequest(c.Server, domainId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // ListRelays 列出 relay
 //
-// 对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。.
+// `connected` 表示 relay 会话当前在线。.
 //
 // Corresponds with GET /relays (the `ListRelays` operationId).
 func (c *Client) ListRelays(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1213,8 +3302,8 @@ func (c *Client) ListRelays(ctx context.Context, reqEditors ...RequestEditorFn) 
 
 // RegisterRelayWithBody 注册 relay
 //
-// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 //
 // Takes any type of body and a specified content type.
 //
@@ -1233,8 +3322,8 @@ func (c *Client) RegisterRelayWithBody(ctx context.Context, contentType string, 
 
 // RegisterRelay 注册 relay
 //
-// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1268,7 +3357,7 @@ func (c *Client) ListRelayTokens(ctx context.Context, reqEditors ...RequestEdito
 
 // CreateRelayTokenWithBody 签发 relay 注册令牌
 //
-// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1287,7 +3376,7 @@ func (c *Client) CreateRelayTokenWithBody(ctx context.Context, contentType strin
 
 // CreateRelayToken 签发 relay 注册令牌
 //
-// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1307,7 +3396,7 @@ func (c *Client) CreateRelayToken(ctx context.Context, body CreateRelayTokenJSON
 // RevokeRelayToken 作废 relay 注册令牌
 //
 // Corresponds with DELETE /relays/tokens/{tokenId} (the `RevokeRelayToken` operationId).
-func (c *Client) RevokeRelayToken(ctx context.Context, tokenId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) RevokeRelayToken(ctx context.Context, tokenId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevokeRelayTokenRequest(c.Server, tokenId)
 	if err != nil {
 		return nil, err
@@ -1321,11 +3410,11 @@ func (c *Client) RevokeRelayToken(ctx context.Context, tokenId string, reqEditor
 
 // RemoveRelay 注销 relay
 //
-// 对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。.
+// relay 进入 deleted 后不再作为 agentd 候选，关闭 relay 会话；已存在证书按生命周期处理。.
 //
-// Corresponds with DELETE /relays/{relay} (the `RemoveRelay` operationId).
-func (c *Client) RemoveRelay(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRemoveRelayRequest(c.Server, relay)
+// Corresponds with DELETE /relays/{relayId} (the `RemoveRelay` operationId).
+func (c *Client) RemoveRelay(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveRelayRequest(c.Server, relayId)
 	if err != nil {
 		return nil, err
 	}
@@ -1338,9 +3427,9 @@ func (c *Client) RemoveRelay(ctx context.Context, relay RelayName, reqEditors ..
 
 // GetRelay 查看 relay
 //
-// Corresponds with GET /relays/{relay} (the `GetRelay` operationId).
-func (c *Client) GetRelay(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetRelayRequest(c.Server, relay)
+// Corresponds with GET /relays/{relayId} (the `GetRelay` operationId).
+func (c *Client) GetRelay(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRelayRequest(c.Server, relayId)
 	if err != nil {
 		return nil, err
 	}
@@ -1351,13 +3440,13 @@ func (c *Client) GetRelay(ctx context.Context, relay RelayName, reqEditors ...Re
 	return c.Client.Do(req)
 }
 
-// ListRelayCerts 查看该 relay 在各 workspace 的 relay 证书
+// ListRelayCerts 查看该 relay 持有的 relay 证书
 //
-// 每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。
+// relay 按需缓存 workspace 证书；证书由 workspace 密钥签发，与 `/.well-known/agentd?workspace=…` 公布的内容一致。
 //
-// Corresponds with GET /relays/{relay}/certs (the `ListRelayCerts` operationId).
-func (c *Client) ListRelayCerts(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListRelayCertsRequest(c.Server, relay)
+// Corresponds with GET /relays/{relayId}/certs (the `ListRelayCerts` operationId).
+func (c *Client) ListRelayCerts(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRelayCertsRequest(c.Server, relayId)
 	if err != nil {
 		return nil, err
 	}
@@ -1370,7 +3459,7 @@ func (c *Client) ListRelayCerts(ctx context.Context, relay RelayName, reqEditors
 
 // GetServer 服务端信息
 //
-// 对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
+// agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
 //
 // Corresponds with GET /server (the `GetServer` operationId).
 func (c *Client) GetServer(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1400,7 +3489,194 @@ func (c *Client) GetStatus(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
+// ListUsers 列出全局用户
+//
+// 用户目录是 instance 级资源；workspace 成员关系只保存角色，不复制用户资料。.
+//
+// Corresponds with GET /users (the `ListUsers` operationId).
+func (c *Client) ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUsersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpsertUserWithBody 创建或更新全局用户
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /users (the `UpsertUser` operationId).
+func (c *Client) UpsertUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertUserRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpsertUser 创建或更新全局用户
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /users (the `UpsertUser` operationId).
+func (c *Client) UpsertUser(ctx context.Context, body UpsertUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertUserRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteUser 删除全局用户
+//
+// 删除用户目录记录，同时移除其所有 workspace membership；审计记录保留 subject 的不可逆摘要。.
+//
+// Corresponds with DELETE /users/{userId} (the `DeleteUser` operationId).
+func (c *Client) DeleteUser(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteUserRequest(c.Server, userId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetUser 查看全局用户
+//
+// Corresponds with GET /users/{userId} (the `GetUser` operationId).
+func (c *Client) GetUser(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetUserRequest(c.Server, userId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListUserIdentities 列出用户的外部认证 identity
+//
+// Corresponds with GET /users/{userId}/identities (the `ListUserIdentities` operationId).
+func (c *Client) ListUserIdentities(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUserIdentitiesRequest(c.Server, userId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LinkUserIdentityWithBody 将外部认证 identity 关联到用户
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+func (c *Client) LinkUserIdentityWithBody(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLinkUserIdentityRequestWithBody(c.Server, userId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LinkUserIdentity 将外部认证 identity 关联到用户
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+func (c *Client) LinkUserIdentity(ctx context.Context, userId Uuid, body LinkUserIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLinkUserIdentityRequest(c.Server, userId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UnlinkUserIdentity 解除外部认证 identity
+//
+// Corresponds with DELETE /users/{userId}/identities/{identityId} (the `UnlinkUserIdentity` operationId).
+func (c *Client) UnlinkUserIdentity(ctx context.Context, userId Uuid, identityId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnlinkUserIdentityRequest(c.Server, userId, identityId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetUserInstanceAdminWithBody 授予或撤销 instance admin
+//
+// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+func (c *Client) SetUserInstanceAdminWithBody(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetUserInstanceAdminRequestWithBody(c.Server, userId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetUserInstanceAdmin 授予或撤销 instance admin
+//
+// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+func (c *Client) SetUserInstanceAdmin(ctx context.Context, userId Uuid, body SetUserInstanceAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetUserInstanceAdminRequest(c.Server, userId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListWorkspaces 列出 workspace
+//
+// 返回 instance 中的全部 workspace。普通用户的 membership 列表使用普通用户 API 的 `GET /api/v1/workspaces`，不调用此 admin operation。.
 //
 // Corresponds with GET /workspaces (the `ListWorkspaces` operationId).
 func (c *Client) ListWorkspaces(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1417,8 +3693,8 @@ func (c *Client) ListWorkspaces(ctx context.Context, reqEditors ...RequestEditor
 
 // CreateWorkspaceWithBody 创建 workspace
 //
-// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 //
 // Takes any type of body and a specified content type.
 //
@@ -1437,8 +3713,8 @@ func (c *Client) CreateWorkspaceWithBody(ctx context.Context, contentType string
 
 // CreateWorkspace 创建 workspace
 //
-// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1457,11 +3733,11 @@ func (c *Client) CreateWorkspace(ctx context.Context, body CreateWorkspaceJSONRe
 
 // DeleteWorkspace 删除 workspace
 //
-// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。.
+// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书；成员的密钥文件不受影响。.
 //
-// Corresponds with DELETE /workspaces/{ws} (the `DeleteWorkspace` operationId).
-func (c *Client) DeleteWorkspace(ctx context.Context, ws WorkspaceName, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteWorkspaceRequest(c.Server, ws, params)
+// Corresponds with DELETE /workspaces/{workspaceId} (the `DeleteWorkspace` operationId).
+func (c *Client) DeleteWorkspace(ctx context.Context, workspaceId WorkspaceId, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteWorkspaceRequest(c.Server, workspaceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1472,85 +3748,13 @@ func (c *Client) DeleteWorkspace(ctx context.Context, ws WorkspaceName, params *
 	return c.Client.Do(req)
 }
 
-// GetWorkspace 查看 workspace（含公钥、证书状态、指派的 relay）
+// GetWorkspace 查看 workspace（公钥、基础域名、状态和证书）
 //
-// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。
+// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`。
 //
-// Corresponds with GET /workspaces/{ws} (the `GetWorkspace` operationId).
-func (c *Client) GetWorkspace(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetWorkspaceRequest(c.Server, ws)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateWorkspaceWithBody 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-//
-// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-func (c *Client) UpdateWorkspaceWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateWorkspaceRequestWithBody(c.Server, ws, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateWorkspace 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-//
-// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-func (c *Client) UpdateWorkspace(ctx context.Context, ws WorkspaceName, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateWorkspaceRequest(c.Server, ws, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// ListCerts 查看通配证书
-//
-// 对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。.
-//
-// Corresponds with GET /workspaces/{ws}/certs (the `ListCerts` operationId).
-func (c *Client) ListCerts(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListCertsRequest(c.Server, ws)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// RenewCert 立即续期
-//
-// 对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。.
-//
-// Corresponds with POST /workspaces/{ws}/certs/renew (the `RenewCert` operationId).
-func (c *Client) RenewCert(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRenewCertRequest(c.Server, ws)
+// Corresponds with GET /workspaces/{workspaceId} (the `GetWorkspace` operationId).
+func (c *Client) GetWorkspace(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkspaceRequest(c.Server, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -1563,9 +3767,9 @@ func (c *Client) RenewCert(ctx context.Context, ws WorkspaceName, reqEditors ...
 
 // ListGroups 列出组
 //
-// Corresponds with GET /workspaces/{ws}/groups (the `ListGroups` operationId).
-func (c *Client) ListGroups(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListGroupsRequest(c.Server, ws)
+// Corresponds with GET /workspaces/{workspaceId}/groups (the `ListGroups` operationId).
+func (c *Client) ListGroups(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListGroupsRequest(c.Server, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -1578,13 +3782,13 @@ func (c *Client) ListGroups(ctx context.Context, ws WorkspaceName, reqEditors ..
 
 // CreateGroupWithBody 创建组
 //
-// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-func (c *Client) CreateGroupWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateGroupRequestWithBody(c.Server, ws, contentType, body)
+// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+func (c *Client) CreateGroupWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGroupRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1597,13 +3801,13 @@ func (c *Client) CreateGroupWithBody(ctx context.Context, ws WorkspaceName, cont
 
 // CreateGroup 创建组
 //
-// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-func (c *Client) CreateGroup(ctx context.Context, ws WorkspaceName, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateGroupRequest(c.Server, ws, body)
+// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+func (c *Client) CreateGroup(ctx context.Context, workspaceId WorkspaceId, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGroupRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1616,11 +3820,11 @@ func (c *Client) CreateGroup(ctx context.Context, ws WorkspaceName, body CreateG
 
 // DeleteGroup 删除组
 //
-// 对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
+// 向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
 //
-// Corresponds with DELETE /workspaces/{ws}/groups/{group} (the `DeleteGroup` operationId).
-func (c *Client) DeleteGroup(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteGroupRequest(c.Server, ws, group)
+// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId} (the `DeleteGroup` operationId).
+func (c *Client) DeleteGroup(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteGroupRequest(c.Server, workspaceId, groupId)
 	if err != nil {
 		return nil, err
 	}
@@ -1633,9 +3837,9 @@ func (c *Client) DeleteGroup(ctx context.Context, ws WorkspaceName, group GroupN
 
 // GetGroup 查看组
 //
-// Corresponds with GET /workspaces/{ws}/groups/{group} (the `GetGroup` operationId).
-func (c *Client) GetGroup(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetGroupRequest(c.Server, ws, group)
+// Corresponds with GET /workspaces/{workspaceId}/groups/{groupId} (the `GetGroup` operationId).
+func (c *Client) GetGroup(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGroupRequest(c.Server, workspaceId, groupId)
 	if err != nil {
 		return nil, err
 	}
@@ -1646,13 +3850,13 @@ func (c *Client) GetGroup(ctx context.Context, ws WorkspaceName, group GroupName
 	return c.Client.Do(req)
 }
 
-// RemoveGroupMember 把成员移出组
+// RemoveGroupNode 把 node 移出组
 //
-// 对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。
+// 停止续发并推送吊销记录 `(member, issuer, until)`。
 //
-// Corresponds with DELETE /workspaces/{ws}/groups/{group}/members/{node} (the `RemoveGroupMember` operationId).
-func (c *Client) RemoveGroupMember(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRemoveGroupMemberRequest(c.Server, ws, group, node)
+// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `RemoveGroupNode` operationId).
+func (c *Client) RemoveGroupNode(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveGroupNodeRequest(c.Server, workspaceId, groupId, nodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -1663,13 +3867,77 @@ func (c *Client) RemoveGroupMember(ctx context.Context, ws WorkspaceName, group 
 	return c.Client.Do(req)
 }
 
-// AddGroupMember 把成员加入组
+// AddGroupNode 把 node 加入组
 //
-// 对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
+// 给该 node 签发 group-node membership 证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
 //
-// Corresponds with PUT /workspaces/{ws}/groups/{group}/members/{node} (the `AddGroupMember` operationId).
-func (c *Client) AddGroupMember(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddGroupMemberRequest(c.Server, ws, group, node)
+// Corresponds with PUT /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `AddGroupNode` operationId).
+func (c *Client) AddGroupNode(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddGroupNodeRequest(c.Server, workspaceId, groupId, nodeId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListWorkspaceMembers 列出 workspace 成员
+//
+// Corresponds with GET /workspaces/{workspaceId}/members (the `ListWorkspaceMembers` operationId).
+func (c *Client) ListWorkspaceMembers(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListWorkspaceMembersRequest(c.Server, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpsertWorkspaceMemberWithBody 添加或调整 用户角色
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+func (c *Client) UpsertWorkspaceMemberWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertWorkspaceMemberRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpsertWorkspaceMember 添加或调整 用户角色
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+func (c *Client) UpsertWorkspaceMember(ctx context.Context, workspaceId WorkspaceId, body UpsertWorkspaceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpsertWorkspaceMemberRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveWorkspaceMember 移除 workspace 成员
+//
+// Corresponds with DELETE /workspaces/{workspaceId}/members/{memberId} (the `RemoveWorkspaceMember` operationId).
+func (c *Client) RemoveWorkspaceMember(ctx context.Context, workspaceId WorkspaceId, memberId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveWorkspaceMemberRequest(c.Server, workspaceId, memberId)
 	if err != nil {
 		return nil, err
 	}
@@ -1682,11 +3950,11 @@ func (c *Client) AddGroupMember(ctx context.Context, ws WorkspaceName, group Gro
 
 // ListNodes 列出成员
 //
-// 对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
+// 在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
 //
-// Corresponds with GET /workspaces/{ws}/nodes (the `ListNodes` operationId).
-func (c *Client) ListNodes(ctx context.Context, ws WorkspaceName, params *ListNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListNodesRequest(c.Server, ws, params)
+// Corresponds with GET /workspaces/{workspaceId}/nodes (the `ListNodes` operationId).
+func (c *Client) ListNodes(ctx context.Context, workspaceId WorkspaceId, params *ListNodesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListNodesRequest(c.Server, workspaceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1699,13 +3967,13 @@ func (c *Client) ListNodes(ctx context.Context, ws WorkspaceName, params *ListNo
 
 // RemoveNode 移除成员
 //
-// 对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
+// 目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
 // 向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。
 // 换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。
 //
-// Corresponds with DELETE /workspaces/{ws}/nodes/{node} (the `RemoveNode` operationId).
-func (c *Client) RemoveNode(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRemoveNodeRequest(c.Server, ws, node)
+// Corresponds with DELETE /workspaces/{workspaceId}/nodes/{nodeId} (the `RemoveNode` operationId).
+func (c *Client) RemoveNode(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveNodeRequest(c.Server, workspaceId, nodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -1718,9 +3986,9 @@ func (c *Client) RemoveNode(ctx context.Context, ws WorkspaceName, node NodeName
 
 // GetNode 查看成员
 //
-// Corresponds with GET /workspaces/{ws}/nodes/{node} (the `GetNode` operationId).
-func (c *Client) GetNode(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetNodeRequest(c.Server, ws, node)
+// Corresponds with GET /workspaces/{workspaceId}/nodes/{nodeId} (the `GetNode` operationId).
+func (c *Client) GetNode(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetNodeRequest(c.Server, workspaceId, nodeId)
 	if err != nil {
 		return nil, err
 	}
@@ -1733,14 +4001,14 @@ func (c *Client) GetNode(ctx context.Context, ws WorkspaceName, node NodeName, r
 
 // UpdateNodeWithBody 改名或调整角色上限
 //
-// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 // 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-func (c *Client) UpdateNodeWithBody(ctx context.Context, ws WorkspaceName, node NodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateNodeRequestWithBody(c.Server, ws, node, contentType, body)
+// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+func (c *Client) UpdateNodeWithBody(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateNodeRequestWithBody(c.Server, workspaceId, nodeId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1753,14 +4021,14 @@ func (c *Client) UpdateNodeWithBody(ctx context.Context, ws WorkspaceName, node 
 
 // UpdateNode 改名或调整角色上限
 //
-// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 // 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-func (c *Client) UpdateNode(ctx context.Context, ws WorkspaceName, node NodeName, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateNodeRequest(c.Server, ws, node, body)
+// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+func (c *Client) UpdateNode(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateNodeRequest(c.Server, workspaceId, nodeId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1773,9 +4041,9 @@ func (c *Client) UpdateNode(ctx context.Context, ws WorkspaceName, node NodeName
 
 // ListPolicies 列出中央策略语句
 //
-// Corresponds with GET /workspaces/{ws}/policies (the `ListPolicies` operationId).
-func (c *Client) ListPolicies(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListPoliciesRequest(c.Server, ws)
+// Corresponds with GET /workspaces/{workspaceId}/policies (the `ListPolicies` operationId).
+func (c *Client) ListPolicies(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPoliciesRequest(c.Server, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -1790,9 +4058,9 @@ func (c *Client) ListPolicies(ctx context.Context, ws WorkspaceName, reqEditors 
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-func (c *Client) AddPolicyWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddPolicyRequestWithBody(c.Server, ws, contentType, body)
+// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+func (c *Client) AddPolicyWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPolicyRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1807,9 +4075,9 @@ func (c *Client) AddPolicyWithBody(ctx context.Context, ws WorkspaceName, conten
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-func (c *Client) AddPolicy(ctx context.Context, ws WorkspaceName, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddPolicyRequest(c.Server, ws, body)
+// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+func (c *Client) AddPolicy(ctx context.Context, workspaceId WorkspaceId, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddPolicyRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1826,9 +4094,9 @@ func (c *Client) AddPolicy(ctx context.Context, ws WorkspaceName, body AddPolicy
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-func (c *Client) ReplacePoliciesWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewReplacePoliciesRequestWithBody(c.Server, ws, contentType, body)
+// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+func (c *Client) ReplacePoliciesWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplacePoliciesRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1845,9 +4113,9 @@ func (c *Client) ReplacePoliciesWithBody(ctx context.Context, ws WorkspaceName, 
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-func (c *Client) ReplacePolicies(ctx context.Context, ws WorkspaceName, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewReplacePoliciesRequest(c.Server, ws, body)
+// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+func (c *Client) ReplacePolicies(ctx context.Context, workspaceId WorkspaceId, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplacePoliciesRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1860,9 +4128,9 @@ func (c *Client) ReplacePolicies(ctx context.Context, ws WorkspaceName, body Rep
 
 // DeletePolicy 删除一条策略语句
 //
-// Corresponds with DELETE /workspaces/{ws}/policies/{policyId} (the `DeletePolicy` operationId).
-func (c *Client) DeletePolicy(ctx context.Context, ws WorkspaceName, policyId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeletePolicyRequest(c.Server, ws, policyId)
+// Corresponds with DELETE /workspaces/{workspaceId}/policies/{policyId} (the `DeletePolicy` operationId).
+func (c *Client) DeletePolicy(ctx context.Context, workspaceId WorkspaceId, policyId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeletePolicyRequest(c.Server, workspaceId, policyId)
 	if err != nil {
 		return nil, err
 	}
@@ -1877,9 +4145,9 @@ func (c *Client) DeletePolicy(ctx context.Context, ws WorkspaceName, policyId st
 //
 // 路由表只在 agentserver 上；节点收到的是按节点渲染、去掉目的的分流表。.
 //
-// Corresponds with GET /workspaces/{ws}/routes (the `GetRouteTable` operationId).
-func (c *Client) GetRouteTable(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetRouteTableRequest(c.Server, ws)
+// Corresponds with GET /workspaces/{workspaceId}/routes (the `GetRouteTable` operationId).
+func (c *Client) GetRouteTable(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRouteTableRequest(c.Server, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -1892,13 +4160,13 @@ func (c *Client) GetRouteTable(ctx context.Context, ws WorkspaceName, reqEditors
 
 // AddRouteWithBody 追加一条路由
 //
-// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+// 追加到末尾；同等具体时书写顺序靠前的优先。.
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-func (c *Client) AddRouteWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddRouteRequestWithBody(c.Server, ws, contentType, body)
+// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+func (c *Client) AddRouteWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddRouteRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1911,13 +4179,13 @@ func (c *Client) AddRouteWithBody(ctx context.Context, ws WorkspaceName, content
 
 // AddRoute 追加一条路由
 //
-// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+// 追加到末尾；同等具体时书写顺序靠前的优先。.
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-func (c *Client) AddRoute(ctx context.Context, ws WorkspaceName, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddRouteRequest(c.Server, ws, body)
+// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+func (c *Client) AddRoute(ctx context.Context, workspaceId WorkspaceId, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddRouteRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1934,9 +4202,9 @@ func (c *Client) AddRoute(ctx context.Context, ws WorkspaceName, body AddRouteJS
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-func (c *Client) ReplaceRouteTableWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewReplaceRouteTableRequestWithBody(c.Server, ws, contentType, body)
+// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+func (c *Client) ReplaceRouteTableWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceRouteTableRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1953,9 +4221,9 @@ func (c *Client) ReplaceRouteTableWithBody(ctx context.Context, ws WorkspaceName
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-func (c *Client) ReplaceRouteTable(ctx context.Context, ws WorkspaceName, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewReplaceRouteTableRequest(c.Server, ws, body)
+// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+func (c *Client) ReplaceRouteTable(ctx context.Context, workspaceId WorkspaceId, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReplaceRouteTableRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1968,11 +4236,9 @@ func (c *Client) ReplaceRouteTable(ctx context.Context, ws WorkspaceName, body R
 
 // DeleteRoute 删除一条路由
 //
-// 对应 `agentserver route remove`。.
-//
-// Corresponds with DELETE /workspaces/{ws}/routes/{routeId} (the `DeleteRoute` operationId).
-func (c *Client) DeleteRoute(ctx context.Context, ws WorkspaceName, routeId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteRouteRequest(c.Server, ws, routeId)
+// Corresponds with DELETE /workspaces/{workspaceId}/routes/{routeId} (the `DeleteRoute` operationId).
+func (c *Client) DeleteRoute(ctx context.Context, workspaceId WorkspaceId, routeId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRouteRequest(c.Server, workspaceId, routeId)
 	if err != nil {
 		return nil, err
 	}
@@ -1987,9 +4253,9 @@ func (c *Client) DeleteRoute(ctx context.Context, ws WorkspaceName, routeId stri
 //
 // 服务由节点在 `Advertise` 里注册，这里只读；状态 `cert_pending` 表示 workspace 的通配证书还没签下来。.
 //
-// Corresponds with GET /workspaces/{ws}/services (the `ListServices` operationId).
-func (c *Client) ListServices(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListServicesRequest(c.Server, ws)
+// Corresponds with GET /workspaces/{workspaceId}/services (the `ListServices` operationId).
+func (c *Client) ListServices(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListServicesRequest(c.Server, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -2002,11 +4268,11 @@ func (c *Client) ListServices(ctx context.Context, ws WorkspaceName, reqEditors 
 
 // ListTokens 列出未使用的加入令牌
 //
-// 对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。.
+// 服务端只存令牌的 SHA-256，列表里没有令牌本身。.
 //
-// Corresponds with GET /workspaces/{ws}/tokens (the `ListTokens` operationId).
-func (c *Client) ListTokens(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTokensRequest(c.Server, ws)
+// Corresponds with GET /workspaces/{workspaceId}/tokens (the `ListTokens` operationId).
+func (c *Client) ListTokens(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTokensRequest(c.Server, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -2019,15 +4285,16 @@ func (c *Client) ListTokens(ctx context.Context, ws WorkspaceName, reqEditors ..
 
 // CreateTokenWithBody 签发加入令牌并返回加入链接
 //
-// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 // 令牌明文只在这次响应里出现一次。
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-func (c *Client) CreateTokenWithBody(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTokenRequestWithBody(c.Server, ws, contentType, body)
+// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+func (c *Client) CreateTokenWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTokenRequestWithBody(c.Server, workspaceId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2040,15 +4307,16 @@ func (c *Client) CreateTokenWithBody(ctx context.Context, ws WorkspaceName, cont
 
 // CreateToken 签发加入令牌并返回加入链接
 //
-// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 // 令牌明文只在这次响应里出现一次。
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-func (c *Client) CreateToken(ctx context.Context, ws WorkspaceName, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTokenRequest(c.Server, ws, body)
+// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+func (c *Client) CreateToken(ctx context.Context, workspaceId WorkspaceId, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTokenRequest(c.Server, workspaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2061,11 +4329,9 @@ func (c *Client) CreateToken(ctx context.Context, ws WorkspaceName, body CreateT
 
 // RevokeToken 作废未使用的令牌
 //
-// 对应 `agentserver token revoke`。.
-//
-// Corresponds with DELETE /workspaces/{ws}/tokens/{tokenId} (the `RevokeToken` operationId).
-func (c *Client) RevokeToken(ctx context.Context, ws WorkspaceName, tokenId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewRevokeTokenRequest(c.Server, ws, tokenId)
+// Corresponds with DELETE /workspaces/{workspaceId}/tokens/{tokenId} (the `RevokeToken` operationId).
+func (c *Client) RevokeToken(ctx context.Context, workspaceId WorkspaceId, tokenId Uuid, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeTokenRequest(c.Server, workspaceId, tokenId)
 	if err != nil {
 		return nil, err
 	}
@@ -2074,6 +4340,1163 @@ func (c *Client) RevokeToken(ctx context.Context, ws WorkspaceName, tokenId stri
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewListAuditEventsRequest constructs an http.Request for the ListAuditEvents method
+func NewListAuditEventsRequest(server string, params *ListAuditEventsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/audit/events")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ActorId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "actor_id", *params.ActorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ResourceType != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resource_type", *params.ResourceType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ResourceId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "resource_id", *params.ResourceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.WorkspaceId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "workspace_id", *params.WorkspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Action != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "action", *params.Action, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Outcome != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "outcome", *params.Outcome, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Since != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "since", *params.Since, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Until != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "until", *params.Until, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAuditEventRequest constructs an http.Request for the GetAuditEvent method
+func NewGetAuditEventRequest(server string, eventId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "eventId", eventId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/audit/events/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAuthProvidersRequest constructs an http.Request for the ListAuthProviders method
+func NewListAuthProvidersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth-providers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateAuthProviderRequest calls the generic CreateAuthProvider builder with application/json body
+func NewCreateAuthProviderRequest(server string, body CreateAuthProviderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAuthProviderRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateAuthProviderRequestWithBody constructs an http.Request for the CreateAuthProvider method, with any body, and a specified content type
+func NewCreateAuthProviderRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth-providers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteAuthProviderRequest constructs an http.Request for the DeleteAuthProvider method
+func NewDeleteAuthProviderRequest(server string, providerId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAuthProviderRequest constructs an http.Request for the GetAuthProvider method
+func NewGetAuthProviderRequest(server string, providerId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateAuthProviderRequest calls the generic UpdateAuthProvider builder with application/json body
+func NewUpdateAuthProviderRequest(server string, providerId Uuid, body UpdateAuthProviderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateAuthProviderRequestWithBody(server, providerId, "application/json", bodyReader)
+}
+
+// NewUpdateAuthProviderRequestWithBody constructs an http.Request for the UpdateAuthProvider method, with any body, and a specified content type
+func NewUpdateAuthProviderRequestWithBody(server string, providerId Uuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListCertificateIssuersRequest constructs an http.Request for the ListCertificateIssuers method
+func NewListCertificateIssuersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificate-issuers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateCertificateIssuerRequest calls the generic CreateCertificateIssuer builder with application/json body
+func NewCreateCertificateIssuerRequest(server string, body CreateCertificateIssuerJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateCertificateIssuerRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateCertificateIssuerRequestWithBody constructs an http.Request for the CreateCertificateIssuer method, with any body, and a specified content type
+func NewCreateCertificateIssuerRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificate-issuers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteCertificateIssuerRequest constructs an http.Request for the DeleteCertificateIssuer method
+func NewDeleteCertificateIssuerRequest(server string, issuerId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "issuerId", issuerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificate-issuers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetCertificateIssuerRequest constructs an http.Request for the GetCertificateIssuer method
+func NewGetCertificateIssuerRequest(server string, issuerId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "issuerId", issuerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificate-issuers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateCertificateIssuerRequest calls the generic UpdateCertificateIssuer builder with application/json body
+func NewUpdateCertificateIssuerRequest(server string, issuerId Uuid, body UpdateCertificateIssuerJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateCertificateIssuerRequestWithBody(server, issuerId, "application/json", bodyReader)
+}
+
+// NewUpdateCertificateIssuerRequestWithBody constructs an http.Request for the UpdateCertificateIssuer method, with any body, and a specified content type
+func NewUpdateCertificateIssuerRequestWithBody(server string, issuerId Uuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "issuerId", issuerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificate-issuers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListCertificatesRequest constructs an http.Request for the ListCertificates method
+func NewListCertificatesRequest(server string, params *ListCertificatesParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificates")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Workspace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "workspace", *params.Workspace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Kind != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "kind", *params.Kind, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewIssueCertificateRequest calls the generic IssueCertificate builder with application/json body
+func NewIssueCertificateRequest(server string, body IssueCertificateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewIssueCertificateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewIssueCertificateRequestWithBody constructs an http.Request for the IssueCertificate method, with any body, and a specified content type
+func NewIssueCertificateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificates")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetCertificateRequest constructs an http.Request for the GetCertificate method
+func NewGetCertificateRequest(server string, certificateId CertificateId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "certificateId", certificateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificates/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRenewCertificateRequest constructs an http.Request for the RenewCertificate method
+func NewRenewCertificateRequest(server string, certificateId CertificateId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "certificateId", certificateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificates/%s/renew", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRevokeCertificateRequest calls the generic RevokeCertificate builder with application/json body
+func NewRevokeCertificateRequest(server string, certificateId CertificateId, body RevokeCertificateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRevokeCertificateRequestWithBody(server, certificateId, "application/json", bodyReader)
+}
+
+// NewRevokeCertificateRequestWithBody constructs an http.Request for the RevokeCertificate method, with any body, and a specified content type
+func NewRevokeCertificateRequestWithBody(server string, certificateId CertificateId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "certificateId", certificateId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/certificates/%s/revoke", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListDNSProvidersRequest constructs an http.Request for the ListDNSProviders method
+func NewListDNSProvidersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/dns-providers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateDNSProviderRequest calls the generic CreateDNSProvider builder with application/json body
+func NewCreateDNSProviderRequest(server string, body CreateDNSProviderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateDNSProviderRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateDNSProviderRequestWithBody constructs an http.Request for the CreateDNSProvider method, with any body, and a specified content type
+func NewCreateDNSProviderRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/dns-providers")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteDNSProviderRequest constructs an http.Request for the DeleteDNSProvider method
+func NewDeleteDNSProviderRequest(server string, providerId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/dns-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetDNSProviderRequest constructs an http.Request for the GetDNSProvider method
+func NewGetDNSProviderRequest(server string, providerId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/dns-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateDNSProviderRequest calls the generic UpdateDNSProvider builder with application/json body
+func NewUpdateDNSProviderRequest(server string, providerId Uuid, body UpdateDNSProviderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateDNSProviderRequestWithBody(server, providerId, "application/json", bodyReader)
+}
+
+// NewUpdateDNSProviderRequestWithBody constructs an http.Request for the UpdateDNSProvider method, with any body, and a specified content type
+func NewUpdateDNSProviderRequestWithBody(server string, providerId Uuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "providerId", providerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/dns-providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListInstanceDomainsRequest constructs an http.Request for the ListInstanceDomains method
+func NewListInstanceDomainsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/domains")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateInstanceDomainRequest calls the generic CreateInstanceDomain builder with application/json body
+func NewCreateInstanceDomainRequest(server string, body CreateInstanceDomainJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateInstanceDomainRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateInstanceDomainRequestWithBody constructs an http.Request for the CreateInstanceDomain method, with any body, and a specified content type
+func NewCreateInstanceDomainRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/domains")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteInstanceDomainRequest constructs an http.Request for the DeleteInstanceDomain method
+func NewDeleteInstanceDomainRequest(server string, domainId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "domainId", domainId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/domains/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetInstanceDomainRequest constructs an http.Request for the GetInstanceDomain method
+func NewGetInstanceDomainRequest(server string, domainId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "domainId", domainId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/domains/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateInstanceDomainRequest calls the generic UpdateInstanceDomain builder with application/json body
+func NewUpdateInstanceDomainRequest(server string, domainId Uuid, body UpdateInstanceDomainJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateInstanceDomainRequestWithBody(server, domainId, "application/json", bodyReader)
+}
+
+// NewUpdateInstanceDomainRequestWithBody constructs an http.Request for the UpdateInstanceDomain method, with any body, and a specified content type
+func NewUpdateInstanceDomainRequestWithBody(server string, domainId Uuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "domainId", domainId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/domains/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewListRelaysRequest constructs an http.Request for the ListRelays method
@@ -2211,12 +5634,12 @@ func NewCreateRelayTokenRequestWithBody(server string, contentType string, body 
 }
 
 // NewRevokeRelayTokenRequest constructs an http.Request for the RevokeRelayToken method
-func NewRevokeRelayTokenRequest(server string, tokenId string) (*http.Request, error) {
+func NewRevokeRelayTokenRequest(server string, tokenId Uuid) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "tokenId", tokenId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "tokenId", tokenId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2245,12 +5668,12 @@ func NewRevokeRelayTokenRequest(server string, tokenId string) (*http.Request, e
 }
 
 // NewRemoveRelayRequest constructs an http.Request for the RemoveRelay method
-func NewRemoveRelayRequest(server string, relay RelayName) (*http.Request, error) {
+func NewRemoveRelayRequest(server string, relayId RelayId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "relay", relay, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "relayId", relayId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2279,12 +5702,12 @@ func NewRemoveRelayRequest(server string, relay RelayName) (*http.Request, error
 }
 
 // NewGetRelayRequest constructs an http.Request for the GetRelay method
-func NewGetRelayRequest(server string, relay RelayName) (*http.Request, error) {
+func NewGetRelayRequest(server string, relayId RelayId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "relay", relay, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "relayId", relayId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2313,12 +5736,12 @@ func NewGetRelayRequest(server string, relay RelayName) (*http.Request, error) {
 }
 
 // NewListRelayCertsRequest constructs an http.Request for the ListRelayCerts method
-func NewListRelayCertsRequest(server string, relay RelayName) (*http.Request, error) {
+func NewListRelayCertsRequest(server string, relayId RelayId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "relay", relay, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "relayId", relayId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2400,6 +5823,310 @@ func NewGetStatusRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewListUsersRequest constructs an http.Request for the ListUsers method
+func NewListUsersRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpsertUserRequest calls the generic UpsertUser builder with application/json body
+func NewUpsertUserRequest(server string, body UpsertUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpsertUserRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpsertUserRequestWithBody constructs an http.Request for the UpsertUser method, with any body, and a specified content type
+func NewUpsertUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteUserRequest constructs an http.Request for the DeleteUser method
+func NewDeleteUserRequest(server string, userId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetUserRequest constructs an http.Request for the GetUser method
+func NewGetUserRequest(server string, userId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListUserIdentitiesRequest constructs an http.Request for the ListUserIdentities method
+func NewListUserIdentitiesRequest(server string, userId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/identities", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewLinkUserIdentityRequest calls the generic LinkUserIdentity builder with application/json body
+func NewLinkUserIdentityRequest(server string, userId Uuid, body LinkUserIdentityJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLinkUserIdentityRequestWithBody(server, userId, "application/json", bodyReader)
+}
+
+// NewLinkUserIdentityRequestWithBody constructs an http.Request for the LinkUserIdentity method, with any body, and a specified content type
+func NewLinkUserIdentityRequestWithBody(server string, userId Uuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/identities", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUnlinkUserIdentityRequest constructs an http.Request for the UnlinkUserIdentity method
+func NewUnlinkUserIdentityRequest(server string, userId Uuid, identityId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "identityId", identityId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/identities/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetUserInstanceAdminRequest calls the generic SetUserInstanceAdmin builder with application/json body
+func NewSetUserInstanceAdminRequest(server string, userId Uuid, body SetUserInstanceAdminJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetUserInstanceAdminRequestWithBody(server, userId, "application/json", bodyReader)
+}
+
+// NewSetUserInstanceAdminRequestWithBody constructs an http.Request for the SetUserInstanceAdmin method, with any body, and a specified content type
+func NewSetUserInstanceAdminRequestWithBody(server string, userId Uuid, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/%s/instance-admin", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListWorkspacesRequest constructs an http.Request for the ListWorkspaces method
 func NewListWorkspacesRequest(server string) (*http.Request, error) {
 	var err error
@@ -2468,12 +6195,12 @@ func NewCreateWorkspaceRequestWithBody(server string, contentType string, body i
 }
 
 // NewDeleteWorkspaceRequest constructs an http.Request for the DeleteWorkspace method
-func NewDeleteWorkspaceRequest(server string, ws WorkspaceName, params *DeleteWorkspaceParams) (*http.Request, error) {
+func NewDeleteWorkspaceRequest(server string, workspaceId WorkspaceId, params *DeleteWorkspaceParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2529,12 +6256,12 @@ func NewDeleteWorkspaceRequest(server string, ws WorkspaceName, params *DeleteWo
 }
 
 // NewGetWorkspaceRequest constructs an http.Request for the GetWorkspace method
-func NewGetWorkspaceRequest(server string, ws WorkspaceName) (*http.Request, error) {
+func NewGetWorkspaceRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2555,121 +6282,6 @@ func NewGetWorkspaceRequest(server string, ws WorkspaceName) (*http.Request, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateWorkspaceRequest calls the generic UpdateWorkspace builder with application/json body
-func NewUpdateWorkspaceRequest(server string, ws WorkspaceName, body UpdateWorkspaceJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateWorkspaceRequestWithBody(server, ws, "application/json", bodyReader)
-}
-
-// NewUpdateWorkspaceRequestWithBody constructs an http.Request for the UpdateWorkspace method, with any body, and a specified content type
-func NewUpdateWorkspaceRequestWithBody(server string, ws WorkspaceName, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/workspaces/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewListCertsRequest constructs an http.Request for the ListCerts method
-func NewListCertsRequest(server string, ws WorkspaceName) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/workspaces/%s/certs", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewRenewCertRequest constructs an http.Request for the RenewCert method
-func NewRenewCertRequest(server string, ws WorkspaceName) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/workspaces/%s/certs/renew", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2678,12 +6290,12 @@ func NewRenewCertRequest(server string, ws WorkspaceName) (*http.Request, error)
 }
 
 // NewListGroupsRequest constructs an http.Request for the ListGroups method
-func NewListGroupsRequest(server string, ws WorkspaceName) (*http.Request, error) {
+func NewListGroupsRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2712,23 +6324,23 @@ func NewListGroupsRequest(server string, ws WorkspaceName) (*http.Request, error
 }
 
 // NewCreateGroupRequest calls the generic CreateGroup builder with application/json body
-func NewCreateGroupRequest(server string, ws WorkspaceName, body CreateGroupJSONRequestBody) (*http.Request, error) {
+func NewCreateGroupRequest(server string, workspaceId WorkspaceId, body CreateGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateGroupRequestWithBody(server, ws, "application/json", bodyReader)
+	return NewCreateGroupRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
 // NewCreateGroupRequestWithBody constructs an http.Request for the CreateGroup method, with any body, and a specified content type
-func NewCreateGroupRequestWithBody(server string, ws WorkspaceName, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateGroupRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2759,19 +6371,19 @@ func NewCreateGroupRequestWithBody(server string, ws WorkspaceName, contentType 
 }
 
 // NewDeleteGroupRequest constructs an http.Request for the DeleteGroup method
-func NewDeleteGroupRequest(server string, ws WorkspaceName, group GroupName) (*http.Request, error) {
+func NewDeleteGroupRequest(server string, workspaceId WorkspaceId, groupId GroupId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "group", group, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2800,19 +6412,19 @@ func NewDeleteGroupRequest(server string, ws WorkspaceName, group GroupName) (*h
 }
 
 // NewGetGroupRequest constructs an http.Request for the GetGroup method
-func NewGetGroupRequest(server string, ws WorkspaceName, group GroupName) (*http.Request, error) {
+func NewGetGroupRequest(server string, workspaceId WorkspaceId, groupId GroupId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "group", group, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2840,27 +6452,27 @@ func NewGetGroupRequest(server string, ws WorkspaceName, group GroupName) (*http
 	return req, nil
 }
 
-// NewRemoveGroupMemberRequest constructs an http.Request for the RemoveGroupMember method
-func NewRemoveGroupMemberRequest(server string, ws WorkspaceName, group GroupName, node NodeName) (*http.Request, error) {
+// NewRemoveGroupNodeRequest constructs an http.Request for the RemoveGroupNode method
+func NewRemoveGroupNodeRequest(server string, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "group", group, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "node", node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "nodeId", nodeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2870,7 +6482,7 @@ func NewRemoveGroupMemberRequest(server string, ws WorkspaceName, group GroupNam
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/workspaces/%s/groups/%s/members/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/workspaces/%s/groups/%s/nodes/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2888,27 +6500,27 @@ func NewRemoveGroupMemberRequest(server string, ws WorkspaceName, group GroupNam
 	return req, nil
 }
 
-// NewAddGroupMemberRequest constructs an http.Request for the AddGroupMember method
-func NewAddGroupMemberRequest(server string, ws WorkspaceName, group GroupName, node NodeName) (*http.Request, error) {
+// NewAddGroupNodeRequest constructs an http.Request for the AddGroupNode method
+func NewAddGroupNodeRequest(server string, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "group", group, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam2 string
 
-	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "node", node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "nodeId", nodeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2918,7 +6530,7 @@ func NewAddGroupMemberRequest(server string, ws WorkspaceName, group GroupName, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/workspaces/%s/groups/%s/members/%s", pathParam0, pathParam1, pathParam2)
+	operationPath := fmt.Sprintf("/workspaces/%s/groups/%s/nodes/%s", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2936,13 +6548,135 @@ func NewAddGroupMemberRequest(server string, ws WorkspaceName, group GroupName, 
 	return req, nil
 }
 
-// NewListNodesRequest constructs an http.Request for the ListNodes method
-func NewListNodesRequest(server string, ws WorkspaceName, params *ListNodesParams) (*http.Request, error) {
+// NewListWorkspaceMembersRequest constructs an http.Request for the ListWorkspaceMembers method
+func NewListWorkspaceMembersRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/workspaces/%s/members", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpsertWorkspaceMemberRequest calls the generic UpsertWorkspaceMember builder with application/json body
+func NewUpsertWorkspaceMemberRequest(server string, workspaceId WorkspaceId, body UpsertWorkspaceMemberJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpsertWorkspaceMemberRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewUpsertWorkspaceMemberRequestWithBody constructs an http.Request for the UpsertWorkspaceMember method, with any body, and a specified content type
+func NewUpsertWorkspaceMemberRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/workspaces/%s/members", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveWorkspaceMemberRequest constructs an http.Request for the RemoveWorkspaceMember method
+func NewRemoveWorkspaceMemberRequest(server string, workspaceId WorkspaceId, memberId Uuid) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/workspaces/%s/members/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListNodesRequest constructs an http.Request for the ListNodes method
+func NewListNodesRequest(server string, workspaceId WorkspaceId, params *ListNodesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -2998,19 +6732,19 @@ func NewListNodesRequest(server string, ws WorkspaceName, params *ListNodesParam
 }
 
 // NewRemoveNodeRequest constructs an http.Request for the RemoveNode method
-func NewRemoveNodeRequest(server string, ws WorkspaceName, node NodeName) (*http.Request, error) {
+func NewRemoveNodeRequest(server string, workspaceId WorkspaceId, nodeId NodeId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "node", node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "nodeId", nodeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3039,19 +6773,19 @@ func NewRemoveNodeRequest(server string, ws WorkspaceName, node NodeName) (*http
 }
 
 // NewGetNodeRequest constructs an http.Request for the GetNode method
-func NewGetNodeRequest(server string, ws WorkspaceName, node NodeName) (*http.Request, error) {
+func NewGetNodeRequest(server string, workspaceId WorkspaceId, nodeId NodeId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "node", node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "nodeId", nodeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3080,30 +6814,30 @@ func NewGetNodeRequest(server string, ws WorkspaceName, node NodeName) (*http.Re
 }
 
 // NewUpdateNodeRequest calls the generic UpdateNode builder with application/json body
-func NewUpdateNodeRequest(server string, ws WorkspaceName, node NodeName, body UpdateNodeJSONRequestBody) (*http.Request, error) {
+func NewUpdateNodeRequest(server string, workspaceId WorkspaceId, nodeId NodeId, body UpdateNodeJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateNodeRequestWithBody(server, ws, node, "application/json", bodyReader)
+	return NewUpdateNodeRequestWithBody(server, workspaceId, nodeId, "application/json", bodyReader)
 }
 
 // NewUpdateNodeRequestWithBody constructs an http.Request for the UpdateNode method, with any body, and a specified content type
-func NewUpdateNodeRequestWithBody(server string, ws WorkspaceName, node NodeName, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateNodeRequestWithBody(server string, workspaceId WorkspaceId, nodeId NodeId, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "node", node, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "nodeId", nodeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3134,12 +6868,12 @@ func NewUpdateNodeRequestWithBody(server string, ws WorkspaceName, node NodeName
 }
 
 // NewListPoliciesRequest constructs an http.Request for the ListPolicies method
-func NewListPoliciesRequest(server string, ws WorkspaceName) (*http.Request, error) {
+func NewListPoliciesRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3168,23 +6902,23 @@ func NewListPoliciesRequest(server string, ws WorkspaceName) (*http.Request, err
 }
 
 // NewAddPolicyRequest calls the generic AddPolicy builder with application/json body
-func NewAddPolicyRequest(server string, ws WorkspaceName, body AddPolicyJSONRequestBody) (*http.Request, error) {
+func NewAddPolicyRequest(server string, workspaceId WorkspaceId, body AddPolicyJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAddPolicyRequestWithBody(server, ws, "application/json", bodyReader)
+	return NewAddPolicyRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
 // NewAddPolicyRequestWithBody constructs an http.Request for the AddPolicy method, with any body, and a specified content type
-func NewAddPolicyRequestWithBody(server string, ws WorkspaceName, contentType string, body io.Reader) (*http.Request, error) {
+func NewAddPolicyRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3215,23 +6949,23 @@ func NewAddPolicyRequestWithBody(server string, ws WorkspaceName, contentType st
 }
 
 // NewReplacePoliciesRequest calls the generic ReplacePolicies builder with application/json body
-func NewReplacePoliciesRequest(server string, ws WorkspaceName, body ReplacePoliciesJSONRequestBody) (*http.Request, error) {
+func NewReplacePoliciesRequest(server string, workspaceId WorkspaceId, body ReplacePoliciesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewReplacePoliciesRequestWithBody(server, ws, "application/json", bodyReader)
+	return NewReplacePoliciesRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
 // NewReplacePoliciesRequestWithBody constructs an http.Request for the ReplacePolicies method, with any body, and a specified content type
-func NewReplacePoliciesRequestWithBody(server string, ws WorkspaceName, contentType string, body io.Reader) (*http.Request, error) {
+func NewReplacePoliciesRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3262,19 +6996,19 @@ func NewReplacePoliciesRequestWithBody(server string, ws WorkspaceName, contentT
 }
 
 // NewDeletePolicyRequest constructs an http.Request for the DeletePolicy method
-func NewDeletePolicyRequest(server string, ws WorkspaceName, policyId string) (*http.Request, error) {
+func NewDeletePolicyRequest(server string, workspaceId WorkspaceId, policyId Uuid) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "policyId", policyId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3303,12 +7037,12 @@ func NewDeletePolicyRequest(server string, ws WorkspaceName, policyId string) (*
 }
 
 // NewGetRouteTableRequest constructs an http.Request for the GetRouteTable method
-func NewGetRouteTableRequest(server string, ws WorkspaceName) (*http.Request, error) {
+func NewGetRouteTableRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3337,23 +7071,23 @@ func NewGetRouteTableRequest(server string, ws WorkspaceName) (*http.Request, er
 }
 
 // NewAddRouteRequest calls the generic AddRoute builder with application/json body
-func NewAddRouteRequest(server string, ws WorkspaceName, body AddRouteJSONRequestBody) (*http.Request, error) {
+func NewAddRouteRequest(server string, workspaceId WorkspaceId, body AddRouteJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAddRouteRequestWithBody(server, ws, "application/json", bodyReader)
+	return NewAddRouteRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
 // NewAddRouteRequestWithBody constructs an http.Request for the AddRoute method, with any body, and a specified content type
-func NewAddRouteRequestWithBody(server string, ws WorkspaceName, contentType string, body io.Reader) (*http.Request, error) {
+func NewAddRouteRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3384,23 +7118,23 @@ func NewAddRouteRequestWithBody(server string, ws WorkspaceName, contentType str
 }
 
 // NewReplaceRouteTableRequest calls the generic ReplaceRouteTable builder with application/json body
-func NewReplaceRouteTableRequest(server string, ws WorkspaceName, body ReplaceRouteTableJSONRequestBody) (*http.Request, error) {
+func NewReplaceRouteTableRequest(server string, workspaceId WorkspaceId, body ReplaceRouteTableJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewReplaceRouteTableRequestWithBody(server, ws, "application/json", bodyReader)
+	return NewReplaceRouteTableRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
 // NewReplaceRouteTableRequestWithBody constructs an http.Request for the ReplaceRouteTable method, with any body, and a specified content type
-func NewReplaceRouteTableRequestWithBody(server string, ws WorkspaceName, contentType string, body io.Reader) (*http.Request, error) {
+func NewReplaceRouteTableRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3431,19 +7165,19 @@ func NewReplaceRouteTableRequestWithBody(server string, ws WorkspaceName, conten
 }
 
 // NewDeleteRouteRequest constructs an http.Request for the DeleteRoute method
-func NewDeleteRouteRequest(server string, ws WorkspaceName, routeId string) (*http.Request, error) {
+func NewDeleteRouteRequest(server string, workspaceId WorkspaceId, routeId Uuid) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "routeId", routeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "routeId", routeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3472,12 +7206,12 @@ func NewDeleteRouteRequest(server string, ws WorkspaceName, routeId string) (*ht
 }
 
 // NewListServicesRequest constructs an http.Request for the ListServices method
-func NewListServicesRequest(server string, ws WorkspaceName) (*http.Request, error) {
+func NewListServicesRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3506,12 +7240,12 @@ func NewListServicesRequest(server string, ws WorkspaceName) (*http.Request, err
 }
 
 // NewListTokensRequest constructs an http.Request for the ListTokens method
-func NewListTokensRequest(server string, ws WorkspaceName) (*http.Request, error) {
+func NewListTokensRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3540,23 +7274,23 @@ func NewListTokensRequest(server string, ws WorkspaceName) (*http.Request, error
 }
 
 // NewCreateTokenRequest calls the generic CreateToken builder with application/json body
-func NewCreateTokenRequest(server string, ws WorkspaceName, body CreateTokenJSONRequestBody) (*http.Request, error) {
+func NewCreateTokenRequest(server string, workspaceId WorkspaceId, body CreateTokenJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateTokenRequestWithBody(server, ws, "application/json", bodyReader)
+	return NewCreateTokenRequestWithBody(server, workspaceId, "application/json", bodyReader)
 }
 
 // NewCreateTokenRequestWithBody constructs an http.Request for the CreateToken method, with any body, and a specified content type
-func NewCreateTokenRequestWithBody(server string, ws WorkspaceName, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTokenRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3587,19 +7321,19 @@ func NewCreateTokenRequestWithBody(server string, ws WorkspaceName, contentType 
 }
 
 // NewRevokeTokenRequest constructs an http.Request for the RevokeToken method
-func NewRevokeTokenRequest(server string, ws WorkspaceName, tokenId string) (*http.Request, error) {
+func NewRevokeTokenRequest(server string, workspaceId WorkspaceId, tokenId Uuid) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ws", ws, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "tokenId", tokenId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "tokenId", tokenId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -3671,9 +7405,282 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// ListAuditEventsWithResponse 查询全局审计记录
+	//
+	// instance admin 可查询整个 instance 的所有写入事件；响应不包含 token、凭据、私钥或其他敏感正文。.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /audit/events (the `ListAuditEvents` operationId).
+	ListAuditEventsWithResponse(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*ListAuditEventsResponse, error)
+
+	// GetAuditEventWithResponse 查看审计事件
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /audit/events/{eventId} (the `GetAuditEvent` operationId).
+	GetAuditEventWithResponse(ctx context.Context, eventId Uuid, reqEditors ...RequestEditorFn) (*GetAuditEventResponse, error)
+
+	// ListAuthProvidersWithResponse 列出认证 providers
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth-providers (the `ListAuthProviders` operationId).
+	ListAuthProvidersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAuthProvidersResponse, error)
+
+	// CreateAuthProviderWithBodyWithResponse 创建认证 provider
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+	CreateAuthProviderWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAuthProviderResponse, error)
+
+	// CreateAuthProviderWithResponse 创建认证 provider
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+	CreateAuthProviderWithResponse(ctx context.Context, body CreateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAuthProviderResponse, error)
+
+	// DeleteAuthProviderWithResponse 删除认证 provider
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /auth-providers/{providerId} (the `DeleteAuthProvider` operationId).
+	DeleteAuthProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*DeleteAuthProviderResponse, error)
+
+	// GetAuthProviderWithResponse 查看认证 provider
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth-providers/{providerId} (the `GetAuthProvider` operationId).
+	GetAuthProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*GetAuthProviderResponse, error)
+
+	// UpdateAuthProviderWithBodyWithResponse 更新认证 provider
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+	UpdateAuthProviderWithBodyWithResponse(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthProviderResponse, error)
+
+	// UpdateAuthProviderWithResponse 更新认证 provider
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+	UpdateAuthProviderWithResponse(ctx context.Context, providerId Uuid, body UpdateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthProviderResponse, error)
+
+	// ListCertificateIssuersWithResponse 列出 certificate issuers
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /certificate-issuers (the `ListCertificateIssuers` operationId).
+	ListCertificateIssuersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCertificateIssuersResponse, error)
+
+	// CreateCertificateIssuerWithBodyWithResponse 创建 certificate issuer
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+	CreateCertificateIssuerWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCertificateIssuerResponse, error)
+
+	// CreateCertificateIssuerWithResponse 创建 certificate issuer
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+	CreateCertificateIssuerWithResponse(ctx context.Context, body CreateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCertificateIssuerResponse, error)
+
+	// DeleteCertificateIssuerWithResponse 删除 certificate issuer
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /certificate-issuers/{issuerId} (the `DeleteCertificateIssuer` operationId).
+	DeleteCertificateIssuerWithResponse(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*DeleteCertificateIssuerResponse, error)
+
+	// GetCertificateIssuerWithResponse 查看 certificate issuer
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /certificate-issuers/{issuerId} (the `GetCertificateIssuer` operationId).
+	GetCertificateIssuerWithResponse(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*GetCertificateIssuerResponse, error)
+
+	// UpdateCertificateIssuerWithBodyWithResponse 更新 certificate issuer
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+	UpdateCertificateIssuerWithBodyWithResponse(ctx context.Context, issuerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCertificateIssuerResponse, error)
+
+	// UpdateCertificateIssuerWithResponse 更新 certificate issuer
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+	UpdateCertificateIssuerWithResponse(ctx context.Context, issuerId Uuid, body UpdateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCertificateIssuerResponse, error)
+
+	// ListCertificatesWithResponse 列出 instance 的全部证书
+	//
+	// 返回 workspace wildcard、relay 和 agentserver 自身证书的统一生命周期视图。私钥和证书链正文不在此接口返回。.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /certificates (the `ListCertificates` operationId).
+	ListCertificatesWithResponse(ctx context.Context, params *ListCertificatesParams, reqEditors ...RequestEditorFn) (*ListCertificatesResponse, error)
+
+	// IssueCertificateWithBodyWithResponse 签发或重新签发证书
+	//
+	// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+	IssueCertificateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*IssueCertificateResponse, error)
+
+	// IssueCertificateWithResponse 签发或重新签发证书
+	//
+	// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+	IssueCertificateWithResponse(ctx context.Context, body IssueCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*IssueCertificateResponse, error)
+
+	// GetCertificateWithResponse 查看证书生命周期状态
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /certificates/{certificateId} (the `GetCertificate` operationId).
+	GetCertificateWithResponse(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*GetCertificateResponse, error)
+
+	// RenewCertificateWithResponse 立即续期证书
+	//
+	// 异步触发续期；证书进入 renewing，成功后回到 ready，失败保留旧证书并记录 last_error。 已 revoked 的证书不能自动续期，需先重新签发。.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /certificates/{certificateId}/renew (the `RenewCertificate` operationId).
+	RenewCertificateWithResponse(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*RenewCertificateResponse, error)
+
+	// RevokeCertificateWithBodyWithResponse 吊销证书
+	//
+	// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+	RevokeCertificateWithBodyWithResponse(ctx context.Context, certificateId CertificateId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RevokeCertificateResponse, error)
+
+	// RevokeCertificateWithResponse 吊销证书
+	//
+	// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+	RevokeCertificateWithResponse(ctx context.Context, certificateId CertificateId, body RevokeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*RevokeCertificateResponse, error)
+
+	// ListDNSProvidersWithResponse 列出 DNS providers
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /dns-providers (the `ListDNSProviders` operationId).
+	ListDNSProvidersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListDNSProvidersResponse, error)
+
+	// CreateDNSProviderWithBodyWithResponse 创建 DNS provider
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+	CreateDNSProviderWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDNSProviderResponse, error)
+
+	// CreateDNSProviderWithResponse 创建 DNS provider
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+	CreateDNSProviderWithResponse(ctx context.Context, body CreateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDNSProviderResponse, error)
+
+	// DeleteDNSProviderWithResponse 删除 DNS provider
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /dns-providers/{providerId} (the `DeleteDNSProvider` operationId).
+	DeleteDNSProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*DeleteDNSProviderResponse, error)
+
+	// GetDNSProviderWithResponse 查看 DNS provider
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /dns-providers/{providerId} (the `GetDNSProvider` operationId).
+	GetDNSProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*GetDNSProviderResponse, error)
+
+	// UpdateDNSProviderWithBodyWithResponse 更新 DNS provider
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+	UpdateDNSProviderWithBodyWithResponse(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDNSProviderResponse, error)
+
+	// UpdateDNSProviderWithResponse 更新 DNS provider
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+	UpdateDNSProviderWithResponse(ctx context.Context, providerId Uuid, body UpdateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDNSProviderResponse, error)
+
+	// ListInstanceDomainsWithResponse 列出 instance 域名
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /domains (the `ListInstanceDomains` operationId).
+	ListInstanceDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListInstanceDomainsResponse, error)
+
+	// CreateInstanceDomainWithBodyWithResponse 添加 instance 域名
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+	CreateInstanceDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInstanceDomainResponse, error)
+
+	// CreateInstanceDomainWithResponse 添加 instance 域名
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+	CreateInstanceDomainWithResponse(ctx context.Context, body CreateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInstanceDomainResponse, error)
+
+	// DeleteInstanceDomainWithResponse 删除 instance 域名
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /domains/{domainId} (the `DeleteInstanceDomain` operationId).
+	DeleteInstanceDomainWithResponse(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*DeleteInstanceDomainResponse, error)
+
+	// GetInstanceDomainWithResponse 查看 instance 域名
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /domains/{domainId} (the `GetInstanceDomain` operationId).
+	GetInstanceDomainWithResponse(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*GetInstanceDomainResponse, error)
+
+	// UpdateInstanceDomainWithBodyWithResponse 更新 instance 域名
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+	UpdateInstanceDomainWithBodyWithResponse(ctx context.Context, domainId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateInstanceDomainResponse, error)
+
+	// UpdateInstanceDomainWithResponse 更新 instance 域名
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+	UpdateInstanceDomainWithResponse(ctx context.Context, domainId Uuid, body UpdateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateInstanceDomainResponse, error)
+
 	// ListRelaysWithResponse 列出 relay
 	//
-	// 对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。.
+	// `connected` 表示 relay 会话当前在线。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -3682,8 +7689,8 @@ type ClientWithResponsesInterface interface {
 
 	// RegisterRelayWithBodyWithResponse 注册 relay
 	//
-	// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-	// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+	// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+	// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3692,8 +7699,8 @@ type ClientWithResponsesInterface interface {
 
 	// RegisterRelayWithResponse 注册 relay
 	//
-	// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-	// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+	// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+	// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3709,7 +7716,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateRelayTokenWithBodyWithResponse 签发 relay 注册令牌
 	//
-	// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+	// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3718,7 +7725,7 @@ type ClientWithResponsesInterface interface {
 
 	// CreateRelayTokenWithResponse 签发 relay 注册令牌
 	//
-	// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+	// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3730,36 +7737,36 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with DELETE /relays/tokens/{tokenId} (the `RevokeRelayToken` operationId).
-	RevokeRelayTokenWithResponse(ctx context.Context, tokenId string, reqEditors ...RequestEditorFn) (*RevokeRelayTokenResponse, error)
+	RevokeRelayTokenWithResponse(ctx context.Context, tokenId Uuid, reqEditors ...RequestEditorFn) (*RevokeRelayTokenResponse, error)
 
 	// RemoveRelayWithResponse 注销 relay
 	//
-	// 对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。.
+	// relay 进入 deleted 后不再作为 agentd 候选，关闭 relay 会话；已存在证书按生命周期处理。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /relays/{relay} (the `RemoveRelay` operationId).
-	RemoveRelayWithResponse(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*RemoveRelayResponse, error)
+	// Corresponds with DELETE /relays/{relayId} (the `RemoveRelay` operationId).
+	RemoveRelayWithResponse(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*RemoveRelayResponse, error)
 
 	// GetRelayWithResponse 查看 relay
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /relays/{relay} (the `GetRelay` operationId).
-	GetRelayWithResponse(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*GetRelayResponse, error)
+	// Corresponds with GET /relays/{relayId} (the `GetRelay` operationId).
+	GetRelayWithResponse(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*GetRelayResponse, error)
 
-	// ListRelayCertsWithResponse 查看该 relay 在各 workspace 的 relay 证书
+	// ListRelayCertsWithResponse 查看该 relay 持有的 relay 证书
 	//
-	// 每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。
+	// relay 按需缓存 workspace 证书；证书由 workspace 密钥签发，与 `/.well-known/agentd?workspace=…` 公布的内容一致。
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /relays/{relay}/certs (the `ListRelayCerts` operationId).
-	ListRelayCertsWithResponse(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*ListRelayCertsResponse, error)
+	// Corresponds with GET /relays/{relayId}/certs (the `ListRelayCerts` operationId).
+	ListRelayCertsWithResponse(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*ListRelayCertsResponse, error)
 
 	// GetServerWithResponse 服务端信息
 	//
-	// 对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
+	// agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -3773,7 +7780,94 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /status (the `GetStatus` operationId).
 	GetStatusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetStatusResponse, error)
 
+	// ListUsersWithResponse 列出全局用户
+	//
+	// 用户目录是 instance 级资源；workspace 成员关系只保存角色，不复制用户资料。.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /users (the `ListUsers` operationId).
+	ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
+
+	// UpsertUserWithBodyWithResponse 创建或更新全局用户
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users (the `UpsertUser` operationId).
+	UpsertUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertUserResponse, error)
+
+	// UpsertUserWithResponse 创建或更新全局用户
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users (the `UpsertUser` operationId).
+	UpsertUserWithResponse(ctx context.Context, body UpsertUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertUserResponse, error)
+
+	// DeleteUserWithResponse 删除全局用户
+	//
+	// 删除用户目录记录，同时移除其所有 workspace membership；审计记录保留 subject 的不可逆摘要。.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /users/{userId} (the `DeleteUser` operationId).
+	DeleteUserWithResponse(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
+
+	// GetUserWithResponse 查看全局用户
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /users/{userId} (the `GetUser` operationId).
+	GetUserWithResponse(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*GetUserResponse, error)
+
+	// ListUserIdentitiesWithResponse 列出用户的外部认证 identity
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /users/{userId}/identities (the `ListUserIdentities` operationId).
+	ListUserIdentitiesWithResponse(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*ListUserIdentitiesResponse, error)
+
+	// LinkUserIdentityWithBodyWithResponse 将外部认证 identity 关联到用户
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+	LinkUserIdentityWithBodyWithResponse(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LinkUserIdentityResponse, error)
+
+	// LinkUserIdentityWithResponse 将外部认证 identity 关联到用户
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+	LinkUserIdentityWithResponse(ctx context.Context, userId Uuid, body LinkUserIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*LinkUserIdentityResponse, error)
+
+	// UnlinkUserIdentityWithResponse 解除外部认证 identity
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /users/{userId}/identities/{identityId} (the `UnlinkUserIdentity` operationId).
+	UnlinkUserIdentityWithResponse(ctx context.Context, userId Uuid, identityId Uuid, reqEditors ...RequestEditorFn) (*UnlinkUserIdentityResponse, error)
+
+	// SetUserInstanceAdminWithBodyWithResponse 授予或撤销 instance admin
+	//
+	// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+	SetUserInstanceAdminWithBodyWithResponse(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetUserInstanceAdminResponse, error)
+
+	// SetUserInstanceAdminWithResponse 授予或撤销 instance admin
+	//
+	// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+	SetUserInstanceAdminWithResponse(ctx context.Context, userId Uuid, body SetUserInstanceAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*SetUserInstanceAdminResponse, error)
+
 	// ListWorkspacesWithResponse 列出 workspace
+	//
+	// 返回 instance 中的全部 workspace。普通用户的 membership 列表使用普通用户 API 的 `GET /api/v1/workspaces`，不调用此 admin operation。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -3782,8 +7876,8 @@ type ClientWithResponsesInterface interface {
 
 	// CreateWorkspaceWithBodyWithResponse 创建 workspace
 	//
-	// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-	// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+	// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+	// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3792,8 +7886,8 @@ type ClientWithResponsesInterface interface {
 
 	// CreateWorkspaceWithResponse 创建 workspace
 	//
-	// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-	// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+	// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+	// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3802,184 +7896,176 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteWorkspaceWithResponse 删除 workspace
 	//
-	// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。.
+	// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书；成员的密钥文件不受影响。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /workspaces/{ws} (the `DeleteWorkspace` operationId).
-	DeleteWorkspaceWithResponse(ctx context.Context, ws WorkspaceName, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*DeleteWorkspaceResponse, error)
+	// Corresponds with DELETE /workspaces/{workspaceId} (the `DeleteWorkspace` operationId).
+	DeleteWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*DeleteWorkspaceResponse, error)
 
-	// GetWorkspaceWithResponse 查看 workspace（含公钥、证书状态、指派的 relay）
+	// GetWorkspaceWithResponse 查看 workspace（公钥、基础域名、状态和证书）
 	//
-	// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。
+	// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`。
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws} (the `GetWorkspace` operationId).
-	GetWorkspaceWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*GetWorkspaceResponse, error)
-
-	// UpdateWorkspaceWithBodyWithResponse 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-	//
-	// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-	UpdateWorkspaceWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error)
-
-	// UpdateWorkspaceWithResponse 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-	//
-	// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-	UpdateWorkspaceWithResponse(ctx context.Context, ws WorkspaceName, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error)
-
-	// ListCertsWithResponse 查看通配证书
-	//
-	// 对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with GET /workspaces/{ws}/certs (the `ListCerts` operationId).
-	ListCertsWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListCertsResponse, error)
-
-	// RenewCertWithResponse 立即续期
-	//
-	// 对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /workspaces/{ws}/certs/renew (the `RenewCert` operationId).
-	RenewCertWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*RenewCertResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId} (the `GetWorkspace` operationId).
+	GetWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*GetWorkspaceResponse, error)
 
 	// ListGroupsWithResponse 列出组
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/groups (the `ListGroups` operationId).
-	ListGroupsWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListGroupsResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/groups (the `ListGroups` operationId).
+	ListGroupsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListGroupsResponse, error)
 
 	// CreateGroupWithBodyWithResponse 创建组
 	//
-	// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+	// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-	CreateGroupWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+	CreateGroupWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
 
 	// CreateGroupWithResponse 创建组
 	//
-	// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+	// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-	CreateGroupWithResponse(ctx context.Context, ws WorkspaceName, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+	CreateGroupWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
 
 	// DeleteGroupWithResponse 删除组
 	//
-	// 对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
+	// 向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /workspaces/{ws}/groups/{group} (the `DeleteGroup` operationId).
-	DeleteGroupWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId} (the `DeleteGroup` operationId).
+	DeleteGroupWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error)
 
 	// GetGroupWithResponse 查看组
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/groups/{group} (the `GetGroup` operationId).
-	GetGroupWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*GetGroupResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/groups/{groupId} (the `GetGroup` operationId).
+	GetGroupWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*GetGroupResponse, error)
 
-	// RemoveGroupMemberWithResponse 把成员移出组
+	// RemoveGroupNodeWithResponse 把 node 移出组
 	//
-	// 对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。
+	// 停止续发并推送吊销记录 `(member, issuer, until)`。
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /workspaces/{ws}/groups/{group}/members/{node} (the `RemoveGroupMember` operationId).
-	RemoveGroupMemberWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*RemoveGroupMemberResponse, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `RemoveGroupNode` operationId).
+	RemoveGroupNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*RemoveGroupNodeResponse, error)
 
-	// AddGroupMemberWithResponse 把成员加入组
+	// AddGroupNodeWithResponse 把 node 加入组
 	//
-	// 对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
+	// 给该 node 签发 group-node membership 证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with PUT /workspaces/{ws}/groups/{group}/members/{node} (the `AddGroupMember` operationId).
-	AddGroupMemberWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*AddGroupMemberResponse, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `AddGroupNode` operationId).
+	AddGroupNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*AddGroupNodeResponse, error)
+
+	// ListWorkspaceMembersWithResponse 列出 workspace 成员
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /workspaces/{workspaceId}/members (the `ListWorkspaceMembers` operationId).
+	ListWorkspaceMembersWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListWorkspaceMembersResponse, error)
+
+	// UpsertWorkspaceMemberWithBodyWithResponse 添加或调整 用户角色
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+	UpsertWorkspaceMemberWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertWorkspaceMemberResponse, error)
+
+	// UpsertWorkspaceMemberWithResponse 添加或调整 用户角色
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+	UpsertWorkspaceMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, body UpsertWorkspaceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertWorkspaceMemberResponse, error)
+
+	// RemoveWorkspaceMemberWithResponse 移除 workspace 成员
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /workspaces/{workspaceId}/members/{memberId} (the `RemoveWorkspaceMember` operationId).
+	RemoveWorkspaceMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId Uuid, reqEditors ...RequestEditorFn) (*RemoveWorkspaceMemberResponse, error)
 
 	// ListNodesWithResponse 列出成员
 	//
-	// 对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
+	// 在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/nodes (the `ListNodes` operationId).
-	ListNodesWithResponse(ctx context.Context, ws WorkspaceName, params *ListNodesParams, reqEditors ...RequestEditorFn) (*ListNodesResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/nodes (the `ListNodes` operationId).
+	ListNodesWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListNodesParams, reqEditors ...RequestEditorFn) (*ListNodesResponse, error)
 
 	// RemoveNodeWithResponse 移除成员
 	//
-	// 对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
+	// 目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
 	// 向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。
 	// 换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /workspaces/{ws}/nodes/{node} (the `RemoveNode` operationId).
-	RemoveNodeWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*RemoveNodeResponse, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/nodes/{nodeId} (the `RemoveNode` operationId).
+	RemoveNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*RemoveNodeResponse, error)
 
 	// GetNodeWithResponse 查看成员
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/nodes/{node} (the `GetNode` operationId).
-	GetNodeWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*GetNodeResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/nodes/{nodeId} (the `GetNode` operationId).
+	GetNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*GetNodeResponse, error)
 
 	// UpdateNodeWithBodyWithResponse 改名或调整角色上限
 	//
-	// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+	// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 	// 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-	UpdateNodeWithBodyWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error)
+	// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+	UpdateNodeWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error)
 
 	// UpdateNodeWithResponse 改名或调整角色上限
 	//
-	// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+	// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 	// 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-	UpdateNodeWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error)
+	// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+	UpdateNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error)
 
 	// ListPoliciesWithResponse 列出中央策略语句
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/policies (the `ListPolicies` operationId).
-	ListPoliciesWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListPoliciesResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/policies (the `ListPolicies` operationId).
+	ListPoliciesWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListPoliciesResponse, error)
 
 	// AddPolicyWithBodyWithResponse 追加一条策略语句
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-	AddPolicyWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+	AddPolicyWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error)
 
 	// AddPolicyWithResponse 追加一条策略语句
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-	AddPolicyWithResponse(ctx context.Context, ws WorkspaceName, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+	AddPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error)
 
 	// ReplacePoliciesWithBodyWithResponse 整体替换中央策略
 	//
@@ -3987,8 +8073,8 @@ type ClientWithResponsesInterface interface {
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-	ReplacePoliciesWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+	ReplacePoliciesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error)
 
 	// ReplacePoliciesWithResponse 整体替换中央策略
 	//
@@ -3996,15 +8082,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-	ReplacePoliciesWithResponse(ctx context.Context, ws WorkspaceName, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+	ReplacePoliciesWithResponse(ctx context.Context, workspaceId WorkspaceId, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error)
 
 	// DeletePolicyWithResponse 删除一条策略语句
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /workspaces/{ws}/policies/{policyId} (the `DeletePolicy` operationId).
-	DeletePolicyWithResponse(ctx context.Context, ws WorkspaceName, policyId string, reqEditors ...RequestEditorFn) (*DeletePolicyResponse, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/policies/{policyId} (the `DeletePolicy` operationId).
+	DeletePolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, policyId Uuid, reqEditors ...RequestEditorFn) (*DeletePolicyResponse, error)
 
 	// GetRouteTableWithResponse 查看路由表
 	//
@@ -4012,26 +8098,26 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/routes (the `GetRouteTable` operationId).
-	GetRouteTableWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*GetRouteTableResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/routes (the `GetRouteTable` operationId).
+	GetRouteTableWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*GetRouteTableResponse, error)
 
 	// AddRouteWithBodyWithResponse 追加一条路由
 	//
-	// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+	// 追加到末尾；同等具体时书写顺序靠前的优先。.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-	AddRouteWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddRouteResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+	AddRouteWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddRouteResponse, error)
 
 	// AddRouteWithResponse 追加一条路由
 	//
-	// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+	// 追加到末尾；同等具体时书写顺序靠前的优先。.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-	AddRouteWithResponse(ctx context.Context, ws WorkspaceName, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*AddRouteResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+	AddRouteWithResponse(ctx context.Context, workspaceId WorkspaceId, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*AddRouteResponse, error)
 
 	// ReplaceRouteTableWithBodyWithResponse 整体替换路由表
 	//
@@ -4039,8 +8125,8 @@ type ClientWithResponsesInterface interface {
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-	ReplaceRouteTableWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+	ReplaceRouteTableWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error)
 
 	// ReplaceRouteTableWithResponse 整体替换路由表
 	//
@@ -4048,17 +8134,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-	ReplaceRouteTableWithResponse(ctx context.Context, ws WorkspaceName, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error)
+	// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+	ReplaceRouteTableWithResponse(ctx context.Context, workspaceId WorkspaceId, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error)
 
 	// DeleteRouteWithResponse 删除一条路由
 	//
-	// 对应 `agentserver route remove`。.
-	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /workspaces/{ws}/routes/{routeId} (the `DeleteRoute` operationId).
-	DeleteRouteWithResponse(ctx context.Context, ws WorkspaceName, routeId string, reqEditors ...RequestEditorFn) (*DeleteRouteResponse, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/routes/{routeId} (the `DeleteRoute` operationId).
+	DeleteRouteWithResponse(ctx context.Context, workspaceId WorkspaceId, routeId Uuid, reqEditors ...RequestEditorFn) (*DeleteRouteResponse, error)
 
 	// ListServicesWithResponse 列出已注册的服务
 	//
@@ -4066,48 +8150,1386 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/services (the `ListServices` operationId).
-	ListServicesWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListServicesResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/services (the `ListServices` operationId).
+	ListServicesWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListServicesResponse, error)
 
 	// ListTokensWithResponse 列出未使用的加入令牌
 	//
-	// 对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。.
+	// 服务端只存令牌的 SHA-256，列表里没有令牌本身。.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /workspaces/{ws}/tokens (the `ListTokens` operationId).
-	ListTokensWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
+	// Corresponds with GET /workspaces/{workspaceId}/tokens (the `ListTokens` operationId).
+	ListTokensWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListTokensResponse, error)
 
 	// CreateTokenWithBodyWithResponse 签发加入令牌并返回加入链接
 	//
-	// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-	// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+	// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+	// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+	// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 	// 令牌明文只在这次响应里出现一次。
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-	CreateTokenWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+	CreateTokenWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
 
 	// CreateTokenWithResponse 签发加入令牌并返回加入链接
 	//
-	// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-	// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+	// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+	// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+	// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 	// 令牌明文只在这次响应里出现一次。
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-	CreateTokenWithResponse(ctx context.Context, ws WorkspaceName, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
+	// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+	CreateTokenWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
 
 	// RevokeTokenWithResponse 作废未使用的令牌
 	//
-	// 对应 `agentserver token revoke`。.
-	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /workspaces/{ws}/tokens/{tokenId} (the `RevokeToken` operationId).
-	RevokeTokenWithResponse(ctx context.Context, ws WorkspaceName, tokenId string, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error)
+	// Corresponds with DELETE /workspaces/{workspaceId}/tokens/{tokenId} (the `RevokeToken` operationId).
+	RevokeTokenWithResponse(ctx context.Context, workspaceId WorkspaceId, tokenId Uuid, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error)
+}
+
+type ListAuditEventsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuditEventPage
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAuditEventsResponse) GetJSON200() *AuditEventPage {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAuditEventsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAuditEventsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAuditEventsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAuditEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAuditEventResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuditEvent
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAuditEventResponse) GetJSON200() *AuditEvent {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAuditEventResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAuditEventResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAuditEventResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAuditEventResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAuditEventResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAuthProvidersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]AuthProvider
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAuthProvidersResponse) GetJSON200() *[]AuthProvider {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAuthProvidersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAuthProvidersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAuthProvidersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAuthProvidersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateAuthProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthProvider
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateAuthProviderResponse) GetJSON200() *AuthProvider {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateAuthProviderResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateAuthProviderResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAuthProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAuthProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAuthProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAuthProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteAuthProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteAuthProviderResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteAuthProviderResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteAuthProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteAuthProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteAuthProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteAuthProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAuthProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthProvider
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAuthProviderResponse) GetJSON200() *AuthProvider {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAuthProviderResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAuthProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAuthProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAuthProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAuthProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateAuthProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthProvider
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateAuthProviderResponse) GetJSON200() *AuthProvider {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateAuthProviderResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateAuthProviderResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateAuthProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateAuthProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateAuthProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAuthProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListCertificateIssuersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]CertificateIssuer
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListCertificateIssuersResponse) GetJSON200() *[]CertificateIssuer {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListCertificateIssuersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCertificateIssuersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCertificateIssuersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCertificateIssuersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateCertificateIssuerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CertificateIssuer
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateCertificateIssuerResponse) GetJSON200() *CertificateIssuer {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateCertificateIssuerResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateCertificateIssuerResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCertificateIssuerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCertificateIssuerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCertificateIssuerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCertificateIssuerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteCertificateIssuerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteCertificateIssuerResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteCertificateIssuerResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteCertificateIssuerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteCertificateIssuerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteCertificateIssuerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteCertificateIssuerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCertificateIssuerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CertificateIssuer
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCertificateIssuerResponse) GetJSON200() *CertificateIssuer {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCertificateIssuerResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCertificateIssuerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCertificateIssuerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCertificateIssuerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCertificateIssuerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateCertificateIssuerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CertificateIssuer
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateCertificateIssuerResponse) GetJSON200() *CertificateIssuer {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateCertificateIssuerResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateCertificateIssuerResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateCertificateIssuerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateCertificateIssuerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateCertificateIssuerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCertificateIssuerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListCertificatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]Certificate
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListCertificatesResponse) GetJSON200() *[]Certificate {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListCertificatesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListCertificatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListCertificatesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCertificatesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type IssueCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *Certificate
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r IssueCertificateResponse) GetJSON202() *Certificate {
+	return r.JSON202
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r IssueCertificateResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r IssueCertificateResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r IssueCertificateResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r IssueCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r IssueCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r IssueCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r IssueCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Certificate
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCertificateResponse) GetJSON200() *Certificate {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCertificateResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RenewCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON202 the response for an HTTP 202 `application/json` response
+	JSON202 *Certificate
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON202 returns the response for an HTTP 202 `application/json` response
+func (r RenewCertificateResponse) GetJSON202() *Certificate {
+	return r.JSON202
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RenewCertificateResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RenewCertificateResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RenewCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RenewCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RenewCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RenewCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RevokeCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Certificate
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RevokeCertificateResponse) GetJSON200() *Certificate {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RevokeCertificateResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RevokeCertificateResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RevokeCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevokeCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevokeCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevokeCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListDNSProvidersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]DNSProvider
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListDNSProvidersResponse) GetJSON200() *[]DNSProvider {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListDNSProvidersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListDNSProvidersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListDNSProvidersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDNSProvidersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateDNSProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DNSProvider
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateDNSProviderResponse) GetJSON200() *DNSProvider {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateDNSProviderResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateDNSProviderResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateDNSProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateDNSProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateDNSProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateDNSProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteDNSProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteDNSProviderResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteDNSProviderResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteDNSProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteDNSProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteDNSProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteDNSProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetDNSProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DNSProvider
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetDNSProviderResponse) GetJSON200() *DNSProvider {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetDNSProviderResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetDNSProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetDNSProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetDNSProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDNSProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateDNSProviderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *DNSProvider
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateDNSProviderResponse) GetJSON200() *DNSProvider {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateDNSProviderResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateDNSProviderResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateDNSProviderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateDNSProviderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateDNSProviderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateDNSProviderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListInstanceDomainsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]InstanceDomain
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListInstanceDomainsResponse) GetJSON200() *[]InstanceDomain {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListInstanceDomainsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListInstanceDomainsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListInstanceDomainsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListInstanceDomainsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateInstanceDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *InstanceDomain
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateInstanceDomainResponse) GetJSON201() *InstanceDomain {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateInstanceDomainResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateInstanceDomainResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateInstanceDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateInstanceDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateInstanceDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateInstanceDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteInstanceDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteInstanceDomainResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteInstanceDomainResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteInstanceDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteInstanceDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteInstanceDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteInstanceDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetInstanceDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *InstanceDomain
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetInstanceDomainResponse) GetJSON200() *InstanceDomain {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetInstanceDomainResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetInstanceDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInstanceDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInstanceDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetInstanceDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateInstanceDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *InstanceDomain
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateInstanceDomainResponse) GetJSON200() *InstanceDomain {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateInstanceDomainResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateInstanceDomainResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateInstanceDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateInstanceDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateInstanceDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateInstanceDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListRelaysResponse struct {
@@ -4555,6 +9977,418 @@ func (r GetStatusResponse) ContentType() string {
 	return ""
 }
 
+type ListUsersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]User
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListUsersResponse) GetJSON200() *[]User {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ListUsersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListUsersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListUsersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpsertUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *User
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpsertUserResponse) GetJSON200() *User {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpsertUserResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpsertUserResponse) GetJSON409() *Error {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UpsertUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpsertUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpsertUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpsertUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Error
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteUserResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r DeleteUserResponse) GetJSON409() *Error {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *User
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetUserResponse) GetJSON200() *User {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetUserResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r GetUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListUserIdentitiesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]UserIdentity
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListUserIdentitiesResponse) GetJSON200() *[]UserIdentity {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListUserIdentitiesResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListUserIdentitiesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListUserIdentitiesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListUserIdentitiesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListUserIdentitiesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LinkUserIdentityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *UserIdentity
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r LinkUserIdentityResponse) GetJSON201() *UserIdentity {
+	return r.JSON201
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r LinkUserIdentityResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r LinkUserIdentityResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r LinkUserIdentityResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r LinkUserIdentityResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LinkUserIdentityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LinkUserIdentityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LinkUserIdentityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UnlinkUserIdentityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UnlinkUserIdentityResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UnlinkUserIdentityResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UnlinkUserIdentityResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UnlinkUserIdentityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnlinkUserIdentityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnlinkUserIdentityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetUserInstanceAdminResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *User
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetUserInstanceAdminResponse) GetJSON200() *User {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SetUserInstanceAdminResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SetUserInstanceAdminResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r SetUserInstanceAdminResponse) GetJSON409() *Conflict {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r SetUserInstanceAdminResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetUserInstanceAdminResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetUserInstanceAdminResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetUserInstanceAdminResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListWorkspacesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -4747,150 +10581,6 @@ func (r GetWorkspaceResponse) ContentType() string {
 	return ""
 }
 
-type UpdateWorkspaceResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *Workspace
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *BadRequest
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r UpdateWorkspaceResponse) GetJSON200() *Workspace {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r UpdateWorkspaceResponse) GetJSON400() *BadRequest {
-	return r.JSON400
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r UpdateWorkspaceResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetBody returns the raw response body bytes
-func (r UpdateWorkspaceResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateWorkspaceResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateWorkspaceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateWorkspaceResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type ListCertsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *[]Cert
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r ListCertsResponse) GetJSON200() *[]Cert {
-	return r.JSON200
-}
-
-// GetBody returns the raw response body bytes
-func (r ListCertsResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r ListCertsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListCertsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListCertsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type RenewCertResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON202 the response for an HTTP 202 `application/json` response
-	JSON202 *Cert
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *NotFound
-}
-
-// GetJSON202 returns the response for an HTTP 202 `application/json` response
-func (r RenewCertResponse) GetJSON202() *Cert {
-	return r.JSON202
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r RenewCertResponse) GetJSON404() *NotFound {
-	return r.JSON404
-}
-
-// GetBody returns the raw response body bytes
-func (r RenewCertResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r RenewCertResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r RenewCertResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r RenewCertResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type ListGroupsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5076,7 +10766,7 @@ func (r GetGroupResponse) ContentType() string {
 	return ""
 }
 
-type RemoveGroupMemberResponse struct {
+type RemoveGroupNodeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON404 the response for an HTTP 404 `application/json` response
@@ -5084,17 +10774,17 @@ type RemoveGroupMemberResponse struct {
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r RemoveGroupMemberResponse) GetJSON404() *NotFound {
+func (r RemoveGroupNodeResponse) GetJSON404() *NotFound {
 	return r.JSON404
 }
 
 // GetBody returns the raw response body bytes
-func (r RemoveGroupMemberResponse) GetBody() []byte {
+func (r RemoveGroupNodeResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r RemoveGroupMemberResponse) Status() string {
+func (r RemoveGroupNodeResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -5102,7 +10792,7 @@ func (r RemoveGroupMemberResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r RemoveGroupMemberResponse) StatusCode() int {
+func (r RemoveGroupNodeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5110,14 +10800,14 @@ func (r RemoveGroupMemberResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r RemoveGroupMemberResponse) ContentType() string {
+func (r RemoveGroupNodeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-type AddGroupMemberResponse struct {
+type AddGroupNodeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON404 the response for an HTTP 404 `application/json` response
@@ -5125,17 +10815,17 @@ type AddGroupMemberResponse struct {
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r AddGroupMemberResponse) GetJSON404() *NotFound {
+func (r AddGroupNodeResponse) GetJSON404() *NotFound {
 	return r.JSON404
 }
 
 // GetBody returns the raw response body bytes
-func (r AddGroupMemberResponse) GetBody() []byte {
+func (r AddGroupNodeResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r AddGroupMemberResponse) Status() string {
+func (r AddGroupNodeResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -5143,7 +10833,7 @@ func (r AddGroupMemberResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AddGroupMemberResponse) StatusCode() int {
+func (r AddGroupNodeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5151,7 +10841,165 @@ func (r AddGroupMemberResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AddGroupMemberResponse) ContentType() string {
+func (r AddGroupNodeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListWorkspaceMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]WorkspaceMember
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListWorkspaceMembersResponse) GetJSON200() *[]WorkspaceMember {
+	return r.JSON200
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListWorkspaceMembersResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetBody returns the raw response body bytes
+func (r ListWorkspaceMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListWorkspaceMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListWorkspaceMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWorkspaceMembersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpsertWorkspaceMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WorkspaceMember
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Error
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpsertWorkspaceMemberResponse) GetJSON200() *WorkspaceMember {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpsertWorkspaceMemberResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpsertWorkspaceMemberResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UpsertWorkspaceMemberResponse) GetJSON409() *Error {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r UpsertWorkspaceMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpsertWorkspaceMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpsertWorkspaceMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpsertWorkspaceMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveWorkspaceMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Error
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveWorkspaceMemberResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r RemoveWorkspaceMemberResponse) GetJSON409() *Error {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveWorkspaceMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveWorkspaceMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveWorkspaceMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveWorkspaceMemberResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -5884,9 +11732,504 @@ func (r RevokeTokenResponse) ContentType() string {
 	return ""
 }
 
+// ListAuditEventsWithResponse 查询全局审计记录
+//
+// instance admin 可查询整个 instance 的所有写入事件；响应不包含 token、凭据、私钥或其他敏感正文。.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /audit/events (the `ListAuditEvents` operationId).
+func (c *ClientWithResponses) ListAuditEventsWithResponse(ctx context.Context, params *ListAuditEventsParams, reqEditors ...RequestEditorFn) (*ListAuditEventsResponse, error) {
+	rsp, err := c.ListAuditEvents(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAuditEventsResponse(rsp)
+}
+
+// GetAuditEventWithResponse 查看审计事件
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /audit/events/{eventId} (the `GetAuditEvent` operationId).
+func (c *ClientWithResponses) GetAuditEventWithResponse(ctx context.Context, eventId Uuid, reqEditors ...RequestEditorFn) (*GetAuditEventResponse, error) {
+	rsp, err := c.GetAuditEvent(ctx, eventId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAuditEventResponse(rsp)
+}
+
+// ListAuthProvidersWithResponse 列出认证 providers
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth-providers (the `ListAuthProviders` operationId).
+func (c *ClientWithResponses) ListAuthProvidersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListAuthProvidersResponse, error) {
+	rsp, err := c.ListAuthProviders(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAuthProvidersResponse(rsp)
+}
+
+// CreateAuthProviderWithBodyWithResponse 创建认证 provider
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+func (c *ClientWithResponses) CreateAuthProviderWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAuthProviderResponse, error) {
+	rsp, err := c.CreateAuthProviderWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAuthProviderResponse(rsp)
+}
+
+// CreateAuthProviderWithResponse 创建认证 provider
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth-providers (the `CreateAuthProvider` operationId).
+func (c *ClientWithResponses) CreateAuthProviderWithResponse(ctx context.Context, body CreateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAuthProviderResponse, error) {
+	rsp, err := c.CreateAuthProvider(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAuthProviderResponse(rsp)
+}
+
+// DeleteAuthProviderWithResponse 删除认证 provider
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /auth-providers/{providerId} (the `DeleteAuthProvider` operationId).
+func (c *ClientWithResponses) DeleteAuthProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*DeleteAuthProviderResponse, error) {
+	rsp, err := c.DeleteAuthProvider(ctx, providerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteAuthProviderResponse(rsp)
+}
+
+// GetAuthProviderWithResponse 查看认证 provider
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth-providers/{providerId} (the `GetAuthProvider` operationId).
+func (c *ClientWithResponses) GetAuthProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*GetAuthProviderResponse, error) {
+	rsp, err := c.GetAuthProvider(ctx, providerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAuthProviderResponse(rsp)
+}
+
+// UpdateAuthProviderWithBodyWithResponse 更新认证 provider
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+func (c *ClientWithResponses) UpdateAuthProviderWithBodyWithResponse(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAuthProviderResponse, error) {
+	rsp, err := c.UpdateAuthProviderWithBody(ctx, providerId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAuthProviderResponse(rsp)
+}
+
+// UpdateAuthProviderWithResponse 更新认证 provider
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /auth-providers/{providerId} (the `UpdateAuthProvider` operationId).
+func (c *ClientWithResponses) UpdateAuthProviderWithResponse(ctx context.Context, providerId Uuid, body UpdateAuthProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAuthProviderResponse, error) {
+	rsp, err := c.UpdateAuthProvider(ctx, providerId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateAuthProviderResponse(rsp)
+}
+
+// ListCertificateIssuersWithResponse 列出 certificate issuers
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /certificate-issuers (the `ListCertificateIssuers` operationId).
+func (c *ClientWithResponses) ListCertificateIssuersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListCertificateIssuersResponse, error) {
+	rsp, err := c.ListCertificateIssuers(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCertificateIssuersResponse(rsp)
+}
+
+// CreateCertificateIssuerWithBodyWithResponse 创建 certificate issuer
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+func (c *ClientWithResponses) CreateCertificateIssuerWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCertificateIssuerResponse, error) {
+	rsp, err := c.CreateCertificateIssuerWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCertificateIssuerResponse(rsp)
+}
+
+// CreateCertificateIssuerWithResponse 创建 certificate issuer
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /certificate-issuers (the `CreateCertificateIssuer` operationId).
+func (c *ClientWithResponses) CreateCertificateIssuerWithResponse(ctx context.Context, body CreateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateCertificateIssuerResponse, error) {
+	rsp, err := c.CreateCertificateIssuer(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCertificateIssuerResponse(rsp)
+}
+
+// DeleteCertificateIssuerWithResponse 删除 certificate issuer
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /certificate-issuers/{issuerId} (the `DeleteCertificateIssuer` operationId).
+func (c *ClientWithResponses) DeleteCertificateIssuerWithResponse(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*DeleteCertificateIssuerResponse, error) {
+	rsp, err := c.DeleteCertificateIssuer(ctx, issuerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteCertificateIssuerResponse(rsp)
+}
+
+// GetCertificateIssuerWithResponse 查看 certificate issuer
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /certificate-issuers/{issuerId} (the `GetCertificateIssuer` operationId).
+func (c *ClientWithResponses) GetCertificateIssuerWithResponse(ctx context.Context, issuerId Uuid, reqEditors ...RequestEditorFn) (*GetCertificateIssuerResponse, error) {
+	rsp, err := c.GetCertificateIssuer(ctx, issuerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCertificateIssuerResponse(rsp)
+}
+
+// UpdateCertificateIssuerWithBodyWithResponse 更新 certificate issuer
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+func (c *ClientWithResponses) UpdateCertificateIssuerWithBodyWithResponse(ctx context.Context, issuerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCertificateIssuerResponse, error) {
+	rsp, err := c.UpdateCertificateIssuerWithBody(ctx, issuerId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCertificateIssuerResponse(rsp)
+}
+
+// UpdateCertificateIssuerWithResponse 更新 certificate issuer
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /certificate-issuers/{issuerId} (the `UpdateCertificateIssuer` operationId).
+func (c *ClientWithResponses) UpdateCertificateIssuerWithResponse(ctx context.Context, issuerId Uuid, body UpdateCertificateIssuerJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCertificateIssuerResponse, error) {
+	rsp, err := c.UpdateCertificateIssuer(ctx, issuerId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCertificateIssuerResponse(rsp)
+}
+
+// ListCertificatesWithResponse 列出 instance 的全部证书
+//
+// 返回 workspace wildcard、relay 和 agentserver 自身证书的统一生命周期视图。私钥和证书链正文不在此接口返回。.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /certificates (the `ListCertificates` operationId).
+func (c *ClientWithResponses) ListCertificatesWithResponse(ctx context.Context, params *ListCertificatesParams, reqEditors ...RequestEditorFn) (*ListCertificatesResponse, error) {
+	rsp, err := c.ListCertificates(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListCertificatesResponse(rsp)
+}
+
+// IssueCertificateWithBodyWithResponse 签发或重新签发证书
+//
+// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+func (c *ClientWithResponses) IssueCertificateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*IssueCertificateResponse, error) {
+	rsp, err := c.IssueCertificateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseIssueCertificateResponse(rsp)
+}
+
+// IssueCertificateWithResponse 签发或重新签发证书
+//
+// 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /certificates (the `IssueCertificate` operationId).
+func (c *ClientWithResponses) IssueCertificateWithResponse(ctx context.Context, body IssueCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*IssueCertificateResponse, error) {
+	rsp, err := c.IssueCertificate(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseIssueCertificateResponse(rsp)
+}
+
+// GetCertificateWithResponse 查看证书生命周期状态
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /certificates/{certificateId} (the `GetCertificate` operationId).
+func (c *ClientWithResponses) GetCertificateWithResponse(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*GetCertificateResponse, error) {
+	rsp, err := c.GetCertificate(ctx, certificateId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCertificateResponse(rsp)
+}
+
+// RenewCertificateWithResponse 立即续期证书
+//
+// 异步触发续期；证书进入 renewing，成功后回到 ready，失败保留旧证书并记录 last_error。 已 revoked 的证书不能自动续期，需先重新签发。.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /certificates/{certificateId}/renew (the `RenewCertificate` operationId).
+func (c *ClientWithResponses) RenewCertificateWithResponse(ctx context.Context, certificateId CertificateId, reqEditors ...RequestEditorFn) (*RenewCertificateResponse, error) {
+	rsp, err := c.RenewCertificate(ctx, certificateId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRenewCertificateResponse(rsp)
+}
+
+// RevokeCertificateWithBodyWithResponse 吊销证书
+//
+// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+func (c *ClientWithResponses) RevokeCertificateWithBodyWithResponse(ctx context.Context, certificateId CertificateId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RevokeCertificateResponse, error) {
+	rsp, err := c.RevokeCertificateWithBody(ctx, certificateId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevokeCertificateResponse(rsp)
+}
+
+// RevokeCertificateWithResponse 吊销证书
+//
+// 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /certificates/{certificateId}/revoke (the `RevokeCertificate` operationId).
+func (c *ClientWithResponses) RevokeCertificateWithResponse(ctx context.Context, certificateId CertificateId, body RevokeCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*RevokeCertificateResponse, error) {
+	rsp, err := c.RevokeCertificate(ctx, certificateId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevokeCertificateResponse(rsp)
+}
+
+// ListDNSProvidersWithResponse 列出 DNS providers
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /dns-providers (the `ListDNSProviders` operationId).
+func (c *ClientWithResponses) ListDNSProvidersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListDNSProvidersResponse, error) {
+	rsp, err := c.ListDNSProviders(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListDNSProvidersResponse(rsp)
+}
+
+// CreateDNSProviderWithBodyWithResponse 创建 DNS provider
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+func (c *ClientWithResponses) CreateDNSProviderWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateDNSProviderResponse, error) {
+	rsp, err := c.CreateDNSProviderWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDNSProviderResponse(rsp)
+}
+
+// CreateDNSProviderWithResponse 创建 DNS provider
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /dns-providers (the `CreateDNSProvider` operationId).
+func (c *ClientWithResponses) CreateDNSProviderWithResponse(ctx context.Context, body CreateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateDNSProviderResponse, error) {
+	rsp, err := c.CreateDNSProvider(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateDNSProviderResponse(rsp)
+}
+
+// DeleteDNSProviderWithResponse 删除 DNS provider
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /dns-providers/{providerId} (the `DeleteDNSProvider` operationId).
+func (c *ClientWithResponses) DeleteDNSProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*DeleteDNSProviderResponse, error) {
+	rsp, err := c.DeleteDNSProvider(ctx, providerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteDNSProviderResponse(rsp)
+}
+
+// GetDNSProviderWithResponse 查看 DNS provider
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /dns-providers/{providerId} (the `GetDNSProvider` operationId).
+func (c *ClientWithResponses) GetDNSProviderWithResponse(ctx context.Context, providerId Uuid, reqEditors ...RequestEditorFn) (*GetDNSProviderResponse, error) {
+	rsp, err := c.GetDNSProvider(ctx, providerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetDNSProviderResponse(rsp)
+}
+
+// UpdateDNSProviderWithBodyWithResponse 更新 DNS provider
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+func (c *ClientWithResponses) UpdateDNSProviderWithBodyWithResponse(ctx context.Context, providerId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDNSProviderResponse, error) {
+	rsp, err := c.UpdateDNSProviderWithBody(ctx, providerId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateDNSProviderResponse(rsp)
+}
+
+// UpdateDNSProviderWithResponse 更新 DNS provider
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /dns-providers/{providerId} (the `UpdateDNSProvider` operationId).
+func (c *ClientWithResponses) UpdateDNSProviderWithResponse(ctx context.Context, providerId Uuid, body UpdateDNSProviderJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDNSProviderResponse, error) {
+	rsp, err := c.UpdateDNSProvider(ctx, providerId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateDNSProviderResponse(rsp)
+}
+
+// ListInstanceDomainsWithResponse 列出 instance 域名
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /domains (the `ListInstanceDomains` operationId).
+func (c *ClientWithResponses) ListInstanceDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListInstanceDomainsResponse, error) {
+	rsp, err := c.ListInstanceDomains(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListInstanceDomainsResponse(rsp)
+}
+
+// CreateInstanceDomainWithBodyWithResponse 添加 instance 域名
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+func (c *ClientWithResponses) CreateInstanceDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateInstanceDomainResponse, error) {
+	rsp, err := c.CreateInstanceDomainWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateInstanceDomainResponse(rsp)
+}
+
+// CreateInstanceDomainWithResponse 添加 instance 域名
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /domains (the `CreateInstanceDomain` operationId).
+func (c *ClientWithResponses) CreateInstanceDomainWithResponse(ctx context.Context, body CreateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateInstanceDomainResponse, error) {
+	rsp, err := c.CreateInstanceDomain(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateInstanceDomainResponse(rsp)
+}
+
+// DeleteInstanceDomainWithResponse 删除 instance 域名
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /domains/{domainId} (the `DeleteInstanceDomain` operationId).
+func (c *ClientWithResponses) DeleteInstanceDomainWithResponse(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*DeleteInstanceDomainResponse, error) {
+	rsp, err := c.DeleteInstanceDomain(ctx, domainId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteInstanceDomainResponse(rsp)
+}
+
+// GetInstanceDomainWithResponse 查看 instance 域名
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /domains/{domainId} (the `GetInstanceDomain` operationId).
+func (c *ClientWithResponses) GetInstanceDomainWithResponse(ctx context.Context, domainId Uuid, reqEditors ...RequestEditorFn) (*GetInstanceDomainResponse, error) {
+	rsp, err := c.GetInstanceDomain(ctx, domainId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInstanceDomainResponse(rsp)
+}
+
+// UpdateInstanceDomainWithBodyWithResponse 更新 instance 域名
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+func (c *ClientWithResponses) UpdateInstanceDomainWithBodyWithResponse(ctx context.Context, domainId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateInstanceDomainResponse, error) {
+	rsp, err := c.UpdateInstanceDomainWithBody(ctx, domainId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateInstanceDomainResponse(rsp)
+}
+
+// UpdateInstanceDomainWithResponse 更新 instance 域名
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /domains/{domainId} (the `UpdateInstanceDomain` operationId).
+func (c *ClientWithResponses) UpdateInstanceDomainWithResponse(ctx context.Context, domainId Uuid, body UpdateInstanceDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateInstanceDomainResponse, error) {
+	rsp, err := c.UpdateInstanceDomain(ctx, domainId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateInstanceDomainResponse(rsp)
+}
+
 // ListRelaysWithResponse 列出 relay
 //
-// 对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。.
+// `connected` 表示 relay 会话当前在线。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -5901,8 +12244,8 @@ func (c *ClientWithResponses) ListRelaysWithResponse(ctx context.Context, reqEdi
 
 // RegisterRelayWithBodyWithResponse 注册 relay
 //
-// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -5917,8 +12260,8 @@ func (c *ClientWithResponses) RegisterRelayWithBodyWithResponse(ctx context.Cont
 
 // RegisterRelayWithResponse 注册 relay
 //
-// 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-// relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+// 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+// relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -5946,7 +12289,7 @@ func (c *ClientWithResponses) ListRelayTokensWithResponse(ctx context.Context, r
 
 // CreateRelayTokenWithBodyWithResponse 签发 relay 注册令牌
 //
-// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -5961,7 +12304,7 @@ func (c *ClientWithResponses) CreateRelayTokenWithBodyWithResponse(ctx context.C
 
 // CreateRelayTokenWithResponse 签发 relay 注册令牌
 //
-// 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
+// relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -5979,7 +12322,7 @@ func (c *ClientWithResponses) CreateRelayTokenWithResponse(ctx context.Context, 
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with DELETE /relays/tokens/{tokenId} (the `RevokeRelayToken` operationId).
-func (c *ClientWithResponses) RevokeRelayTokenWithResponse(ctx context.Context, tokenId string, reqEditors ...RequestEditorFn) (*RevokeRelayTokenResponse, error) {
+func (c *ClientWithResponses) RevokeRelayTokenWithResponse(ctx context.Context, tokenId Uuid, reqEditors ...RequestEditorFn) (*RevokeRelayTokenResponse, error) {
 	rsp, err := c.RevokeRelayToken(ctx, tokenId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -5989,13 +12332,13 @@ func (c *ClientWithResponses) RevokeRelayTokenWithResponse(ctx context.Context, 
 
 // RemoveRelayWithResponse 注销 relay
 //
-// 对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。.
+// relay 进入 deleted 后不再作为 agentd 候选，关闭 relay 会话；已存在证书按生命周期处理。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /relays/{relay} (the `RemoveRelay` operationId).
-func (c *ClientWithResponses) RemoveRelayWithResponse(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*RemoveRelayResponse, error) {
-	rsp, err := c.RemoveRelay(ctx, relay, reqEditors...)
+// Corresponds with DELETE /relays/{relayId} (the `RemoveRelay` operationId).
+func (c *ClientWithResponses) RemoveRelayWithResponse(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*RemoveRelayResponse, error) {
+	rsp, err := c.RemoveRelay(ctx, relayId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6006,24 +12349,24 @@ func (c *ClientWithResponses) RemoveRelayWithResponse(ctx context.Context, relay
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /relays/{relay} (the `GetRelay` operationId).
-func (c *ClientWithResponses) GetRelayWithResponse(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*GetRelayResponse, error) {
-	rsp, err := c.GetRelay(ctx, relay, reqEditors...)
+// Corresponds with GET /relays/{relayId} (the `GetRelay` operationId).
+func (c *ClientWithResponses) GetRelayWithResponse(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*GetRelayResponse, error) {
+	rsp, err := c.GetRelay(ctx, relayId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetRelayResponse(rsp)
 }
 
-// ListRelayCertsWithResponse 查看该 relay 在各 workspace 的 relay 证书
+// ListRelayCertsWithResponse 查看该 relay 持有的 relay 证书
 //
-// 每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。
+// relay 按需缓存 workspace 证书；证书由 workspace 密钥签发，与 `/.well-known/agentd?workspace=…` 公布的内容一致。
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /relays/{relay}/certs (the `ListRelayCerts` operationId).
-func (c *ClientWithResponses) ListRelayCertsWithResponse(ctx context.Context, relay RelayName, reqEditors ...RequestEditorFn) (*ListRelayCertsResponse, error) {
-	rsp, err := c.ListRelayCerts(ctx, relay, reqEditors...)
+// Corresponds with GET /relays/{relayId}/certs (the `ListRelayCerts` operationId).
+func (c *ClientWithResponses) ListRelayCertsWithResponse(ctx context.Context, relayId RelayId, reqEditors ...RequestEditorFn) (*ListRelayCertsResponse, error) {
+	rsp, err := c.ListRelayCerts(ctx, relayId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6032,7 +12375,7 @@ func (c *ClientWithResponses) ListRelayCertsWithResponse(ctx context.Context, re
 
 // GetServerWithResponse 服务端信息
 //
-// 对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
+// agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -6058,7 +12401,160 @@ func (c *ClientWithResponses) GetStatusWithResponse(ctx context.Context, reqEdit
 	return ParseGetStatusResponse(rsp)
 }
 
+// ListUsersWithResponse 列出全局用户
+//
+// 用户目录是 instance 级资源；workspace 成员关系只保存角色，不复制用户资料。.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /users (the `ListUsers` operationId).
+func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error) {
+	rsp, err := c.ListUsers(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListUsersResponse(rsp)
+}
+
+// UpsertUserWithBodyWithResponse 创建或更新全局用户
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users (the `UpsertUser` operationId).
+func (c *ClientWithResponses) UpsertUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertUserResponse, error) {
+	rsp, err := c.UpsertUserWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertUserResponse(rsp)
+}
+
+// UpsertUserWithResponse 创建或更新全局用户
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users (the `UpsertUser` operationId).
+func (c *ClientWithResponses) UpsertUserWithResponse(ctx context.Context, body UpsertUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertUserResponse, error) {
+	rsp, err := c.UpsertUser(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertUserResponse(rsp)
+}
+
+// DeleteUserWithResponse 删除全局用户
+//
+// 删除用户目录记录，同时移除其所有 workspace membership；审计记录保留 subject 的不可逆摘要。.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /users/{userId} (the `DeleteUser` operationId).
+func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
+	rsp, err := c.DeleteUser(ctx, userId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteUserResponse(rsp)
+}
+
+// GetUserWithResponse 查看全局用户
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /users/{userId} (the `GetUser` operationId).
+func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*GetUserResponse, error) {
+	rsp, err := c.GetUser(ctx, userId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetUserResponse(rsp)
+}
+
+// ListUserIdentitiesWithResponse 列出用户的外部认证 identity
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /users/{userId}/identities (the `ListUserIdentities` operationId).
+func (c *ClientWithResponses) ListUserIdentitiesWithResponse(ctx context.Context, userId Uuid, reqEditors ...RequestEditorFn) (*ListUserIdentitiesResponse, error) {
+	rsp, err := c.ListUserIdentities(ctx, userId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListUserIdentitiesResponse(rsp)
+}
+
+// LinkUserIdentityWithBodyWithResponse 将外部认证 identity 关联到用户
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+func (c *ClientWithResponses) LinkUserIdentityWithBodyWithResponse(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LinkUserIdentityResponse, error) {
+	rsp, err := c.LinkUserIdentityWithBody(ctx, userId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLinkUserIdentityResponse(rsp)
+}
+
+// LinkUserIdentityWithResponse 将外部认证 identity 关联到用户
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users/{userId}/identities (the `LinkUserIdentity` operationId).
+func (c *ClientWithResponses) LinkUserIdentityWithResponse(ctx context.Context, userId Uuid, body LinkUserIdentityJSONRequestBody, reqEditors ...RequestEditorFn) (*LinkUserIdentityResponse, error) {
+	rsp, err := c.LinkUserIdentity(ctx, userId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLinkUserIdentityResponse(rsp)
+}
+
+// UnlinkUserIdentityWithResponse 解除外部认证 identity
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /users/{userId}/identities/{identityId} (the `UnlinkUserIdentity` operationId).
+func (c *ClientWithResponses) UnlinkUserIdentityWithResponse(ctx context.Context, userId Uuid, identityId Uuid, reqEditors ...RequestEditorFn) (*UnlinkUserIdentityResponse, error) {
+	rsp, err := c.UnlinkUserIdentity(ctx, userId, identityId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnlinkUserIdentityResponse(rsp)
+}
+
+// SetUserInstanceAdminWithBodyWithResponse 授予或撤销 instance admin
+//
+// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+func (c *ClientWithResponses) SetUserInstanceAdminWithBodyWithResponse(ctx context.Context, userId Uuid, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetUserInstanceAdminResponse, error) {
+	rsp, err := c.SetUserInstanceAdminWithBody(ctx, userId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetUserInstanceAdminResponse(rsp)
+}
+
+// SetUserInstanceAdminWithResponse 授予或撤销 instance admin
+//
+// 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /users/{userId}/instance-admin (the `SetUserInstanceAdmin` operationId).
+func (c *ClientWithResponses) SetUserInstanceAdminWithResponse(ctx context.Context, userId Uuid, body SetUserInstanceAdminJSONRequestBody, reqEditors ...RequestEditorFn) (*SetUserInstanceAdminResponse, error) {
+	rsp, err := c.SetUserInstanceAdmin(ctx, userId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetUserInstanceAdminResponse(rsp)
+}
+
 // ListWorkspacesWithResponse 列出 workspace
+//
+// 返回 instance 中的全部 workspace。普通用户的 membership 列表使用普通用户 API 的 `GET /api/v1/workspaces`，不调用此 admin operation。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -6073,8 +12569,8 @@ func (c *ClientWithResponses) ListWorkspacesWithResponse(ctx context.Context, re
 
 // CreateWorkspaceWithBodyWithResponse 创建 workspace
 //
-// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -6089,8 +12585,8 @@ func (c *ClientWithResponses) CreateWorkspaceWithBodyWithResponse(ctx context.Co
 
 // CreateWorkspaceWithResponse 创建 workspace
 //
-// 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-// 完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+// 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+// workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -6105,101 +12601,41 @@ func (c *ClientWithResponses) CreateWorkspaceWithResponse(ctx context.Context, b
 
 // DeleteWorkspaceWithResponse 删除 workspace
 //
-// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。.
+// 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书；成员的密钥文件不受影响。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /workspaces/{ws} (the `DeleteWorkspace` operationId).
-func (c *ClientWithResponses) DeleteWorkspaceWithResponse(ctx context.Context, ws WorkspaceName, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*DeleteWorkspaceResponse, error) {
-	rsp, err := c.DeleteWorkspace(ctx, ws, params, reqEditors...)
+// Corresponds with DELETE /workspaces/{workspaceId} (the `DeleteWorkspace` operationId).
+func (c *ClientWithResponses) DeleteWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, params *DeleteWorkspaceParams, reqEditors ...RequestEditorFn) (*DeleteWorkspaceResponse, error) {
+	rsp, err := c.DeleteWorkspace(ctx, workspaceId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseDeleteWorkspaceResponse(rsp)
 }
 
-// GetWorkspaceWithResponse 查看 workspace（含公钥、证书状态、指派的 relay）
+// GetWorkspaceWithResponse 查看 workspace（公钥、基础域名、状态和证书）
 //
-// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。
+// `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`。
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws} (the `GetWorkspace` operationId).
-func (c *ClientWithResponses) GetWorkspaceWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*GetWorkspaceResponse, error) {
-	rsp, err := c.GetWorkspace(ctx, ws, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId} (the `GetWorkspace` operationId).
+func (c *ClientWithResponses) GetWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*GetWorkspaceResponse, error) {
+	rsp, err := c.GetWorkspace(ctx, workspaceId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetWorkspaceResponse(rsp)
 }
 
-// UpdateWorkspaceWithBodyWithResponse 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-//
-// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-func (c *ClientWithResponses) UpdateWorkspaceWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error) {
-	rsp, err := c.UpdateWorkspaceWithBody(ctx, ws, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateWorkspaceResponse(rsp)
-}
-
-// UpdateWorkspaceWithResponse 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-//
-// 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with PATCH /workspaces/{ws} (the `UpdateWorkspace` operationId).
-func (c *ClientWithResponses) UpdateWorkspaceWithResponse(ctx context.Context, ws WorkspaceName, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error) {
-	rsp, err := c.UpdateWorkspace(ctx, ws, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateWorkspaceResponse(rsp)
-}
-
-// ListCertsWithResponse 查看通配证书
-//
-// 对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with GET /workspaces/{ws}/certs (the `ListCerts` operationId).
-func (c *ClientWithResponses) ListCertsWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListCertsResponse, error) {
-	rsp, err := c.ListCerts(ctx, ws, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListCertsResponse(rsp)
-}
-
-// RenewCertWithResponse 立即续期
-//
-// 对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /workspaces/{ws}/certs/renew (the `RenewCert` operationId).
-func (c *ClientWithResponses) RenewCertWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*RenewCertResponse, error) {
-	rsp, err := c.RenewCert(ctx, ws, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseRenewCertResponse(rsp)
-}
-
 // ListGroupsWithResponse 列出组
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/groups (the `ListGroups` operationId).
-func (c *ClientWithResponses) ListGroupsWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListGroupsResponse, error) {
-	rsp, err := c.ListGroups(ctx, ws, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/groups (the `ListGroups` operationId).
+func (c *ClientWithResponses) ListGroupsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListGroupsResponse, error) {
+	rsp, err := c.ListGroups(ctx, workspaceId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6208,13 +12644,13 @@ func (c *ClientWithResponses) ListGroupsWithResponse(ctx context.Context, ws Wor
 
 // CreateGroupWithBodyWithResponse 创建组
 //
-// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-func (c *ClientWithResponses) CreateGroupWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error) {
-	rsp, err := c.CreateGroupWithBody(ctx, ws, contentType, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+func (c *ClientWithResponses) CreateGroupWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error) {
+	rsp, err := c.CreateGroupWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6223,13 +12659,13 @@ func (c *ClientWithResponses) CreateGroupWithBodyWithResponse(ctx context.Contex
 
 // CreateGroupWithResponse 创建组
 //
-// 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+// 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/groups (the `CreateGroup` operationId).
-func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, ws WorkspaceName, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error) {
-	rsp, err := c.CreateGroup(ctx, ws, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/groups (the `CreateGroup` operationId).
+func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error) {
+	rsp, err := c.CreateGroup(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6238,13 +12674,13 @@ func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, ws Wo
 
 // DeleteGroupWithResponse 删除组
 //
-// 对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
+// 向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /workspaces/{ws}/groups/{group} (the `DeleteGroup` operationId).
-func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
-	rsp, err := c.DeleteGroup(ctx, ws, group, reqEditors...)
+// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId} (the `DeleteGroup` operationId).
+func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*DeleteGroupResponse, error) {
+	rsp, err := c.DeleteGroup(ctx, workspaceId, groupId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6255,54 +12691,106 @@ func (c *ClientWithResponses) DeleteGroupWithResponse(ctx context.Context, ws Wo
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/groups/{group} (the `GetGroup` operationId).
-func (c *ClientWithResponses) GetGroupWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, reqEditors ...RequestEditorFn) (*GetGroupResponse, error) {
-	rsp, err := c.GetGroup(ctx, ws, group, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/groups/{groupId} (the `GetGroup` operationId).
+func (c *ClientWithResponses) GetGroupWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, reqEditors ...RequestEditorFn) (*GetGroupResponse, error) {
+	rsp, err := c.GetGroup(ctx, workspaceId, groupId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetGroupResponse(rsp)
 }
 
-// RemoveGroupMemberWithResponse 把成员移出组
+// RemoveGroupNodeWithResponse 把 node 移出组
 //
-// 对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。
+// 停止续发并推送吊销记录 `(member, issuer, until)`。
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /workspaces/{ws}/groups/{group}/members/{node} (the `RemoveGroupMember` operationId).
-func (c *ClientWithResponses) RemoveGroupMemberWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*RemoveGroupMemberResponse, error) {
-	rsp, err := c.RemoveGroupMember(ctx, ws, group, node, reqEditors...)
+// Corresponds with DELETE /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `RemoveGroupNode` operationId).
+func (c *ClientWithResponses) RemoveGroupNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*RemoveGroupNodeResponse, error) {
+	rsp, err := c.RemoveGroupNode(ctx, workspaceId, groupId, nodeId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseRemoveGroupMemberResponse(rsp)
+	return ParseRemoveGroupNodeResponse(rsp)
 }
 
-// AddGroupMemberWithResponse 把成员加入组
+// AddGroupNodeWithResponse 把 node 加入组
 //
-// 对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
+// 给该 node 签发 group-node membership 证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with PUT /workspaces/{ws}/groups/{group}/members/{node} (the `AddGroupMember` operationId).
-func (c *ClientWithResponses) AddGroupMemberWithResponse(ctx context.Context, ws WorkspaceName, group GroupName, node NodeName, reqEditors ...RequestEditorFn) (*AddGroupMemberResponse, error) {
-	rsp, err := c.AddGroupMember(ctx, ws, group, node, reqEditors...)
+// Corresponds with PUT /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId} (the `AddGroupNode` operationId).
+func (c *ClientWithResponses) AddGroupNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId, reqEditors ...RequestEditorFn) (*AddGroupNodeResponse, error) {
+	rsp, err := c.AddGroupNode(ctx, workspaceId, groupId, nodeId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAddGroupMemberResponse(rsp)
+	return ParseAddGroupNodeResponse(rsp)
+}
+
+// ListWorkspaceMembersWithResponse 列出 workspace 成员
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /workspaces/{workspaceId}/members (the `ListWorkspaceMembers` operationId).
+func (c *ClientWithResponses) ListWorkspaceMembersWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListWorkspaceMembersResponse, error) {
+	rsp, err := c.ListWorkspaceMembers(ctx, workspaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListWorkspaceMembersResponse(rsp)
+}
+
+// UpsertWorkspaceMemberWithBodyWithResponse 添加或调整 用户角色
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+func (c *ClientWithResponses) UpsertWorkspaceMemberWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpsertWorkspaceMemberResponse, error) {
+	rsp, err := c.UpsertWorkspaceMemberWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertWorkspaceMemberResponse(rsp)
+}
+
+// UpsertWorkspaceMemberWithResponse 添加或调整 用户角色
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /workspaces/{workspaceId}/members (the `UpsertWorkspaceMember` operationId).
+func (c *ClientWithResponses) UpsertWorkspaceMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, body UpsertWorkspaceMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*UpsertWorkspaceMemberResponse, error) {
+	rsp, err := c.UpsertWorkspaceMember(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpsertWorkspaceMemberResponse(rsp)
+}
+
+// RemoveWorkspaceMemberWithResponse 移除 workspace 成员
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /workspaces/{workspaceId}/members/{memberId} (the `RemoveWorkspaceMember` operationId).
+func (c *ClientWithResponses) RemoveWorkspaceMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId Uuid, reqEditors ...RequestEditorFn) (*RemoveWorkspaceMemberResponse, error) {
+	rsp, err := c.RemoveWorkspaceMember(ctx, workspaceId, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveWorkspaceMemberResponse(rsp)
 }
 
 // ListNodesWithResponse 列出成员
 //
-// 对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
+// 在线状态与所连 relay 来自 relay 的 `RelayPresence`。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/nodes (the `ListNodes` operationId).
-func (c *ClientWithResponses) ListNodesWithResponse(ctx context.Context, ws WorkspaceName, params *ListNodesParams, reqEditors ...RequestEditorFn) (*ListNodesResponse, error) {
-	rsp, err := c.ListNodes(ctx, ws, params, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/nodes (the `ListNodes` operationId).
+func (c *ClientWithResponses) ListNodesWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListNodesParams, reqEditors ...RequestEditorFn) (*ListNodesResponse, error) {
+	rsp, err := c.ListNodes(ctx, workspaceId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6311,15 +12799,15 @@ func (c *ClientWithResponses) ListNodesWithResponse(ctx context.Context, ws Work
 
 // RemoveNodeWithResponse 移除成员
 //
-// 对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
+// 目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
 // 向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。
 // 换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /workspaces/{ws}/nodes/{node} (the `RemoveNode` operationId).
-func (c *ClientWithResponses) RemoveNodeWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*RemoveNodeResponse, error) {
-	rsp, err := c.RemoveNode(ctx, ws, node, reqEditors...)
+// Corresponds with DELETE /workspaces/{workspaceId}/nodes/{nodeId} (the `RemoveNode` operationId).
+func (c *ClientWithResponses) RemoveNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*RemoveNodeResponse, error) {
+	rsp, err := c.RemoveNode(ctx, workspaceId, nodeId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6330,9 +12818,9 @@ func (c *ClientWithResponses) RemoveNodeWithResponse(ctx context.Context, ws Wor
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/nodes/{node} (the `GetNode` operationId).
-func (c *ClientWithResponses) GetNodeWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, reqEditors ...RequestEditorFn) (*GetNodeResponse, error) {
-	rsp, err := c.GetNode(ctx, ws, node, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/nodes/{nodeId} (the `GetNode` operationId).
+func (c *ClientWithResponses) GetNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, reqEditors ...RequestEditorFn) (*GetNodeResponse, error) {
+	rsp, err := c.GetNode(ctx, workspaceId, nodeId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6341,14 +12829,14 @@ func (c *ClientWithResponses) GetNodeWithResponse(ctx context.Context, ws Worksp
 
 // UpdateNodeWithBodyWithResponse 改名或调整角色上限
 //
-// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 // 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-func (c *ClientWithResponses) UpdateNodeWithBodyWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error) {
-	rsp, err := c.UpdateNodeWithBody(ctx, ws, node, contentType, body, reqEditors...)
+// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+func (c *ClientWithResponses) UpdateNodeWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error) {
+	rsp, err := c.UpdateNodeWithBody(ctx, workspaceId, nodeId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6357,14 +12845,14 @@ func (c *ClientWithResponses) UpdateNodeWithBodyWithResponse(ctx context.Context
 
 // UpdateNodeWithResponse 改名或调整角色上限
 //
-// 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+// 改名只改目录，其他节点规则里写的是公钥，不受影响；
 // 调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with PATCH /workspaces/{ws}/nodes/{node} (the `UpdateNode` operationId).
-func (c *ClientWithResponses) UpdateNodeWithResponse(ctx context.Context, ws WorkspaceName, node NodeName, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error) {
-	rsp, err := c.UpdateNode(ctx, ws, node, body, reqEditors...)
+// Corresponds with PATCH /workspaces/{workspaceId}/nodes/{nodeId} (the `UpdateNode` operationId).
+func (c *ClientWithResponses) UpdateNodeWithResponse(ctx context.Context, workspaceId WorkspaceId, nodeId NodeId, body UpdateNodeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateNodeResponse, error) {
+	rsp, err := c.UpdateNode(ctx, workspaceId, nodeId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6375,9 +12863,9 @@ func (c *ClientWithResponses) UpdateNodeWithResponse(ctx context.Context, ws Wor
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/policies (the `ListPolicies` operationId).
-func (c *ClientWithResponses) ListPoliciesWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListPoliciesResponse, error) {
-	rsp, err := c.ListPolicies(ctx, ws, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/policies (the `ListPolicies` operationId).
+func (c *ClientWithResponses) ListPoliciesWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListPoliciesResponse, error) {
+	rsp, err := c.ListPolicies(ctx, workspaceId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6388,9 +12876,9 @@ func (c *ClientWithResponses) ListPoliciesWithResponse(ctx context.Context, ws W
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-func (c *ClientWithResponses) AddPolicyWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error) {
-	rsp, err := c.AddPolicyWithBody(ctx, ws, contentType, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+func (c *ClientWithResponses) AddPolicyWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error) {
+	rsp, err := c.AddPolicyWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6401,9 +12889,9 @@ func (c *ClientWithResponses) AddPolicyWithBodyWithResponse(ctx context.Context,
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/policies (the `AddPolicy` operationId).
-func (c *ClientWithResponses) AddPolicyWithResponse(ctx context.Context, ws WorkspaceName, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error) {
-	rsp, err := c.AddPolicy(ctx, ws, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/policies (the `AddPolicy` operationId).
+func (c *ClientWithResponses) AddPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, body AddPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*AddPolicyResponse, error) {
+	rsp, err := c.AddPolicy(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6416,9 +12904,9 @@ func (c *ClientWithResponses) AddPolicyWithResponse(ctx context.Context, ws Work
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-func (c *ClientWithResponses) ReplacePoliciesWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error) {
-	rsp, err := c.ReplacePoliciesWithBody(ctx, ws, contentType, body, reqEditors...)
+// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+func (c *ClientWithResponses) ReplacePoliciesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error) {
+	rsp, err := c.ReplacePoliciesWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6431,9 +12919,9 @@ func (c *ClientWithResponses) ReplacePoliciesWithBodyWithResponse(ctx context.Co
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with PUT /workspaces/{ws}/policies (the `ReplacePolicies` operationId).
-func (c *ClientWithResponses) ReplacePoliciesWithResponse(ctx context.Context, ws WorkspaceName, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error) {
-	rsp, err := c.ReplacePolicies(ctx, ws, body, reqEditors...)
+// Corresponds with PUT /workspaces/{workspaceId}/policies (the `ReplacePolicies` operationId).
+func (c *ClientWithResponses) ReplacePoliciesWithResponse(ctx context.Context, workspaceId WorkspaceId, body ReplacePoliciesJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplacePoliciesResponse, error) {
+	rsp, err := c.ReplacePolicies(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6444,9 +12932,9 @@ func (c *ClientWithResponses) ReplacePoliciesWithResponse(ctx context.Context, w
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /workspaces/{ws}/policies/{policyId} (the `DeletePolicy` operationId).
-func (c *ClientWithResponses) DeletePolicyWithResponse(ctx context.Context, ws WorkspaceName, policyId string, reqEditors ...RequestEditorFn) (*DeletePolicyResponse, error) {
-	rsp, err := c.DeletePolicy(ctx, ws, policyId, reqEditors...)
+// Corresponds with DELETE /workspaces/{workspaceId}/policies/{policyId} (the `DeletePolicy` operationId).
+func (c *ClientWithResponses) DeletePolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, policyId Uuid, reqEditors ...RequestEditorFn) (*DeletePolicyResponse, error) {
+	rsp, err := c.DeletePolicy(ctx, workspaceId, policyId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6459,9 +12947,9 @@ func (c *ClientWithResponses) DeletePolicyWithResponse(ctx context.Context, ws W
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/routes (the `GetRouteTable` operationId).
-func (c *ClientWithResponses) GetRouteTableWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*GetRouteTableResponse, error) {
-	rsp, err := c.GetRouteTable(ctx, ws, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/routes (the `GetRouteTable` operationId).
+func (c *ClientWithResponses) GetRouteTableWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*GetRouteTableResponse, error) {
+	rsp, err := c.GetRouteTable(ctx, workspaceId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6470,13 +12958,13 @@ func (c *ClientWithResponses) GetRouteTableWithResponse(ctx context.Context, ws 
 
 // AddRouteWithBodyWithResponse 追加一条路由
 //
-// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+// 追加到末尾；同等具体时书写顺序靠前的优先。.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-func (c *ClientWithResponses) AddRouteWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddRouteResponse, error) {
-	rsp, err := c.AddRouteWithBody(ctx, ws, contentType, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+func (c *ClientWithResponses) AddRouteWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddRouteResponse, error) {
+	rsp, err := c.AddRouteWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6485,13 +12973,13 @@ func (c *ClientWithResponses) AddRouteWithBodyWithResponse(ctx context.Context, 
 
 // AddRouteWithResponse 追加一条路由
 //
-// 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。.
+// 追加到末尾；同等具体时书写顺序靠前的优先。.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/routes (the `AddRoute` operationId).
-func (c *ClientWithResponses) AddRouteWithResponse(ctx context.Context, ws WorkspaceName, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*AddRouteResponse, error) {
-	rsp, err := c.AddRoute(ctx, ws, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/routes (the `AddRoute` operationId).
+func (c *ClientWithResponses) AddRouteWithResponse(ctx context.Context, workspaceId WorkspaceId, body AddRouteJSONRequestBody, reqEditors ...RequestEditorFn) (*AddRouteResponse, error) {
+	rsp, err := c.AddRoute(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6504,9 +12992,9 @@ func (c *ClientWithResponses) AddRouteWithResponse(ctx context.Context, ws Works
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-func (c *ClientWithResponses) ReplaceRouteTableWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error) {
-	rsp, err := c.ReplaceRouteTableWithBody(ctx, ws, contentType, body, reqEditors...)
+// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+func (c *ClientWithResponses) ReplaceRouteTableWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error) {
+	rsp, err := c.ReplaceRouteTableWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6519,9 +13007,9 @@ func (c *ClientWithResponses) ReplaceRouteTableWithBodyWithResponse(ctx context.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with PUT /workspaces/{ws}/routes (the `ReplaceRouteTable` operationId).
-func (c *ClientWithResponses) ReplaceRouteTableWithResponse(ctx context.Context, ws WorkspaceName, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error) {
-	rsp, err := c.ReplaceRouteTable(ctx, ws, body, reqEditors...)
+// Corresponds with PUT /workspaces/{workspaceId}/routes (the `ReplaceRouteTable` operationId).
+func (c *ClientWithResponses) ReplaceRouteTableWithResponse(ctx context.Context, workspaceId WorkspaceId, body ReplaceRouteTableJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceRouteTableResponse, error) {
+	rsp, err := c.ReplaceRouteTable(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6530,13 +13018,11 @@ func (c *ClientWithResponses) ReplaceRouteTableWithResponse(ctx context.Context,
 
 // DeleteRouteWithResponse 删除一条路由
 //
-// 对应 `agentserver route remove`。.
-//
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /workspaces/{ws}/routes/{routeId} (the `DeleteRoute` operationId).
-func (c *ClientWithResponses) DeleteRouteWithResponse(ctx context.Context, ws WorkspaceName, routeId string, reqEditors ...RequestEditorFn) (*DeleteRouteResponse, error) {
-	rsp, err := c.DeleteRoute(ctx, ws, routeId, reqEditors...)
+// Corresponds with DELETE /workspaces/{workspaceId}/routes/{routeId} (the `DeleteRoute` operationId).
+func (c *ClientWithResponses) DeleteRouteWithResponse(ctx context.Context, workspaceId WorkspaceId, routeId Uuid, reqEditors ...RequestEditorFn) (*DeleteRouteResponse, error) {
+	rsp, err := c.DeleteRoute(ctx, workspaceId, routeId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6549,9 +13035,9 @@ func (c *ClientWithResponses) DeleteRouteWithResponse(ctx context.Context, ws Wo
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/services (the `ListServices` operationId).
-func (c *ClientWithResponses) ListServicesWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListServicesResponse, error) {
-	rsp, err := c.ListServices(ctx, ws, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/services (the `ListServices` operationId).
+func (c *ClientWithResponses) ListServicesWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListServicesResponse, error) {
+	rsp, err := c.ListServices(ctx, workspaceId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6560,13 +13046,13 @@ func (c *ClientWithResponses) ListServicesWithResponse(ctx context.Context, ws W
 
 // ListTokensWithResponse 列出未使用的加入令牌
 //
-// 对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。.
+// 服务端只存令牌的 SHA-256，列表里没有令牌本身。.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /workspaces/{ws}/tokens (the `ListTokens` operationId).
-func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, ws WorkspaceName, reqEditors ...RequestEditorFn) (*ListTokensResponse, error) {
-	rsp, err := c.ListTokens(ctx, ws, reqEditors...)
+// Corresponds with GET /workspaces/{workspaceId}/tokens (the `ListTokens` operationId).
+func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListTokensResponse, error) {
+	rsp, err := c.ListTokens(ctx, workspaceId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6575,15 +13061,16 @@ func (c *ClientWithResponses) ListTokensWithResponse(ctx context.Context, ws Wor
 
 // CreateTokenWithBodyWithResponse 签发加入令牌并返回加入链接
 //
-// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 // 令牌明文只在这次响应里出现一次。
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-func (c *ClientWithResponses) CreateTokenWithBodyWithResponse(ctx context.Context, ws WorkspaceName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
-	rsp, err := c.CreateTokenWithBody(ctx, ws, contentType, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+func (c *ClientWithResponses) CreateTokenWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
+	rsp, err := c.CreateTokenWithBody(ctx, workspaceId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6592,15 +13079,16 @@ func (c *ClientWithResponses) CreateTokenWithBodyWithResponse(ctx context.Contex
 
 // CreateTokenWithResponse 签发加入令牌并返回加入链接
 //
-// 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-// 返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+// 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+// agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+// 再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
 // 令牌明文只在这次响应里出现一次。
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /workspaces/{ws}/tokens (the `CreateToken` operationId).
-func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, ws WorkspaceName, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
-	rsp, err := c.CreateToken(ctx, ws, body, reqEditors...)
+// Corresponds with POST /workspaces/{workspaceId}/tokens (the `CreateToken` operationId).
+func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error) {
+	rsp, err := c.CreateToken(ctx, workspaceId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6609,17 +13097,960 @@ func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, ws Wo
 
 // RevokeTokenWithResponse 作废未使用的令牌
 //
-// 对应 `agentserver token revoke`。.
-//
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /workspaces/{ws}/tokens/{tokenId} (the `RevokeToken` operationId).
-func (c *ClientWithResponses) RevokeTokenWithResponse(ctx context.Context, ws WorkspaceName, tokenId string, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error) {
-	rsp, err := c.RevokeToken(ctx, ws, tokenId, reqEditors...)
+// Corresponds with DELETE /workspaces/{workspaceId}/tokens/{tokenId} (the `RevokeToken` operationId).
+func (c *ClientWithResponses) RevokeTokenWithResponse(ctx context.Context, workspaceId WorkspaceId, tokenId Uuid, reqEditors ...RequestEditorFn) (*RevokeTokenResponse, error) {
+	rsp, err := c.RevokeToken(ctx, workspaceId, tokenId, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseRevokeTokenResponse(rsp)
+}
+
+// ParseListAuditEventsResponse parses an HTTP response from a ListAuditEventsWithResponse call
+func ParseListAuditEventsResponse(rsp *http.Response) (*ListAuditEventsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAuditEventsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditEventPage
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAuditEventResponse parses an HTTP response from a GetAuditEventWithResponse call
+func ParseGetAuditEventResponse(rsp *http.Response) (*GetAuditEventResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAuditEventResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuditEvent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAuthProvidersResponse parses an HTTP response from a ListAuthProvidersWithResponse call
+func ParseListAuthProvidersResponse(rsp *http.Response) (*ListAuthProvidersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAuthProvidersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []AuthProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateAuthProviderResponse parses an HTTP response from a CreateAuthProviderWithResponse call
+func ParseCreateAuthProviderResponse(rsp *http.Response) (*CreateAuthProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAuthProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteAuthProviderResponse parses an HTTP response from a DeleteAuthProviderWithResponse call
+func ParseDeleteAuthProviderResponse(rsp *http.Response) (*DeleteAuthProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteAuthProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAuthProviderResponse parses an HTTP response from a GetAuthProviderWithResponse call
+func ParseGetAuthProviderResponse(rsp *http.Response) (*GetAuthProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAuthProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateAuthProviderResponse parses an HTTP response from a UpdateAuthProviderWithResponse call
+func ParseUpdateAuthProviderResponse(rsp *http.Response) (*UpdateAuthProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateAuthProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCertificateIssuersResponse parses an HTTP response from a ListCertificateIssuersWithResponse call
+func ParseListCertificateIssuersResponse(rsp *http.Response) (*ListCertificateIssuersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCertificateIssuersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []CertificateIssuer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateCertificateIssuerResponse parses an HTTP response from a CreateCertificateIssuerWithResponse call
+func ParseCreateCertificateIssuerResponse(rsp *http.Response) (*CreateCertificateIssuerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCertificateIssuerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CertificateIssuer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteCertificateIssuerResponse parses an HTTP response from a DeleteCertificateIssuerWithResponse call
+func ParseDeleteCertificateIssuerResponse(rsp *http.Response) (*DeleteCertificateIssuerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteCertificateIssuerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCertificateIssuerResponse parses an HTTP response from a GetCertificateIssuerWithResponse call
+func ParseGetCertificateIssuerResponse(rsp *http.Response) (*GetCertificateIssuerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCertificateIssuerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CertificateIssuer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateCertificateIssuerResponse parses an HTTP response from a UpdateCertificateIssuerWithResponse call
+func ParseUpdateCertificateIssuerResponse(rsp *http.Response) (*UpdateCertificateIssuerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateCertificateIssuerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CertificateIssuer
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListCertificatesResponse parses an HTTP response from a ListCertificatesWithResponse call
+func ParseListCertificatesResponse(rsp *http.Response) (*ListCertificatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListCertificatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Certificate
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseIssueCertificateResponse parses an HTTP response from a IssueCertificateWithResponse call
+func ParseIssueCertificateResponse(rsp *http.Response) (*IssueCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &IssueCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Certificate
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCertificateResponse parses an HTTP response from a GetCertificateWithResponse call
+func ParseGetCertificateResponse(rsp *http.Response) (*GetCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Certificate
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRenewCertificateResponse parses an HTTP response from a RenewCertificateWithResponse call
+func ParseRenewCertificateResponse(rsp *http.Response) (*RenewCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RenewCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest Certificate
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevokeCertificateResponse parses an HTTP response from a RevokeCertificateWithResponse call
+func ParseRevokeCertificateResponse(rsp *http.Response) (*RevokeCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevokeCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Certificate
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListDNSProvidersResponse parses an HTTP response from a ListDNSProvidersWithResponse call
+func ParseListDNSProvidersResponse(rsp *http.Response) (*ListDNSProvidersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListDNSProvidersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []DNSProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateDNSProviderResponse parses an HTTP response from a CreateDNSProviderWithResponse call
+func ParseCreateDNSProviderResponse(rsp *http.Response) (*CreateDNSProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateDNSProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DNSProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteDNSProviderResponse parses an HTTP response from a DeleteDNSProviderWithResponse call
+func ParseDeleteDNSProviderResponse(rsp *http.Response) (*DeleteDNSProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteDNSProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetDNSProviderResponse parses an HTTP response from a GetDNSProviderWithResponse call
+func ParseGetDNSProviderResponse(rsp *http.Response) (*GetDNSProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetDNSProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DNSProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateDNSProviderResponse parses an HTTP response from a UpdateDNSProviderWithResponse call
+func ParseUpdateDNSProviderResponse(rsp *http.Response) (*UpdateDNSProviderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateDNSProviderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DNSProvider
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListInstanceDomainsResponse parses an HTTP response from a ListInstanceDomainsWithResponse call
+func ParseListInstanceDomainsResponse(rsp *http.Response) (*ListInstanceDomainsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListInstanceDomainsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []InstanceDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateInstanceDomainResponse parses an HTTP response from a CreateInstanceDomainWithResponse call
+func ParseCreateInstanceDomainResponse(rsp *http.Response) (*CreateInstanceDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateInstanceDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest InstanceDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteInstanceDomainResponse parses an HTTP response from a DeleteInstanceDomainWithResponse call
+func ParseDeleteInstanceDomainResponse(rsp *http.Response) (*DeleteInstanceDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteInstanceDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetInstanceDomainResponse parses an HTTP response from a GetInstanceDomainWithResponse call
+func ParseGetInstanceDomainResponse(rsp *http.Response) (*GetInstanceDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInstanceDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateInstanceDomainResponse parses an HTTP response from a UpdateInstanceDomainWithResponse call
+func ParseUpdateInstanceDomainResponse(rsp *http.Response) (*UpdateInstanceDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateInstanceDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest InstanceDomain
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseListRelaysResponse parses an HTTP response from a ListRelaysWithResponse call
@@ -6923,6 +14354,304 @@ func ParseGetStatusResponse(rsp *http.Response) (*GetStatusResponse, error) {
 	return response, nil
 }
 
+// ParseListUsersResponse parses an HTTP response from a ListUsersWithResponse call
+func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListUsersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpsertUserResponse parses an HTTP response from a UpsertUserWithResponse call
+func ParseUpsertUserResponse(rsp *http.Response) (*UpsertUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpsertUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteUserResponse parses an HTTP response from a DeleteUserWithResponse call
+func ParseDeleteUserResponse(rsp *http.Response) (*DeleteUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetUserResponse parses an HTTP response from a GetUserWithResponse call
+func ParseGetUserResponse(rsp *http.Response) (*GetUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListUserIdentitiesResponse parses an HTTP response from a ListUserIdentitiesWithResponse call
+func ParseListUserIdentitiesResponse(rsp *http.Response) (*ListUserIdentitiesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListUserIdentitiesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []UserIdentity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLinkUserIdentityResponse parses an HTTP response from a LinkUserIdentityWithResponse call
+func ParseLinkUserIdentityResponse(rsp *http.Response) (*LinkUserIdentityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LinkUserIdentityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest UserIdentity
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUnlinkUserIdentityResponse parses an HTTP response from a UnlinkUserIdentityWithResponse call
+func ParseUnlinkUserIdentityResponse(rsp *http.Response) (*UnlinkUserIdentityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnlinkUserIdentityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetUserInstanceAdminResponse parses an HTTP response from a SetUserInstanceAdminWithResponse call
+func ParseSetUserInstanceAdminResponse(rsp *http.Response) (*SetUserInstanceAdminResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetUserInstanceAdminResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListWorkspacesResponse parses an HTTP response from a ListWorkspacesWithResponse call
 func ParseListWorkspacesResponse(rsp *http.Response) (*ListWorkspacesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -7045,105 +14774,6 @@ func ParseGetWorkspaceResponse(rsp *http.Response) (*GetWorkspaceResponse, error
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateWorkspaceResponse parses an HTTP response from a UpdateWorkspaceWithResponse call
-func ParseUpdateWorkspaceResponse(rsp *http.Response) (*UpdateWorkspaceResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateWorkspaceResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Workspace
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseListCertsResponse parses an HTTP response from a ListCertsWithResponse call
-func ParseListCertsResponse(rsp *http.Response) (*ListCertsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListCertsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Cert
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseRenewCertResponse parses an HTTP response from a RenewCertWithResponse call
-func ParseRenewCertResponse(rsp *http.Response) (*RenewCertResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &RenewCertResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest Cert
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest NotFound
@@ -7285,15 +14915,15 @@ func ParseGetGroupResponse(rsp *http.Response) (*GetGroupResponse, error) {
 	return response, nil
 }
 
-// ParseRemoveGroupMemberResponse parses an HTTP response from a RemoveGroupMemberWithResponse call
-func ParseRemoveGroupMemberResponse(rsp *http.Response) (*RemoveGroupMemberResponse, error) {
+// ParseRemoveGroupNodeResponse parses an HTTP response from a RemoveGroupNodeWithResponse call
+func ParseRemoveGroupNodeResponse(rsp *http.Response) (*RemoveGroupNodeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &RemoveGroupMemberResponse{
+	response := &RemoveGroupNodeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -7314,15 +14944,15 @@ func ParseRemoveGroupMemberResponse(rsp *http.Response) (*RemoveGroupMemberRespo
 	return response, nil
 }
 
-// ParseAddGroupMemberResponse parses an HTTP response from a AddGroupMemberWithResponse call
-func ParseAddGroupMemberResponse(rsp *http.Response) (*AddGroupMemberResponse, error) {
+// ParseAddGroupNodeResponse parses an HTTP response from a AddGroupNodeWithResponse call
+func ParseAddGroupNodeResponse(rsp *http.Response) (*AddGroupNodeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AddGroupMemberResponse{
+	response := &AddGroupNodeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -7337,6 +14967,122 @@ func ParseAddGroupMemberResponse(rsp *http.Response) (*AddGroupMemberResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListWorkspaceMembersResponse parses an HTTP response from a ListWorkspaceMembersWithResponse call
+func ParseListWorkspaceMembersResponse(rsp *http.Response) (*ListWorkspaceMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListWorkspaceMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []WorkspaceMember
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpsertWorkspaceMemberResponse parses an HTTP response from a UpsertWorkspaceMemberWithResponse call
+func ParseUpsertWorkspaceMemberResponse(rsp *http.Response) (*UpsertWorkspaceMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpsertWorkspaceMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkspaceMember
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveWorkspaceMemberResponse parses an HTTP response from a RemoveWorkspaceMemberWithResponse call
+func ParseRemoveWorkspaceMemberResponse(rsp *http.Response) (*RemoveWorkspaceMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveWorkspaceMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	}
 
@@ -7843,6 +15589,87 @@ func ParseRevokeTokenResponse(rsp *http.Response) (*RevokeTokenResponse, error) 
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListAuditEvents 查询全局审计记录
+	// (GET /audit/events)
+	ListAuditEvents(w http.ResponseWriter, r *http.Request, params ListAuditEventsParams)
+	// GetAuditEvent 查看审计事件
+	// (GET /audit/events/{eventId})
+	GetAuditEvent(w http.ResponseWriter, r *http.Request, eventId Uuid)
+	// ListAuthProviders 列出认证 providers
+	// (GET /auth-providers)
+	ListAuthProviders(w http.ResponseWriter, r *http.Request)
+	// CreateAuthProvider 创建认证 provider
+	// (POST /auth-providers)
+	CreateAuthProvider(w http.ResponseWriter, r *http.Request)
+	// DeleteAuthProvider 删除认证 provider
+	// (DELETE /auth-providers/{providerId})
+	DeleteAuthProvider(w http.ResponseWriter, r *http.Request, providerId Uuid)
+	// GetAuthProvider 查看认证 provider
+	// (GET /auth-providers/{providerId})
+	GetAuthProvider(w http.ResponseWriter, r *http.Request, providerId Uuid)
+	// UpdateAuthProvider 更新认证 provider
+	// (PUT /auth-providers/{providerId})
+	UpdateAuthProvider(w http.ResponseWriter, r *http.Request, providerId Uuid)
+	// ListCertificateIssuers 列出 certificate issuers
+	// (GET /certificate-issuers)
+	ListCertificateIssuers(w http.ResponseWriter, r *http.Request)
+	// CreateCertificateIssuer 创建 certificate issuer
+	// (POST /certificate-issuers)
+	CreateCertificateIssuer(w http.ResponseWriter, r *http.Request)
+	// DeleteCertificateIssuer 删除 certificate issuer
+	// (DELETE /certificate-issuers/{issuerId})
+	DeleteCertificateIssuer(w http.ResponseWriter, r *http.Request, issuerId Uuid)
+	// GetCertificateIssuer 查看 certificate issuer
+	// (GET /certificate-issuers/{issuerId})
+	GetCertificateIssuer(w http.ResponseWriter, r *http.Request, issuerId Uuid)
+	// UpdateCertificateIssuer 更新 certificate issuer
+	// (PUT /certificate-issuers/{issuerId})
+	UpdateCertificateIssuer(w http.ResponseWriter, r *http.Request, issuerId Uuid)
+	// ListCertificates 列出 instance 的全部证书
+	// (GET /certificates)
+	ListCertificates(w http.ResponseWriter, r *http.Request, params ListCertificatesParams)
+	// IssueCertificate 签发或重新签发证书
+	// (POST /certificates)
+	IssueCertificate(w http.ResponseWriter, r *http.Request)
+	// GetCertificate 查看证书生命周期状态
+	// (GET /certificates/{certificateId})
+	GetCertificate(w http.ResponseWriter, r *http.Request, certificateId CertificateId)
+	// RenewCertificate 立即续期证书
+	// (POST /certificates/{certificateId}/renew)
+	RenewCertificate(w http.ResponseWriter, r *http.Request, certificateId CertificateId)
+	// RevokeCertificate 吊销证书
+	// (POST /certificates/{certificateId}/revoke)
+	RevokeCertificate(w http.ResponseWriter, r *http.Request, certificateId CertificateId)
+	// ListDNSProviders 列出 DNS providers
+	// (GET /dns-providers)
+	ListDNSProviders(w http.ResponseWriter, r *http.Request)
+	// CreateDNSProvider 创建 DNS provider
+	// (POST /dns-providers)
+	CreateDNSProvider(w http.ResponseWriter, r *http.Request)
+	// DeleteDNSProvider 删除 DNS provider
+	// (DELETE /dns-providers/{providerId})
+	DeleteDNSProvider(w http.ResponseWriter, r *http.Request, providerId Uuid)
+	// GetDNSProvider 查看 DNS provider
+	// (GET /dns-providers/{providerId})
+	GetDNSProvider(w http.ResponseWriter, r *http.Request, providerId Uuid)
+	// UpdateDNSProvider 更新 DNS provider
+	// (PUT /dns-providers/{providerId})
+	UpdateDNSProvider(w http.ResponseWriter, r *http.Request, providerId Uuid)
+	// ListInstanceDomains 列出 instance 域名
+	// (GET /domains)
+	ListInstanceDomains(w http.ResponseWriter, r *http.Request)
+	// CreateInstanceDomain 添加 instance 域名
+	// (POST /domains)
+	CreateInstanceDomain(w http.ResponseWriter, r *http.Request)
+	// DeleteInstanceDomain 删除 instance 域名
+	// (DELETE /domains/{domainId})
+	DeleteInstanceDomain(w http.ResponseWriter, r *http.Request, domainId Uuid)
+	// GetInstanceDomain 查看 instance 域名
+	// (GET /domains/{domainId})
+	GetInstanceDomain(w http.ResponseWriter, r *http.Request, domainId Uuid)
+	// UpdateInstanceDomain 更新 instance 域名
+	// (PUT /domains/{domainId})
+	UpdateInstanceDomain(w http.ResponseWriter, r *http.Request, domainId Uuid)
 	// ListRelays 列出 relay
 	// (GET /relays)
 	ListRelays(w http.ResponseWriter, r *http.Request)
@@ -7857,22 +15684,46 @@ type ServerInterface interface {
 	CreateRelayToken(w http.ResponseWriter, r *http.Request)
 	// RevokeRelayToken 作废 relay 注册令牌
 	// (DELETE /relays/tokens/{tokenId})
-	RevokeRelayToken(w http.ResponseWriter, r *http.Request, tokenId string)
+	RevokeRelayToken(w http.ResponseWriter, r *http.Request, tokenId Uuid)
 	// RemoveRelay 注销 relay
-	// (DELETE /relays/{relay})
-	RemoveRelay(w http.ResponseWriter, r *http.Request, relay RelayName)
+	// (DELETE /relays/{relayId})
+	RemoveRelay(w http.ResponseWriter, r *http.Request, relayId RelayId)
 	// GetRelay 查看 relay
-	// (GET /relays/{relay})
-	GetRelay(w http.ResponseWriter, r *http.Request, relay RelayName)
-	// ListRelayCerts 查看该 relay 在各 workspace 的 relay 证书
-	// (GET /relays/{relay}/certs)
-	ListRelayCerts(w http.ResponseWriter, r *http.Request, relay RelayName)
+	// (GET /relays/{relayId})
+	GetRelay(w http.ResponseWriter, r *http.Request, relayId RelayId)
+	// ListRelayCerts 查看该 relay 持有的 relay 证书
+	// (GET /relays/{relayId}/certs)
+	ListRelayCerts(w http.ResponseWriter, r *http.Request, relayId RelayId)
 	// GetServer 服务端信息
 	// (GET /server)
 	GetServer(w http.ResponseWriter, r *http.Request)
 	// GetStatus 运行状态
 	// (GET /status)
 	GetStatus(w http.ResponseWriter, r *http.Request)
+	// ListUsers 列出全局用户
+	// (GET /users)
+	ListUsers(w http.ResponseWriter, r *http.Request)
+	// UpsertUser 创建或更新全局用户
+	// (POST /users)
+	UpsertUser(w http.ResponseWriter, r *http.Request)
+	// DeleteUser 删除全局用户
+	// (DELETE /users/{userId})
+	DeleteUser(w http.ResponseWriter, r *http.Request, userId Uuid)
+	// GetUser 查看全局用户
+	// (GET /users/{userId})
+	GetUser(w http.ResponseWriter, r *http.Request, userId Uuid)
+	// ListUserIdentities 列出用户的外部认证 identity
+	// (GET /users/{userId}/identities)
+	ListUserIdentities(w http.ResponseWriter, r *http.Request, userId Uuid)
+	// LinkUserIdentity 将外部认证 identity 关联到用户
+	// (POST /users/{userId}/identities)
+	LinkUserIdentity(w http.ResponseWriter, r *http.Request, userId Uuid)
+	// UnlinkUserIdentity 解除外部认证 identity
+	// (DELETE /users/{userId}/identities/{identityId})
+	UnlinkUserIdentity(w http.ResponseWriter, r *http.Request, userId Uuid, identityId Uuid)
+	// SetUserInstanceAdmin 授予或撤销 instance admin
+	// (POST /users/{userId}/instance-admin)
+	SetUserInstanceAdmin(w http.ResponseWriter, r *http.Request, userId Uuid)
 	// ListWorkspaces 列出 workspace
 	// (GET /workspaces)
 	ListWorkspaces(w http.ResponseWriter, r *http.Request)
@@ -7880,86 +15731,86 @@ type ServerInterface interface {
 	// (POST /workspaces)
 	CreateWorkspace(w http.ResponseWriter, r *http.Request)
 	// DeleteWorkspace 删除 workspace
-	// (DELETE /workspaces/{ws})
-	DeleteWorkspace(w http.ResponseWriter, r *http.Request, ws WorkspaceName, params DeleteWorkspaceParams)
-	// GetWorkspace 查看 workspace（含公钥、证书状态、指派的 relay）
-	// (GET /workspaces/{ws})
-	GetWorkspace(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
-	// UpdateWorkspace 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-	// (PATCH /workspaces/{ws})
-	UpdateWorkspace(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
-	// ListCerts 查看通配证书
-	// (GET /workspaces/{ws}/certs)
-	ListCerts(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
-	// RenewCert 立即续期
-	// (POST /workspaces/{ws}/certs/renew)
-	RenewCert(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (DELETE /workspaces/{workspaceId})
+	DeleteWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params DeleteWorkspaceParams)
+	// GetWorkspace 查看 workspace（公钥、基础域名、状态和证书）
+	// (GET /workspaces/{workspaceId})
+	GetWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// ListGroups 列出组
-	// (GET /workspaces/{ws}/groups)
-	ListGroups(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (GET /workspaces/{workspaceId}/groups)
+	ListGroups(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// CreateGroup 创建组
-	// (POST /workspaces/{ws}/groups)
-	CreateGroup(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (POST /workspaces/{workspaceId}/groups)
+	CreateGroup(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// DeleteGroup 删除组
-	// (DELETE /workspaces/{ws}/groups/{group})
-	DeleteGroup(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName)
+	// (DELETE /workspaces/{workspaceId}/groups/{groupId})
+	DeleteGroup(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId)
 	// GetGroup 查看组
-	// (GET /workspaces/{ws}/groups/{group})
-	GetGroup(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName)
-	// RemoveGroupMember 把成员移出组
-	// (DELETE /workspaces/{ws}/groups/{group}/members/{node})
-	RemoveGroupMember(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName, node NodeName)
-	// AddGroupMember 把成员加入组
-	// (PUT /workspaces/{ws}/groups/{group}/members/{node})
-	AddGroupMember(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName, node NodeName)
+	// (GET /workspaces/{workspaceId}/groups/{groupId})
+	GetGroup(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId)
+	// RemoveGroupNode 把 node 移出组
+	// (DELETE /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId})
+	RemoveGroupNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId)
+	// AddGroupNode 把 node 加入组
+	// (PUT /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId})
+	AddGroupNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId)
+	// ListWorkspaceMembers 列出 workspace 成员
+	// (GET /workspaces/{workspaceId}/members)
+	ListWorkspaceMembers(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// UpsertWorkspaceMember 添加或调整 用户角色
+	// (POST /workspaces/{workspaceId}/members)
+	UpsertWorkspaceMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// RemoveWorkspaceMember 移除 workspace 成员
+	// (DELETE /workspaces/{workspaceId}/members/{memberId})
+	RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId Uuid)
 	// ListNodes 列出成员
-	// (GET /workspaces/{ws}/nodes)
-	ListNodes(w http.ResponseWriter, r *http.Request, ws WorkspaceName, params ListNodesParams)
+	// (GET /workspaces/{workspaceId}/nodes)
+	ListNodes(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListNodesParams)
 	// RemoveNode 移除成员
-	// (DELETE /workspaces/{ws}/nodes/{node})
-	RemoveNode(w http.ResponseWriter, r *http.Request, ws WorkspaceName, node NodeName)
+	// (DELETE /workspaces/{workspaceId}/nodes/{nodeId})
+	RemoveNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, nodeId NodeId)
 	// GetNode 查看成员
-	// (GET /workspaces/{ws}/nodes/{node})
-	GetNode(w http.ResponseWriter, r *http.Request, ws WorkspaceName, node NodeName)
+	// (GET /workspaces/{workspaceId}/nodes/{nodeId})
+	GetNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, nodeId NodeId)
 	// UpdateNode 改名或调整角色上限
-	// (PATCH /workspaces/{ws}/nodes/{node})
-	UpdateNode(w http.ResponseWriter, r *http.Request, ws WorkspaceName, node NodeName)
+	// (PATCH /workspaces/{workspaceId}/nodes/{nodeId})
+	UpdateNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, nodeId NodeId)
 	// ListPolicies 列出中央策略语句
-	// (GET /workspaces/{ws}/policies)
-	ListPolicies(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (GET /workspaces/{workspaceId}/policies)
+	ListPolicies(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// AddPolicy 追加一条策略语句
-	// (POST /workspaces/{ws}/policies)
-	AddPolicy(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (POST /workspaces/{workspaceId}/policies)
+	AddPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// ReplacePolicies 整体替换中央策略
-	// (PUT /workspaces/{ws}/policies)
-	ReplacePolicies(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (PUT /workspaces/{workspaceId}/policies)
+	ReplacePolicies(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// DeletePolicy 删除一条策略语句
-	// (DELETE /workspaces/{ws}/policies/{policyId})
-	DeletePolicy(w http.ResponseWriter, r *http.Request, ws WorkspaceName, policyId string)
+	// (DELETE /workspaces/{workspaceId}/policies/{policyId})
+	DeletePolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, policyId Uuid)
 	// GetRouteTable 查看路由表
-	// (GET /workspaces/{ws}/routes)
-	GetRouteTable(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (GET /workspaces/{workspaceId}/routes)
+	GetRouteTable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// AddRoute 追加一条路由
-	// (POST /workspaces/{ws}/routes)
-	AddRoute(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (POST /workspaces/{workspaceId}/routes)
+	AddRoute(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// ReplaceRouteTable 整体替换路由表
-	// (PUT /workspaces/{ws}/routes)
-	ReplaceRouteTable(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (PUT /workspaces/{workspaceId}/routes)
+	ReplaceRouteTable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// DeleteRoute 删除一条路由
-	// (DELETE /workspaces/{ws}/routes/{routeId})
-	DeleteRoute(w http.ResponseWriter, r *http.Request, ws WorkspaceName, routeId string)
+	// (DELETE /workspaces/{workspaceId}/routes/{routeId})
+	DeleteRoute(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, routeId Uuid)
 	// ListServices 列出已注册的服务
-	// (GET /workspaces/{ws}/services)
-	ListServices(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (GET /workspaces/{workspaceId}/services)
+	ListServices(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// ListTokens 列出未使用的加入令牌
-	// (GET /workspaces/{ws}/tokens)
-	ListTokens(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (GET /workspaces/{workspaceId}/tokens)
+	ListTokens(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// CreateToken 签发加入令牌并返回加入链接
-	// (POST /workspaces/{ws}/tokens)
-	CreateToken(w http.ResponseWriter, r *http.Request, ws WorkspaceName)
+	// (POST /workspaces/{workspaceId}/tokens)
+	CreateToken(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// RevokeToken 作废未使用的令牌
-	// (DELETE /workspaces/{ws}/tokens/{tokenId})
-	RevokeToken(w http.ResponseWriter, r *http.Request, ws WorkspaceName, tokenId string)
+	// (DELETE /workspaces/{workspaceId}/tokens/{tokenId})
+	RevokeToken(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, tokenId Uuid)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -7970,6 +15821,757 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListAuditEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListAuditEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListAuditEventsParams
+
+	// ------------- Optional query parameter "actor_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "actor_id", r.URL.Query(), &params.ActorId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "actor_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "actor_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "resource_type" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resource_type", r.URL.Query(), &params.ResourceType, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resource_type"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_type", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "resource_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "resource_id", r.URL.Query(), &params.ResourceId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resource_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resource_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "workspace_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "workspace_id", r.URL.Query(), &params.WorkspaceId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "workspace_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "action" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "action", r.URL.Query(), &params.Action, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "action"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "action", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "outcome" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "outcome", r.URL.Query(), &params.Outcome, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "outcome"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "outcome", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "since" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "since", r.URL.Query(), &params.Since, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "since"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "since", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "until" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "until", r.URL.Query(), &params.Until, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "until"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "until", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAuditEvents(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAuditEvent operation middleware
+func (siw *ServerInterfaceWrapper) GetAuditEvent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "eventId" -------------
+	var eventId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "eventId", r.PathValue("eventId"), &eventId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "eventId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAuditEvent(w, r, eventId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListAuthProviders operation middleware
+func (siw *ServerInterfaceWrapper) ListAuthProviders(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAuthProviders(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateAuthProvider operation middleware
+func (siw *ServerInterfaceWrapper) CreateAuthProvider(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateAuthProvider(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteAuthProvider operation middleware
+func (siw *ServerInterfaceWrapper) DeleteAuthProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", r.PathValue("providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteAuthProvider(w, r, providerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAuthProvider operation middleware
+func (siw *ServerInterfaceWrapper) GetAuthProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", r.PathValue("providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAuthProvider(w, r, providerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateAuthProvider operation middleware
+func (siw *ServerInterfaceWrapper) UpdateAuthProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", r.PathValue("providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateAuthProvider(w, r, providerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCertificateIssuers operation middleware
+func (siw *ServerInterfaceWrapper) ListCertificateIssuers(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCertificateIssuers(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCertificateIssuer operation middleware
+func (siw *ServerInterfaceWrapper) CreateCertificateIssuer(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCertificateIssuer(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteCertificateIssuer operation middleware
+func (siw *ServerInterfaceWrapper) DeleteCertificateIssuer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "issuerId" -------------
+	var issuerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issuerId", r.PathValue("issuerId"), &issuerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "issuerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteCertificateIssuer(w, r, issuerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCertificateIssuer operation middleware
+func (siw *ServerInterfaceWrapper) GetCertificateIssuer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "issuerId" -------------
+	var issuerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issuerId", r.PathValue("issuerId"), &issuerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "issuerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCertificateIssuer(w, r, issuerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateCertificateIssuer operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCertificateIssuer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "issuerId" -------------
+	var issuerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issuerId", r.PathValue("issuerId"), &issuerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "issuerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCertificateIssuer(w, r, issuerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCertificates operation middleware
+func (siw *ServerInterfaceWrapper) ListCertificates(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCertificatesParams
+
+	// ------------- Optional query parameter "workspace" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "workspace", r.URL.Query(), &params.Workspace, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "workspace"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspace", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCertificates(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// IssueCertificate operation middleware
+func (siw *ServerInterfaceWrapper) IssueCertificate(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.IssueCertificate(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCertificate operation middleware
+func (siw *ServerInterfaceWrapper) GetCertificate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "certificateId" -------------
+	var certificateId CertificateId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "certificateId", r.PathValue("certificateId"), &certificateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "certificateId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCertificate(w, r, certificateId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RenewCertificate operation middleware
+func (siw *ServerInterfaceWrapper) RenewCertificate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "certificateId" -------------
+	var certificateId CertificateId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "certificateId", r.PathValue("certificateId"), &certificateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "certificateId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RenewCertificate(w, r, certificateId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeCertificate operation middleware
+func (siw *ServerInterfaceWrapper) RevokeCertificate(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "certificateId" -------------
+	var certificateId CertificateId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "certificateId", r.PathValue("certificateId"), &certificateId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "certificateId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeCertificate(w, r, certificateId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListDNSProviders operation middleware
+func (siw *ServerInterfaceWrapper) ListDNSProviders(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListDNSProviders(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateDNSProvider operation middleware
+func (siw *ServerInterfaceWrapper) CreateDNSProvider(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateDNSProvider(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteDNSProvider operation middleware
+func (siw *ServerInterfaceWrapper) DeleteDNSProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", r.PathValue("providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteDNSProvider(w, r, providerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDNSProvider operation middleware
+func (siw *ServerInterfaceWrapper) GetDNSProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", r.PathValue("providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDNSProvider(w, r, providerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateDNSProvider operation middleware
+func (siw *ServerInterfaceWrapper) UpdateDNSProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", r.PathValue("providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateDNSProvider(w, r, providerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListInstanceDomains operation middleware
+func (siw *ServerInterfaceWrapper) ListInstanceDomains(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListInstanceDomains(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateInstanceDomain operation middleware
+func (siw *ServerInterfaceWrapper) CreateInstanceDomain(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateInstanceDomain(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteInstanceDomain operation middleware
+func (siw *ServerInterfaceWrapper) DeleteInstanceDomain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "domainId" -------------
+	var domainId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domainId", r.PathValue("domainId"), &domainId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domainId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteInstanceDomain(w, r, domainId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetInstanceDomain operation middleware
+func (siw *ServerInterfaceWrapper) GetInstanceDomain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "domainId" -------------
+	var domainId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domainId", r.PathValue("domainId"), &domainId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domainId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetInstanceDomain(w, r, domainId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateInstanceDomain operation middleware
+func (siw *ServerInterfaceWrapper) UpdateInstanceDomain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "domainId" -------------
+	var domainId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domainId", r.PathValue("domainId"), &domainId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "domainId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateInstanceDomain(w, r, domainId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListRelays operation middleware
 func (siw *ServerInterfaceWrapper) ListRelays(w http.ResponseWriter, r *http.Request) {
@@ -8034,9 +16636,9 @@ func (siw *ServerInterfaceWrapper) RevokeRelayToken(w http.ResponseWriter, r *ht
 	_ = err
 
 	// ------------- Path parameter "tokenId" -------------
-	var tokenId string
+	var tokenId Uuid
 
-	err = runtime.BindStyledParameterWithOptions("simple", "tokenId", r.PathValue("tokenId"), &tokenId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "tokenId", r.PathValue("tokenId"), &tokenId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tokenId", Err: err})
 		return
@@ -8059,17 +16661,17 @@ func (siw *ServerInterfaceWrapper) RemoveRelay(w http.ResponseWriter, r *http.Re
 	var err error
 	_ = err
 
-	// ------------- Path parameter "relay" -------------
-	var relay RelayName
+	// ------------- Path parameter "relayId" -------------
+	var relayId RelayId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "relay", r.PathValue("relay"), &relay, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "relayId", r.PathValue("relayId"), &relayId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "relay", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "relayId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RemoveRelay(w, r, relay)
+		siw.Handler.RemoveRelay(w, r, relayId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8085,17 +16687,17 @@ func (siw *ServerInterfaceWrapper) GetRelay(w http.ResponseWriter, r *http.Reque
 	var err error
 	_ = err
 
-	// ------------- Path parameter "relay" -------------
-	var relay RelayName
+	// ------------- Path parameter "relayId" -------------
+	var relayId RelayId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "relay", r.PathValue("relay"), &relay, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "relayId", r.PathValue("relayId"), &relayId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "relay", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "relayId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetRelay(w, r, relay)
+		siw.Handler.GetRelay(w, r, relayId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8111,17 +16713,17 @@ func (siw *ServerInterfaceWrapper) ListRelayCerts(w http.ResponseWriter, r *http
 	var err error
 	_ = err
 
-	// ------------- Path parameter "relay" -------------
-	var relay RelayName
+	// ------------- Path parameter "relayId" -------------
+	var relayId RelayId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "relay", r.PathValue("relay"), &relay, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "relayId", r.PathValue("relayId"), &relayId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "relay", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "relayId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListRelayCerts(w, r, relay)
+		siw.Handler.ListRelayCerts(w, r, relayId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8150,6 +16752,199 @@ func (siw *ServerInterfaceWrapper) GetStatus(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListUsers operation middleware
+func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUsers(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpsertUser operation middleware
+func (siw *ServerInterfaceWrapper) UpsertUser(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpsertUser(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteUser operation middleware
+func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", r.PathValue("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteUser(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUser operation middleware
+func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", r.PathValue("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUser(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListUserIdentities operation middleware
+func (siw *ServerInterfaceWrapper) ListUserIdentities(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", r.PathValue("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUserIdentities(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// LinkUserIdentity operation middleware
+func (siw *ServerInterfaceWrapper) LinkUserIdentity(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", r.PathValue("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LinkUserIdentity(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UnlinkUserIdentity operation middleware
+func (siw *ServerInterfaceWrapper) UnlinkUserIdentity(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", r.PathValue("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "identityId" -------------
+	var identityId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "identityId", r.PathValue("identityId"), &identityId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "identityId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UnlinkUserIdentity(w, r, userId, identityId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetUserInstanceAdmin operation middleware
+func (siw *ServerInterfaceWrapper) SetUserInstanceAdmin(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", r.PathValue("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetUserInstanceAdmin(w, r, userId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8193,12 +16988,12 @@ func (siw *ServerInterfaceWrapper) DeleteWorkspace(w http.ResponseWriter, r *htt
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
@@ -8219,7 +17014,7 @@ func (siw *ServerInterfaceWrapper) DeleteWorkspace(w http.ResponseWriter, r *htt
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteWorkspace(w, r, ws, params)
+		siw.Handler.DeleteWorkspace(w, r, workspaceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8235,95 +17030,17 @@ func (siw *ServerInterfaceWrapper) GetWorkspace(w http.ResponseWriter, r *http.R
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetWorkspace(w, r, ws)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// UpdateWorkspace operation middleware
-func (siw *ServerInterfaceWrapper) UpdateWorkspace(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
-
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateWorkspace(w, r, ws)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListCerts operation middleware
-func (siw *ServerInterfaceWrapper) ListCerts(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
-
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListCerts(w, r, ws)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// RenewCert operation middleware
-func (siw *ServerInterfaceWrapper) RenewCert(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
-
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RenewCert(w, r, ws)
+		siw.Handler.GetWorkspace(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8339,17 +17056,17 @@ func (siw *ServerInterfaceWrapper) ListGroups(w http.ResponseWriter, r *http.Req
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListGroups(w, r, ws)
+		siw.Handler.ListGroups(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8365,17 +17082,17 @@ func (siw *ServerInterfaceWrapper) CreateGroup(w http.ResponseWriter, r *http.Re
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateGroup(w, r, ws)
+		siw.Handler.CreateGroup(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8391,26 +17108,26 @@ func (siw *ServerInterfaceWrapper) DeleteGroup(w http.ResponseWriter, r *http.Re
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "group" -------------
-	var group GroupName
+	// ------------- Path parameter "groupId" -------------
+	var groupId GroupId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "group", r.PathValue("group"), &group, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "groupId", r.PathValue("groupId"), &groupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "group", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteGroup(w, r, ws, group)
+		siw.Handler.DeleteGroup(w, r, workspaceId, groupId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8426,26 +17143,26 @@ func (siw *ServerInterfaceWrapper) GetGroup(w http.ResponseWriter, r *http.Reque
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "group" -------------
-	var group GroupName
+	// ------------- Path parameter "groupId" -------------
+	var groupId GroupId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "group", r.PathValue("group"), &group, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "groupId", r.PathValue("groupId"), &groupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "group", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetGroup(w, r, ws, group)
+		siw.Handler.GetGroup(w, r, workspaceId, groupId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8455,41 +17172,41 @@ func (siw *ServerInterfaceWrapper) GetGroup(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
-// RemoveGroupMember operation middleware
-func (siw *ServerInterfaceWrapper) RemoveGroupMember(w http.ResponseWriter, r *http.Request) {
+// RemoveGroupNode operation middleware
+func (siw *ServerInterfaceWrapper) RemoveGroupNode(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "group" -------------
-	var group GroupName
+	// ------------- Path parameter "groupId" -------------
+	var groupId GroupId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "group", r.PathValue("group"), &group, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "groupId", r.PathValue("groupId"), &groupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "group", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "node" -------------
-	var node NodeName
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId NodeId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "node", r.PathValue("node"), &node, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", r.PathValue("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "nodeId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RemoveGroupMember(w, r, ws, group, node)
+		siw.Handler.RemoveGroupNode(w, r, workspaceId, groupId, nodeId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8499,41 +17216,128 @@ func (siw *ServerInterfaceWrapper) RemoveGroupMember(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
-// AddGroupMember operation middleware
-func (siw *ServerInterfaceWrapper) AddGroupMember(w http.ResponseWriter, r *http.Request) {
+// AddGroupNode operation middleware
+func (siw *ServerInterfaceWrapper) AddGroupNode(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "group" -------------
-	var group GroupName
+	// ------------- Path parameter "groupId" -------------
+	var groupId GroupId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "group", r.PathValue("group"), &group, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "groupId", r.PathValue("groupId"), &groupId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "group", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "groupId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "node" -------------
-	var node NodeName
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId NodeId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "node", r.PathValue("node"), &node, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", r.PathValue("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "nodeId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AddGroupMember(w, r, ws, group, node)
+		siw.Handler.AddGroupNode(w, r, workspaceId, groupId, nodeId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkspaceMembers operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkspaceMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkspaceMembers(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpsertWorkspaceMember operation middleware
+func (siw *ServerInterfaceWrapper) UpsertWorkspaceMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpsertWorkspaceMember(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveWorkspaceMember operation middleware
+func (siw *ServerInterfaceWrapper) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId Uuid
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveWorkspaceMember(w, r, workspaceId, memberId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8549,12 +17353,12 @@ func (siw *ServerInterfaceWrapper) ListNodes(w http.ResponseWriter, r *http.Requ
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
@@ -8575,7 +17379,7 @@ func (siw *ServerInterfaceWrapper) ListNodes(w http.ResponseWriter, r *http.Requ
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListNodes(w, r, ws, params)
+		siw.Handler.ListNodes(w, r, workspaceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8591,26 +17395,26 @@ func (siw *ServerInterfaceWrapper) RemoveNode(w http.ResponseWriter, r *http.Req
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "node" -------------
-	var node NodeName
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId NodeId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "node", r.PathValue("node"), &node, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", r.PathValue("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "nodeId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RemoveNode(w, r, ws, node)
+		siw.Handler.RemoveNode(w, r, workspaceId, nodeId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8626,26 +17430,26 @@ func (siw *ServerInterfaceWrapper) GetNode(w http.ResponseWriter, r *http.Reques
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "node" -------------
-	var node NodeName
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId NodeId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "node", r.PathValue("node"), &node, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", r.PathValue("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "nodeId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetNode(w, r, ws, node)
+		siw.Handler.GetNode(w, r, workspaceId, nodeId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8661,26 +17465,26 @@ func (siw *ServerInterfaceWrapper) UpdateNode(w http.ResponseWriter, r *http.Req
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
-	// ------------- Path parameter "node" -------------
-	var node NodeName
+	// ------------- Path parameter "nodeId" -------------
+	var nodeId NodeId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "node", r.PathValue("node"), &node, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "nodeId", r.PathValue("nodeId"), &nodeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "node", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "nodeId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateNode(w, r, ws, node)
+		siw.Handler.UpdateNode(w, r, workspaceId, nodeId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8696,17 +17500,17 @@ func (siw *ServerInterfaceWrapper) ListPolicies(w http.ResponseWriter, r *http.R
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListPolicies(w, r, ws)
+		siw.Handler.ListPolicies(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8722,17 +17526,17 @@ func (siw *ServerInterfaceWrapper) AddPolicy(w http.ResponseWriter, r *http.Requ
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AddPolicy(w, r, ws)
+		siw.Handler.AddPolicy(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8748,17 +17552,17 @@ func (siw *ServerInterfaceWrapper) ReplacePolicies(w http.ResponseWriter, r *htt
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ReplacePolicies(w, r, ws)
+		siw.Handler.ReplacePolicies(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8774,26 +17578,26 @@ func (siw *ServerInterfaceWrapper) DeletePolicy(w http.ResponseWriter, r *http.R
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	// ------------- Path parameter "policyId" -------------
-	var policyId string
+	var policyId Uuid
 
-	err = runtime.BindStyledParameterWithOptions("simple", "policyId", r.PathValue("policyId"), &policyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "policyId", r.PathValue("policyId"), &policyId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "policyId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeletePolicy(w, r, ws, policyId)
+		siw.Handler.DeletePolicy(w, r, workspaceId, policyId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8809,17 +17613,17 @@ func (siw *ServerInterfaceWrapper) GetRouteTable(w http.ResponseWriter, r *http.
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetRouteTable(w, r, ws)
+		siw.Handler.GetRouteTable(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8835,17 +17639,17 @@ func (siw *ServerInterfaceWrapper) AddRoute(w http.ResponseWriter, r *http.Reque
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AddRoute(w, r, ws)
+		siw.Handler.AddRoute(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8861,17 +17665,17 @@ func (siw *ServerInterfaceWrapper) ReplaceRouteTable(w http.ResponseWriter, r *h
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ReplaceRouteTable(w, r, ws)
+		siw.Handler.ReplaceRouteTable(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8887,26 +17691,26 @@ func (siw *ServerInterfaceWrapper) DeleteRoute(w http.ResponseWriter, r *http.Re
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	// ------------- Path parameter "routeId" -------------
-	var routeId string
+	var routeId Uuid
 
-	err = runtime.BindStyledParameterWithOptions("simple", "routeId", r.PathValue("routeId"), &routeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "routeId", r.PathValue("routeId"), &routeId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "routeId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteRoute(w, r, ws, routeId)
+		siw.Handler.DeleteRoute(w, r, workspaceId, routeId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8922,17 +17726,17 @@ func (siw *ServerInterfaceWrapper) ListServices(w http.ResponseWriter, r *http.R
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListServices(w, r, ws)
+		siw.Handler.ListServices(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8948,17 +17752,17 @@ func (siw *ServerInterfaceWrapper) ListTokens(w http.ResponseWriter, r *http.Req
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListTokens(w, r, ws)
+		siw.Handler.ListTokens(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8974,17 +17778,17 @@ func (siw *ServerInterfaceWrapper) CreateToken(w http.ResponseWriter, r *http.Re
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateToken(w, r, ws)
+		siw.Handler.CreateToken(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9000,26 +17804,26 @@ func (siw *ServerInterfaceWrapper) RevokeToken(w http.ResponseWriter, r *http.Re
 	var err error
 	_ = err
 
-	// ------------- Path parameter "ws" -------------
-	var ws WorkspaceName
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "ws", r.PathValue("ws"), &ws, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ws", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
 		return
 	}
 
 	// ------------- Path parameter "tokenId" -------------
-	var tokenId string
+	var tokenId Uuid
 
-	err = runtime.BindStyledParameterWithOptions("simple", "tokenId", r.PathValue("tokenId"), &tokenId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "tokenId", r.PathValue("tokenId"), &tokenId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tokenId", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.RevokeToken(w, r, ws, tokenId)
+		siw.Handler.RevokeToken(w, r, workspaceId, tokenId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9149,52 +17953,1180 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/domains", wrapper.ListInstanceDomains)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/domains", wrapper.CreateInstanceDomain)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/domains/{domainId}", wrapper.DeleteInstanceDomain)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/domains/{domainId}", wrapper.GetInstanceDomain)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/domains/{domainId}", wrapper.UpdateInstanceDomain)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/dns-providers", wrapper.ListDNSProviders)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/dns-providers", wrapper.CreateDNSProvider)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/dns-providers/{providerId}", wrapper.DeleteDNSProvider)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/dns-providers/{providerId}", wrapper.GetDNSProvider)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/dns-providers/{providerId}", wrapper.UpdateDNSProvider)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/certificate-issuers", wrapper.ListCertificateIssuers)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/certificate-issuers", wrapper.CreateCertificateIssuer)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/certificate-issuers/{issuerId}", wrapper.DeleteCertificateIssuer)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/certificate-issuers/{issuerId}", wrapper.GetCertificateIssuer)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/certificate-issuers/{issuerId}", wrapper.UpdateCertificateIssuer)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth-providers", wrapper.ListAuthProviders)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth-providers", wrapper.CreateAuthProvider)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/auth-providers/{providerId}", wrapper.DeleteAuthProvider)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth-providers/{providerId}", wrapper.GetAuthProvider)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/auth-providers/{providerId}", wrapper.UpdateAuthProvider)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users", wrapper.ListUsers)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/users", wrapper.UpsertUser)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/users/{userId}", wrapper.DeleteUser)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{userId}", wrapper.GetUser)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/users/{userId}/instance-admin", wrapper.SetUserInstanceAdmin)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{userId}/identities", wrapper.ListUserIdentities)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/users/{userId}/identities", wrapper.LinkUserIdentity)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/users/{userId}/identities/{identityId}", wrapper.UnlinkUserIdentity)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/audit/events", wrapper.ListAuditEvents)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/audit/events/{eventId}", wrapper.GetAuditEvent)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/server", wrapper.GetServer)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/status", wrapper.GetStatus)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/certificates", wrapper.ListCertificates)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/certificates", wrapper.IssueCertificate)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/certificates/{certificateId}", wrapper.GetCertificate)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/certificates/{certificateId}/renew", wrapper.RenewCertificate)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/certificates/{certificateId}/revoke", wrapper.RevokeCertificate)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces", wrapper.ListWorkspaces)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces", wrapper.CreateWorkspace)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{ws}", wrapper.DeleteWorkspace)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}", wrapper.GetWorkspace)
-	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/workspaces/{ws}", wrapper.UpdateWorkspace)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/tokens", wrapper.ListTokens)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{ws}/tokens", wrapper.CreateToken)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{ws}/tokens/{tokenId}", wrapper.RevokeToken)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/nodes", wrapper.ListNodes)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{ws}/nodes/{node}", wrapper.RemoveNode)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/nodes/{node}", wrapper.GetNode)
-	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/workspaces/{ws}/nodes/{node}", wrapper.UpdateNode)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/groups", wrapper.ListGroups)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{ws}/groups", wrapper.CreateGroup)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{ws}/groups/{group}", wrapper.DeleteGroup)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/groups/{group}", wrapper.GetGroup)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{ws}/groups/{group}/members/{node}", wrapper.RemoveGroupMember)
-	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/workspaces/{ws}/groups/{group}/members/{node}", wrapper.AddGroupMember)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/routes", wrapper.GetRouteTable)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{ws}/routes", wrapper.AddRoute)
-	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/workspaces/{ws}/routes", wrapper.ReplaceRouteTable)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{ws}/routes/{routeId}", wrapper.DeleteRoute)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/policies", wrapper.ListPolicies)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{ws}/policies", wrapper.AddPolicy)
-	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/workspaces/{ws}/policies", wrapper.ReplacePolicies)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{ws}/policies/{policyId}", wrapper.DeletePolicy)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/services", wrapper.ListServices)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{ws}/certs", wrapper.ListCerts)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{ws}/certs/renew", wrapper.RenewCert)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}", wrapper.DeleteWorkspace)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}", wrapper.GetWorkspace)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/tokens", wrapper.ListTokens)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{workspaceId}/tokens", wrapper.CreateToken)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}/tokens/{tokenId}", wrapper.RevokeToken)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/members", wrapper.ListWorkspaceMembers)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{workspaceId}/members", wrapper.UpsertWorkspaceMember)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}/members/{memberId}", wrapper.RemoveWorkspaceMember)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/nodes", wrapper.ListNodes)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}/nodes/{nodeId}", wrapper.RemoveNode)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/nodes/{nodeId}", wrapper.GetNode)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/workspaces/{workspaceId}/nodes/{nodeId}", wrapper.UpdateNode)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/groups", wrapper.ListGroups)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{workspaceId}/groups", wrapper.CreateGroup)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}/groups/{groupId}", wrapper.DeleteGroup)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/groups/{groupId}", wrapper.GetGroup)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId}", wrapper.RemoveGroupNode)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId}", wrapper.AddGroupNode)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/routes", wrapper.GetRouteTable)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{workspaceId}/routes", wrapper.AddRoute)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/workspaces/{workspaceId}/routes", wrapper.ReplaceRouteTable)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}/routes/{routeId}", wrapper.DeleteRoute)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/policies", wrapper.ListPolicies)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/workspaces/{workspaceId}/policies", wrapper.AddPolicy)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/workspaces/{workspaceId}/policies", wrapper.ReplacePolicies)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/workspaces/{workspaceId}/policies/{policyId}", wrapper.DeletePolicy)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/workspaces/{workspaceId}/services", wrapper.ListServices)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/relays", wrapper.ListRelays)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/relays", wrapper.RegisterRelay)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/relays/tokens", wrapper.ListRelayTokens)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/relays/tokens", wrapper.CreateRelayToken)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/relays/tokens/{tokenId}", wrapper.RevokeRelayToken)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/relays/{relay}", wrapper.RemoveRelay)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/relays/{relay}", wrapper.GetRelay)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/relays/{relay}/certs", wrapper.ListRelayCerts)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/relays/{relayId}", wrapper.RemoveRelay)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/relays/{relayId}", wrapper.GetRelay)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/relays/{relayId}/certs", wrapper.ListRelayCerts)
 
 	return m
 }
 
 type BadRequestJSONResponse Error
 
+type ConflictJSONResponse Error
+
+type ForbiddenJSONResponse Error
+
 type NotFoundJSONResponse Error
+
+type ListAuditEventsRequestObject struct {
+	Params ListAuditEventsParams
+}
+
+type ListAuditEventsResponseObject interface {
+	VisitListAuditEventsResponse(w http.ResponseWriter) error
+}
+
+type ListAuditEvents200JSONResponse AuditEventPage
+
+func (response ListAuditEvents200JSONResponse) VisitListAuditEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuditEventRequestObject struct {
+	EventId Uuid `json:"eventId"`
+}
+
+type GetAuditEventResponseObject interface {
+	VisitGetAuditEventResponse(w http.ResponseWriter) error
+}
+
+type GetAuditEvent200JSONResponse AuditEvent
+
+func (response GetAuditEvent200JSONResponse) VisitGetAuditEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuditEvent404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetAuditEvent404JSONResponse) VisitGetAuditEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListAuthProvidersRequestObject struct {
+}
+
+type ListAuthProvidersResponseObject interface {
+	VisitListAuthProvidersResponse(w http.ResponseWriter) error
+}
+
+type ListAuthProviders200JSONResponse []AuthProvider
+
+func (response ListAuthProviders200JSONResponse) VisitListAuthProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAuthProviderRequestObject struct {
+	Body *CreateAuthProviderJSONRequestBody
+}
+
+type CreateAuthProviderResponseObject interface {
+	VisitCreateAuthProviderResponse(w http.ResponseWriter) error
+}
+
+type CreateAuthProvider200JSONResponse AuthProvider
+
+func (response CreateAuthProvider200JSONResponse) VisitCreateAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAuthProvider400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateAuthProvider400JSONResponse) VisitCreateAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateAuthProvider409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateAuthProvider409JSONResponse) VisitCreateAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAuthProviderRequestObject struct {
+	ProviderId Uuid `json:"providerId"`
+}
+
+type DeleteAuthProviderResponseObject interface {
+	VisitDeleteAuthProviderResponse(w http.ResponseWriter) error
+}
+
+type DeleteAuthProvider204Response struct {
+}
+
+func (response DeleteAuthProvider204Response) VisitDeleteAuthProviderResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteAuthProvider404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteAuthProvider404JSONResponse) VisitDeleteAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteAuthProvider409JSONResponse struct{ ConflictJSONResponse }
+
+func (response DeleteAuthProvider409JSONResponse) VisitDeleteAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthProviderRequestObject struct {
+	ProviderId Uuid `json:"providerId"`
+}
+
+type GetAuthProviderResponseObject interface {
+	VisitGetAuthProviderResponse(w http.ResponseWriter) error
+}
+
+type GetAuthProvider200JSONResponse AuthProvider
+
+func (response GetAuthProvider200JSONResponse) VisitGetAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuthProvider404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetAuthProvider404JSONResponse) VisitGetAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAuthProviderRequestObject struct {
+	ProviderId Uuid `json:"providerId"`
+	Body       *UpdateAuthProviderJSONRequestBody
+}
+
+type UpdateAuthProviderResponseObject interface {
+	VisitUpdateAuthProviderResponse(w http.ResponseWriter) error
+}
+
+type UpdateAuthProvider200JSONResponse AuthProvider
+
+func (response UpdateAuthProvider200JSONResponse) VisitUpdateAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAuthProvider400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateAuthProvider400JSONResponse) VisitUpdateAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateAuthProvider404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateAuthProvider404JSONResponse) VisitUpdateAuthProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCertificateIssuersRequestObject struct {
+}
+
+type ListCertificateIssuersResponseObject interface {
+	VisitListCertificateIssuersResponse(w http.ResponseWriter) error
+}
+
+type ListCertificateIssuers200JSONResponse []CertificateIssuer
+
+func (response ListCertificateIssuers200JSONResponse) VisitListCertificateIssuersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCertificateIssuerRequestObject struct {
+	Body *CreateCertificateIssuerJSONRequestBody
+}
+
+type CreateCertificateIssuerResponseObject interface {
+	VisitCreateCertificateIssuerResponse(w http.ResponseWriter) error
+}
+
+type CreateCertificateIssuer200JSONResponse CertificateIssuer
+
+func (response CreateCertificateIssuer200JSONResponse) VisitCreateCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCertificateIssuer400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateCertificateIssuer400JSONResponse) VisitCreateCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCertificateIssuer409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateCertificateIssuer409JSONResponse) VisitCreateCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCertificateIssuerRequestObject struct {
+	IssuerId Uuid `json:"issuerId"`
+}
+
+type DeleteCertificateIssuerResponseObject interface {
+	VisitDeleteCertificateIssuerResponse(w http.ResponseWriter) error
+}
+
+type DeleteCertificateIssuer204Response struct {
+}
+
+func (response DeleteCertificateIssuer204Response) VisitDeleteCertificateIssuerResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteCertificateIssuer404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteCertificateIssuer404JSONResponse) VisitDeleteCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteCertificateIssuer409JSONResponse struct{ ConflictJSONResponse }
+
+func (response DeleteCertificateIssuer409JSONResponse) VisitDeleteCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCertificateIssuerRequestObject struct {
+	IssuerId Uuid `json:"issuerId"`
+}
+
+type GetCertificateIssuerResponseObject interface {
+	VisitGetCertificateIssuerResponse(w http.ResponseWriter) error
+}
+
+type GetCertificateIssuer200JSONResponse CertificateIssuer
+
+func (response GetCertificateIssuer200JSONResponse) VisitGetCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCertificateIssuer404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCertificateIssuer404JSONResponse) VisitGetCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCertificateIssuerRequestObject struct {
+	IssuerId Uuid `json:"issuerId"`
+	Body     *UpdateCertificateIssuerJSONRequestBody
+}
+
+type UpdateCertificateIssuerResponseObject interface {
+	VisitUpdateCertificateIssuerResponse(w http.ResponseWriter) error
+}
+
+type UpdateCertificateIssuer200JSONResponse CertificateIssuer
+
+func (response UpdateCertificateIssuer200JSONResponse) VisitUpdateCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCertificateIssuer400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateCertificateIssuer400JSONResponse) VisitUpdateCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateCertificateIssuer404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateCertificateIssuer404JSONResponse) VisitUpdateCertificateIssuerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListCertificatesRequestObject struct {
+	Params ListCertificatesParams
+}
+
+type ListCertificatesResponseObject interface {
+	VisitListCertificatesResponse(w http.ResponseWriter) error
+}
+
+type ListCertificates200JSONResponse []Certificate
+
+func (response ListCertificates200JSONResponse) VisitListCertificatesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IssueCertificateRequestObject struct {
+	Body *IssueCertificateJSONRequestBody
+}
+
+type IssueCertificateResponseObject interface {
+	VisitIssueCertificateResponse(w http.ResponseWriter) error
+}
+
+type IssueCertificate202JSONResponse Certificate
+
+func (response IssueCertificate202JSONResponse) VisitIssueCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IssueCertificate400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response IssueCertificate400JSONResponse) VisitIssueCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IssueCertificate404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response IssueCertificate404JSONResponse) VisitIssueCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type IssueCertificate409JSONResponse struct{ ConflictJSONResponse }
+
+func (response IssueCertificate409JSONResponse) VisitIssueCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCertificateRequestObject struct {
+	CertificateId CertificateId `json:"certificateId"`
+}
+
+type GetCertificateResponseObject interface {
+	VisitGetCertificateResponse(w http.ResponseWriter) error
+}
+
+type GetCertificate200JSONResponse Certificate
+
+func (response GetCertificate200JSONResponse) VisitGetCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCertificate404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCertificate404JSONResponse) VisitGetCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RenewCertificateRequestObject struct {
+	CertificateId CertificateId `json:"certificateId"`
+}
+
+type RenewCertificateResponseObject interface {
+	VisitRenewCertificateResponse(w http.ResponseWriter) error
+}
+
+type RenewCertificate202JSONResponse Certificate
+
+func (response RenewCertificate202JSONResponse) VisitRenewCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RenewCertificate404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RenewCertificate404JSONResponse) VisitRenewCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RenewCertificate409JSONResponse struct{ ConflictJSONResponse }
+
+func (response RenewCertificate409JSONResponse) VisitRenewCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeCertificateRequestObject struct {
+	CertificateId CertificateId `json:"certificateId"`
+	Body          *RevokeCertificateJSONRequestBody
+}
+
+type RevokeCertificateResponseObject interface {
+	VisitRevokeCertificateResponse(w http.ResponseWriter) error
+}
+
+type RevokeCertificate200JSONResponse Certificate
+
+func (response RevokeCertificate200JSONResponse) VisitRevokeCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeCertificate404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RevokeCertificate404JSONResponse) VisitRevokeCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeCertificate409JSONResponse struct{ ConflictJSONResponse }
+
+func (response RevokeCertificate409JSONResponse) VisitRevokeCertificateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListDNSProvidersRequestObject struct {
+}
+
+type ListDNSProvidersResponseObject interface {
+	VisitListDNSProvidersResponse(w http.ResponseWriter) error
+}
+
+type ListDNSProviders200JSONResponse []DNSProvider
+
+func (response ListDNSProviders200JSONResponse) VisitListDNSProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateDNSProviderRequestObject struct {
+	Body *CreateDNSProviderJSONRequestBody
+}
+
+type CreateDNSProviderResponseObject interface {
+	VisitCreateDNSProviderResponse(w http.ResponseWriter) error
+}
+
+type CreateDNSProvider200JSONResponse DNSProvider
+
+func (response CreateDNSProvider200JSONResponse) VisitCreateDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateDNSProvider400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateDNSProvider400JSONResponse) VisitCreateDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateDNSProvider409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateDNSProvider409JSONResponse) VisitCreateDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteDNSProviderRequestObject struct {
+	ProviderId Uuid `json:"providerId"`
+}
+
+type DeleteDNSProviderResponseObject interface {
+	VisitDeleteDNSProviderResponse(w http.ResponseWriter) error
+}
+
+type DeleteDNSProvider204Response struct {
+}
+
+func (response DeleteDNSProvider204Response) VisitDeleteDNSProviderResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteDNSProvider404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteDNSProvider404JSONResponse) VisitDeleteDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteDNSProvider409JSONResponse struct{ ConflictJSONResponse }
+
+func (response DeleteDNSProvider409JSONResponse) VisitDeleteDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetDNSProviderRequestObject struct {
+	ProviderId Uuid `json:"providerId"`
+}
+
+type GetDNSProviderResponseObject interface {
+	VisitGetDNSProviderResponse(w http.ResponseWriter) error
+}
+
+type GetDNSProvider200JSONResponse DNSProvider
+
+func (response GetDNSProvider200JSONResponse) VisitGetDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetDNSProvider404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetDNSProvider404JSONResponse) VisitGetDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateDNSProviderRequestObject struct {
+	ProviderId Uuid `json:"providerId"`
+	Body       *UpdateDNSProviderJSONRequestBody
+}
+
+type UpdateDNSProviderResponseObject interface {
+	VisitUpdateDNSProviderResponse(w http.ResponseWriter) error
+}
+
+type UpdateDNSProvider200JSONResponse DNSProvider
+
+func (response UpdateDNSProvider200JSONResponse) VisitUpdateDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateDNSProvider400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateDNSProvider400JSONResponse) VisitUpdateDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateDNSProvider404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateDNSProvider404JSONResponse) VisitUpdateDNSProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListInstanceDomainsRequestObject struct {
+}
+
+type ListInstanceDomainsResponseObject interface {
+	VisitListInstanceDomainsResponse(w http.ResponseWriter) error
+}
+
+type ListInstanceDomains200JSONResponse []InstanceDomain
+
+func (response ListInstanceDomains200JSONResponse) VisitListInstanceDomainsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateInstanceDomainRequestObject struct {
+	Body *CreateInstanceDomainJSONRequestBody
+}
+
+type CreateInstanceDomainResponseObject interface {
+	VisitCreateInstanceDomainResponse(w http.ResponseWriter) error
+}
+
+type CreateInstanceDomain201JSONResponse InstanceDomain
+
+func (response CreateInstanceDomain201JSONResponse) VisitCreateInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateInstanceDomain400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateInstanceDomain400JSONResponse) VisitCreateInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateInstanceDomain409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CreateInstanceDomain409JSONResponse) VisitCreateInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteInstanceDomainRequestObject struct {
+	DomainId Uuid `json:"domainId"`
+}
+
+type DeleteInstanceDomainResponseObject interface {
+	VisitDeleteInstanceDomainResponse(w http.ResponseWriter) error
+}
+
+type DeleteInstanceDomain204Response struct {
+}
+
+func (response DeleteInstanceDomain204Response) VisitDeleteInstanceDomainResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteInstanceDomain404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteInstanceDomain404JSONResponse) VisitDeleteInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteInstanceDomain409JSONResponse struct{ ConflictJSONResponse }
+
+func (response DeleteInstanceDomain409JSONResponse) VisitDeleteInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetInstanceDomainRequestObject struct {
+	DomainId Uuid `json:"domainId"`
+}
+
+type GetInstanceDomainResponseObject interface {
+	VisitGetInstanceDomainResponse(w http.ResponseWriter) error
+}
+
+type GetInstanceDomain200JSONResponse InstanceDomain
+
+func (response GetInstanceDomain200JSONResponse) VisitGetInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetInstanceDomain404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetInstanceDomain404JSONResponse) VisitGetInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateInstanceDomainRequestObject struct {
+	DomainId Uuid `json:"domainId"`
+	Body     *UpdateInstanceDomainJSONRequestBody
+}
+
+type UpdateInstanceDomainResponseObject interface {
+	VisitUpdateInstanceDomainResponse(w http.ResponseWriter) error
+}
+
+type UpdateInstanceDomain200JSONResponse InstanceDomain
+
+func (response UpdateInstanceDomain200JSONResponse) VisitUpdateInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateInstanceDomain400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateInstanceDomain400JSONResponse) VisitUpdateInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateInstanceDomain404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateInstanceDomain404JSONResponse) VisitUpdateInstanceDomainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type ListRelaysRequestObject struct {
 }
@@ -9311,7 +19243,7 @@ func (response CreateRelayToken201JSONResponse) VisitCreateRelayTokenResponse(w 
 }
 
 type RevokeRelayTokenRequestObject struct {
-	TokenId string `json:"tokenId"`
+	TokenId Uuid `json:"tokenId"`
 }
 
 type RevokeRelayTokenResponseObject interface {
@@ -9341,7 +19273,7 @@ func (response RevokeRelayToken404JSONResponse) VisitRevokeRelayTokenResponse(w 
 }
 
 type RemoveRelayRequestObject struct {
-	Relay RelayName `json:"relay"`
+	RelayId RelayId `json:"relayId"`
 }
 
 type RemoveRelayResponseObject interface {
@@ -9385,7 +19317,7 @@ func (response RemoveRelay409JSONResponse) VisitRemoveRelayResponse(w http.Respo
 }
 
 type GetRelayRequestObject struct {
-	Relay RelayName `json:"relay"`
+	RelayId RelayId `json:"relayId"`
 }
 
 type GetRelayResponseObject interface {
@@ -9421,7 +19353,7 @@ func (response GetRelay404JSONResponse) VisitGetRelayResponse(w http.ResponseWri
 }
 
 type ListRelayCertsRequestObject struct {
-	Relay RelayName `json:"relay"`
+	RelayId RelayId `json:"relayId"`
 }
 
 type ListRelayCertsResponseObject interface {
@@ -9498,6 +19430,368 @@ func (response GetStatus200JSONResponse) VisitGetStatusResponse(w http.ResponseW
 	return err
 }
 
+type ListUsersRequestObject struct {
+}
+
+type ListUsersResponseObject interface {
+	VisitListUsersResponse(w http.ResponseWriter) error
+}
+
+type ListUsers200JSONResponse []User
+
+func (response ListUsers200JSONResponse) VisitListUsersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertUserRequestObject struct {
+	Body *UpsertUserJSONRequestBody
+}
+
+type UpsertUserResponseObject interface {
+	VisitUpsertUserResponse(w http.ResponseWriter) error
+}
+
+type UpsertUser200JSONResponse User
+
+func (response UpsertUser200JSONResponse) VisitUpsertUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertUser400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpsertUser400JSONResponse) VisitUpsertUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertUser409JSONResponse Error
+
+func (response UpsertUser409JSONResponse) VisitUpsertUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteUserRequestObject struct {
+	UserId Uuid `json:"userId"`
+}
+
+type DeleteUserResponseObject interface {
+	VisitDeleteUserResponse(w http.ResponseWriter) error
+}
+
+type DeleteUser204Response struct {
+}
+
+func (response DeleteUser204Response) VisitDeleteUserResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteUser404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteUser404JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteUser409JSONResponse Error
+
+func (response DeleteUser409JSONResponse) VisitDeleteUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUserRequestObject struct {
+	UserId Uuid `json:"userId"`
+}
+
+type GetUserResponseObject interface {
+	VisitGetUserResponse(w http.ResponseWriter) error
+}
+
+type GetUser200JSONResponse User
+
+func (response GetUser200JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetUser404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetUser404JSONResponse) VisitGetUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListUserIdentitiesRequestObject struct {
+	UserId Uuid `json:"userId"`
+}
+
+type ListUserIdentitiesResponseObject interface {
+	VisitListUserIdentitiesResponse(w http.ResponseWriter) error
+}
+
+type ListUserIdentities200JSONResponse []UserIdentity
+
+func (response ListUserIdentities200JSONResponse) VisitListUserIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListUserIdentities404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListUserIdentities404JSONResponse) VisitListUserIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LinkUserIdentityRequestObject struct {
+	UserId Uuid `json:"userId"`
+	Body   *LinkUserIdentityJSONRequestBody
+}
+
+type LinkUserIdentityResponseObject interface {
+	VisitLinkUserIdentityResponse(w http.ResponseWriter) error
+}
+
+type LinkUserIdentity201JSONResponse UserIdentity
+
+func (response LinkUserIdentity201JSONResponse) VisitLinkUserIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LinkUserIdentity400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response LinkUserIdentity400JSONResponse) VisitLinkUserIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LinkUserIdentity404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response LinkUserIdentity404JSONResponse) VisitLinkUserIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LinkUserIdentity409JSONResponse struct{ ConflictJSONResponse }
+
+func (response LinkUserIdentity409JSONResponse) VisitLinkUserIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnlinkUserIdentityRequestObject struct {
+	UserId     Uuid `json:"userId"`
+	IdentityId Uuid `json:"identityId"`
+}
+
+type UnlinkUserIdentityResponseObject interface {
+	VisitUnlinkUserIdentityResponse(w http.ResponseWriter) error
+}
+
+type UnlinkUserIdentity204Response struct {
+}
+
+func (response UnlinkUserIdentity204Response) VisitUnlinkUserIdentityResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type UnlinkUserIdentity404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UnlinkUserIdentity404JSONResponse) VisitUnlinkUserIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnlinkUserIdentity409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UnlinkUserIdentity409JSONResponse) VisitUnlinkUserIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserInstanceAdminRequestObject struct {
+	UserId Uuid `json:"userId"`
+	Body   *SetUserInstanceAdminJSONRequestBody
+}
+
+type SetUserInstanceAdminResponseObject interface {
+	VisitSetUserInstanceAdminResponse(w http.ResponseWriter) error
+}
+
+type SetUserInstanceAdmin200JSONResponse User
+
+func (response SetUserInstanceAdmin200JSONResponse) VisitSetUserInstanceAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserInstanceAdmin400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SetUserInstanceAdmin400JSONResponse) VisitSetUserInstanceAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserInstanceAdmin404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response SetUserInstanceAdmin404JSONResponse) VisitSetUserInstanceAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetUserInstanceAdmin409JSONResponse struct{ ConflictJSONResponse }
+
+func (response SetUserInstanceAdmin409JSONResponse) VisitSetUserInstanceAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListWorkspacesRequestObject struct {
 }
 
@@ -9570,8 +19864,8 @@ func (response CreateWorkspace409JSONResponse) VisitCreateWorkspaceResponse(w ht
 }
 
 type DeleteWorkspaceRequestObject struct {
-	Ws     WorkspaceName `json:"ws"`
-	Params DeleteWorkspaceParams
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      DeleteWorkspaceParams
 }
 
 type DeleteWorkspaceResponseObject interface {
@@ -9615,7 +19909,7 @@ func (response DeleteWorkspace409JSONResponse) VisitDeleteWorkspaceResponse(w ht
 }
 
 type GetWorkspaceRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
 }
 
 type GetWorkspaceResponseObject interface {
@@ -9650,117 +19944,8 @@ func (response GetWorkspace404JSONResponse) VisitGetWorkspaceResponse(w http.Res
 	return err
 }
 
-type UpdateWorkspaceRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Body *UpdateWorkspaceJSONRequestBody
-}
-
-type UpdateWorkspaceResponseObject interface {
-	VisitUpdateWorkspaceResponse(w http.ResponseWriter) error
-}
-
-type UpdateWorkspace200JSONResponse Workspace
-
-func (response UpdateWorkspace200JSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateWorkspace400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response UpdateWorkspace400JSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UpdateWorkspace404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response UpdateWorkspace404JSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListCertsRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
-}
-
-type ListCertsResponseObject interface {
-	VisitListCertsResponse(w http.ResponseWriter) error
-}
-
-type ListCerts200JSONResponse []Cert
-
-func (response ListCerts200JSONResponse) VisitListCertsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type RenewCertRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
-}
-
-type RenewCertResponseObject interface {
-	VisitRenewCertResponse(w http.ResponseWriter) error
-}
-
-type RenewCert202JSONResponse Cert
-
-func (response RenewCert202JSONResponse) VisitRenewCertResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(202)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type RenewCert404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response RenewCert404JSONResponse) VisitRenewCertResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type ListGroupsRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
 }
 
 type ListGroupsResponseObject interface {
@@ -9782,8 +19967,8 @@ func (response ListGroups200JSONResponse) VisitListGroupsResponse(w http.Respons
 }
 
 type CreateGroupRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Body *CreateGroupJSONRequestBody
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *CreateGroupJSONRequestBody
 }
 
 type CreateGroupResponseObject interface {
@@ -9833,8 +20018,8 @@ func (response CreateGroup409JSONResponse) VisitCreateGroupResponse(w http.Respo
 }
 
 type DeleteGroupRequestObject struct {
-	Ws    WorkspaceName `json:"ws"`
-	Group GroupName     `json:"group"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	GroupId     GroupId     `json:"groupId"`
 }
 
 type DeleteGroupResponseObject interface {
@@ -9864,8 +20049,8 @@ func (response DeleteGroup404JSONResponse) VisitDeleteGroupResponse(w http.Respo
 }
 
 type GetGroupRequestObject struct {
-	Ws    WorkspaceName `json:"ws"`
-	Group GroupName     `json:"group"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	GroupId     GroupId     `json:"groupId"`
 }
 
 type GetGroupResponseObject interface {
@@ -9900,27 +20085,27 @@ func (response GetGroup404JSONResponse) VisitGetGroupResponse(w http.ResponseWri
 	return err
 }
 
-type RemoveGroupMemberRequestObject struct {
-	Ws    WorkspaceName `json:"ws"`
-	Group GroupName     `json:"group"`
-	Node  NodeName      `json:"node"`
+type RemoveGroupNodeRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	GroupId     GroupId     `json:"groupId"`
+	NodeId      NodeId      `json:"nodeId"`
 }
 
-type RemoveGroupMemberResponseObject interface {
-	VisitRemoveGroupMemberResponse(w http.ResponseWriter) error
+type RemoveGroupNodeResponseObject interface {
+	VisitRemoveGroupNodeResponse(w http.ResponseWriter) error
 }
 
-type RemoveGroupMember204Response struct {
+type RemoveGroupNode204Response struct {
 }
 
-func (response RemoveGroupMember204Response) VisitRemoveGroupMemberResponse(w http.ResponseWriter) error {
+func (response RemoveGroupNode204Response) VisitRemoveGroupNodeResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
 	return nil
 }
 
-type RemoveGroupMember404JSONResponse struct{ NotFoundJSONResponse }
+type RemoveGroupNode404JSONResponse struct{ NotFoundJSONResponse }
 
-func (response RemoveGroupMember404JSONResponse) VisitRemoveGroupMemberResponse(w http.ResponseWriter) error {
+func (response RemoveGroupNode404JSONResponse) VisitRemoveGroupNodeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9932,27 +20117,27 @@ func (response RemoveGroupMember404JSONResponse) VisitRemoveGroupMemberResponse(
 	return err
 }
 
-type AddGroupMemberRequestObject struct {
-	Ws    WorkspaceName `json:"ws"`
-	Group GroupName     `json:"group"`
-	Node  NodeName      `json:"node"`
+type AddGroupNodeRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	GroupId     GroupId     `json:"groupId"`
+	NodeId      NodeId      `json:"nodeId"`
 }
 
-type AddGroupMemberResponseObject interface {
-	VisitAddGroupMemberResponse(w http.ResponseWriter) error
+type AddGroupNodeResponseObject interface {
+	VisitAddGroupNodeResponse(w http.ResponseWriter) error
 }
 
-type AddGroupMember204Response struct {
+type AddGroupNode204Response struct {
 }
 
-func (response AddGroupMember204Response) VisitAddGroupMemberResponse(w http.ResponseWriter) error {
+func (response AddGroupNode204Response) VisitAddGroupNodeResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
 	return nil
 }
 
-type AddGroupMember404JSONResponse struct{ NotFoundJSONResponse }
+type AddGroupNode404JSONResponse struct{ NotFoundJSONResponse }
 
-func (response AddGroupMember404JSONResponse) VisitAddGroupMemberResponse(w http.ResponseWriter) error {
+func (response AddGroupNode404JSONResponse) VisitAddGroupNodeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -9960,13 +20145,159 @@ func (response AddGroupMember404JSONResponse) VisitAddGroupMemberResponse(w http
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkspaceMembersRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+}
+
+type ListWorkspaceMembersResponseObject interface {
+	VisitListWorkspaceMembersResponse(w http.ResponseWriter) error
+}
+
+type ListWorkspaceMembers200JSONResponse []WorkspaceMember
+
+func (response ListWorkspaceMembers200JSONResponse) VisitListWorkspaceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkspaceMembers404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListWorkspaceMembers404JSONResponse) VisitListWorkspaceMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertWorkspaceMemberRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *UpsertWorkspaceMemberJSONRequestBody
+}
+
+type UpsertWorkspaceMemberResponseObject interface {
+	VisitUpsertWorkspaceMemberResponse(w http.ResponseWriter) error
+}
+
+type UpsertWorkspaceMember200JSONResponse WorkspaceMember
+
+func (response UpsertWorkspaceMember200JSONResponse) VisitUpsertWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertWorkspaceMember400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpsertWorkspaceMember400JSONResponse) VisitUpsertWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertWorkspaceMember404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpsertWorkspaceMember404JSONResponse) VisitUpsertWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpsertWorkspaceMember409JSONResponse Error
+
+func (response UpsertWorkspaceMember409JSONResponse) VisitUpsertWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveWorkspaceMemberRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    Uuid        `json:"memberId"`
+}
+
+type RemoveWorkspaceMemberResponseObject interface {
+	VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error
+}
+
+type RemoveWorkspaceMember204Response struct {
+}
+
+func (response RemoveWorkspaceMember204Response) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveWorkspaceMember404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response RemoveWorkspaceMember404JSONResponse) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveWorkspaceMember409JSONResponse Error
+
+func (response RemoveWorkspaceMember409JSONResponse) VisitRemoveWorkspaceMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
 type ListNodesRequestObject struct {
-	Ws     WorkspaceName `json:"ws"`
-	Params ListNodesParams
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      ListNodesParams
 }
 
 type ListNodesResponseObject interface {
@@ -9988,8 +20319,8 @@ func (response ListNodes200JSONResponse) VisitListNodesResponse(w http.ResponseW
 }
 
 type RemoveNodeRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Node NodeName      `json:"node"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	NodeId      NodeId      `json:"nodeId"`
 }
 
 type RemoveNodeResponseObject interface {
@@ -10019,8 +20350,8 @@ func (response RemoveNode404JSONResponse) VisitRemoveNodeResponse(w http.Respons
 }
 
 type GetNodeRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Node NodeName      `json:"node"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	NodeId      NodeId      `json:"nodeId"`
 }
 
 type GetNodeResponseObject interface {
@@ -10056,9 +20387,9 @@ func (response GetNode404JSONResponse) VisitGetNodeResponse(w http.ResponseWrite
 }
 
 type UpdateNodeRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Node NodeName      `json:"node"`
-	Body *UpdateNodeJSONRequestBody
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	NodeId      NodeId      `json:"nodeId"`
+	Body        *UpdateNodeJSONRequestBody
 }
 
 type UpdateNodeResponseObject interface {
@@ -10122,7 +20453,7 @@ func (response UpdateNode409JSONResponse) VisitUpdateNodeResponse(w http.Respons
 }
 
 type ListPoliciesRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
 }
 
 type ListPoliciesResponseObject interface {
@@ -10144,8 +20475,8 @@ func (response ListPolicies200JSONResponse) VisitListPoliciesResponse(w http.Res
 }
 
 type AddPolicyRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Body *AddPolicyJSONRequestBody
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *AddPolicyJSONRequestBody
 }
 
 type AddPolicyResponseObject interface {
@@ -10181,8 +20512,8 @@ func (response AddPolicy400JSONResponse) VisitAddPolicyResponse(w http.ResponseW
 }
 
 type ReplacePoliciesRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Body *ReplacePoliciesJSONRequestBody
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *ReplacePoliciesJSONRequestBody
 }
 
 type ReplacePoliciesResponseObject interface {
@@ -10218,8 +20549,8 @@ func (response ReplacePolicies400JSONResponse) VisitReplacePoliciesResponse(w ht
 }
 
 type DeletePolicyRequestObject struct {
-	Ws       WorkspaceName `json:"ws"`
-	PolicyId string        `json:"policyId"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	PolicyId    Uuid        `json:"policyId"`
 }
 
 type DeletePolicyResponseObject interface {
@@ -10249,7 +20580,7 @@ func (response DeletePolicy404JSONResponse) VisitDeletePolicyResponse(w http.Res
 }
 
 type GetRouteTableRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
 }
 
 type GetRouteTableResponseObject interface {
@@ -10271,8 +20602,8 @@ func (response GetRouteTable200JSONResponse) VisitGetRouteTableResponse(w http.R
 }
 
 type AddRouteRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Body *AddRouteJSONRequestBody
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *AddRouteJSONRequestBody
 }
 
 type AddRouteResponseObject interface {
@@ -10308,8 +20639,8 @@ func (response AddRoute400JSONResponse) VisitAddRouteResponse(w http.ResponseWri
 }
 
 type ReplaceRouteTableRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Body *ReplaceRouteTableJSONRequestBody
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *ReplaceRouteTableJSONRequestBody
 }
 
 type ReplaceRouteTableResponseObject interface {
@@ -10345,8 +20676,8 @@ func (response ReplaceRouteTable400JSONResponse) VisitReplaceRouteTableResponse(
 }
 
 type DeleteRouteRequestObject struct {
-	Ws      WorkspaceName `json:"ws"`
-	RouteId string        `json:"routeId"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	RouteId     Uuid        `json:"routeId"`
 }
 
 type DeleteRouteResponseObject interface {
@@ -10376,7 +20707,7 @@ func (response DeleteRoute404JSONResponse) VisitDeleteRouteResponse(w http.Respo
 }
 
 type ListServicesRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
 }
 
 type ListServicesResponseObject interface {
@@ -10398,7 +20729,7 @@ func (response ListServices200JSONResponse) VisitListServicesResponse(w http.Res
 }
 
 type ListTokensRequestObject struct {
-	Ws WorkspaceName `json:"ws"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
 }
 
 type ListTokensResponseObject interface {
@@ -10420,8 +20751,8 @@ func (response ListTokens200JSONResponse) VisitListTokensResponse(w http.Respons
 }
 
 type CreateTokenRequestObject struct {
-	Ws   WorkspaceName `json:"ws"`
-	Body *CreateTokenJSONRequestBody
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *CreateTokenJSONRequestBody
 }
 
 type CreateTokenResponseObject interface {
@@ -10471,8 +20802,8 @@ func (response CreateToken409JSONResponse) VisitCreateTokenResponse(w http.Respo
 }
 
 type RevokeTokenRequestObject struct {
-	Ws      WorkspaceName `json:"ws"`
-	TokenId string        `json:"tokenId"`
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	TokenId     Uuid        `json:"tokenId"`
 }
 
 type RevokeTokenResponseObject interface {
@@ -10503,6 +20834,87 @@ func (response RevokeToken404JSONResponse) VisitRevokeTokenResponse(w http.Respo
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ListAuditEvents 查询全局审计记录
+	// (GET /audit/events)
+	ListAuditEvents(ctx context.Context, request ListAuditEventsRequestObject) (ListAuditEventsResponseObject, error)
+	// GetAuditEvent 查看审计事件
+	// (GET /audit/events/{eventId})
+	GetAuditEvent(ctx context.Context, request GetAuditEventRequestObject) (GetAuditEventResponseObject, error)
+	// ListAuthProviders 列出认证 providers
+	// (GET /auth-providers)
+	ListAuthProviders(ctx context.Context, request ListAuthProvidersRequestObject) (ListAuthProvidersResponseObject, error)
+	// CreateAuthProvider 创建认证 provider
+	// (POST /auth-providers)
+	CreateAuthProvider(ctx context.Context, request CreateAuthProviderRequestObject) (CreateAuthProviderResponseObject, error)
+	// DeleteAuthProvider 删除认证 provider
+	// (DELETE /auth-providers/{providerId})
+	DeleteAuthProvider(ctx context.Context, request DeleteAuthProviderRequestObject) (DeleteAuthProviderResponseObject, error)
+	// GetAuthProvider 查看认证 provider
+	// (GET /auth-providers/{providerId})
+	GetAuthProvider(ctx context.Context, request GetAuthProviderRequestObject) (GetAuthProviderResponseObject, error)
+	// UpdateAuthProvider 更新认证 provider
+	// (PUT /auth-providers/{providerId})
+	UpdateAuthProvider(ctx context.Context, request UpdateAuthProviderRequestObject) (UpdateAuthProviderResponseObject, error)
+	// ListCertificateIssuers 列出 certificate issuers
+	// (GET /certificate-issuers)
+	ListCertificateIssuers(ctx context.Context, request ListCertificateIssuersRequestObject) (ListCertificateIssuersResponseObject, error)
+	// CreateCertificateIssuer 创建 certificate issuer
+	// (POST /certificate-issuers)
+	CreateCertificateIssuer(ctx context.Context, request CreateCertificateIssuerRequestObject) (CreateCertificateIssuerResponseObject, error)
+	// DeleteCertificateIssuer 删除 certificate issuer
+	// (DELETE /certificate-issuers/{issuerId})
+	DeleteCertificateIssuer(ctx context.Context, request DeleteCertificateIssuerRequestObject) (DeleteCertificateIssuerResponseObject, error)
+	// GetCertificateIssuer 查看 certificate issuer
+	// (GET /certificate-issuers/{issuerId})
+	GetCertificateIssuer(ctx context.Context, request GetCertificateIssuerRequestObject) (GetCertificateIssuerResponseObject, error)
+	// UpdateCertificateIssuer 更新 certificate issuer
+	// (PUT /certificate-issuers/{issuerId})
+	UpdateCertificateIssuer(ctx context.Context, request UpdateCertificateIssuerRequestObject) (UpdateCertificateIssuerResponseObject, error)
+	// ListCertificates 列出 instance 的全部证书
+	// (GET /certificates)
+	ListCertificates(ctx context.Context, request ListCertificatesRequestObject) (ListCertificatesResponseObject, error)
+	// IssueCertificate 签发或重新签发证书
+	// (POST /certificates)
+	IssueCertificate(ctx context.Context, request IssueCertificateRequestObject) (IssueCertificateResponseObject, error)
+	// GetCertificate 查看证书生命周期状态
+	// (GET /certificates/{certificateId})
+	GetCertificate(ctx context.Context, request GetCertificateRequestObject) (GetCertificateResponseObject, error)
+	// RenewCertificate 立即续期证书
+	// (POST /certificates/{certificateId}/renew)
+	RenewCertificate(ctx context.Context, request RenewCertificateRequestObject) (RenewCertificateResponseObject, error)
+	// RevokeCertificate 吊销证书
+	// (POST /certificates/{certificateId}/revoke)
+	RevokeCertificate(ctx context.Context, request RevokeCertificateRequestObject) (RevokeCertificateResponseObject, error)
+	// ListDNSProviders 列出 DNS providers
+	// (GET /dns-providers)
+	ListDNSProviders(ctx context.Context, request ListDNSProvidersRequestObject) (ListDNSProvidersResponseObject, error)
+	// CreateDNSProvider 创建 DNS provider
+	// (POST /dns-providers)
+	CreateDNSProvider(ctx context.Context, request CreateDNSProviderRequestObject) (CreateDNSProviderResponseObject, error)
+	// DeleteDNSProvider 删除 DNS provider
+	// (DELETE /dns-providers/{providerId})
+	DeleteDNSProvider(ctx context.Context, request DeleteDNSProviderRequestObject) (DeleteDNSProviderResponseObject, error)
+	// GetDNSProvider 查看 DNS provider
+	// (GET /dns-providers/{providerId})
+	GetDNSProvider(ctx context.Context, request GetDNSProviderRequestObject) (GetDNSProviderResponseObject, error)
+	// UpdateDNSProvider 更新 DNS provider
+	// (PUT /dns-providers/{providerId})
+	UpdateDNSProvider(ctx context.Context, request UpdateDNSProviderRequestObject) (UpdateDNSProviderResponseObject, error)
+	// ListInstanceDomains 列出 instance 域名
+	// (GET /domains)
+	ListInstanceDomains(ctx context.Context, request ListInstanceDomainsRequestObject) (ListInstanceDomainsResponseObject, error)
+	// CreateInstanceDomain 添加 instance 域名
+	// (POST /domains)
+	CreateInstanceDomain(ctx context.Context, request CreateInstanceDomainRequestObject) (CreateInstanceDomainResponseObject, error)
+	// DeleteInstanceDomain 删除 instance 域名
+	// (DELETE /domains/{domainId})
+	DeleteInstanceDomain(ctx context.Context, request DeleteInstanceDomainRequestObject) (DeleteInstanceDomainResponseObject, error)
+	// GetInstanceDomain 查看 instance 域名
+	// (GET /domains/{domainId})
+	GetInstanceDomain(ctx context.Context, request GetInstanceDomainRequestObject) (GetInstanceDomainResponseObject, error)
+	// UpdateInstanceDomain 更新 instance 域名
+	// (PUT /domains/{domainId})
+	UpdateInstanceDomain(ctx context.Context, request UpdateInstanceDomainRequestObject) (UpdateInstanceDomainResponseObject, error)
 	// ListRelays 列出 relay
 	// (GET /relays)
 	ListRelays(ctx context.Context, request ListRelaysRequestObject) (ListRelaysResponseObject, error)
@@ -10519,13 +20931,13 @@ type StrictServerInterface interface {
 	// (DELETE /relays/tokens/{tokenId})
 	RevokeRelayToken(ctx context.Context, request RevokeRelayTokenRequestObject) (RevokeRelayTokenResponseObject, error)
 	// RemoveRelay 注销 relay
-	// (DELETE /relays/{relay})
+	// (DELETE /relays/{relayId})
 	RemoveRelay(ctx context.Context, request RemoveRelayRequestObject) (RemoveRelayResponseObject, error)
 	// GetRelay 查看 relay
-	// (GET /relays/{relay})
+	// (GET /relays/{relayId})
 	GetRelay(ctx context.Context, request GetRelayRequestObject) (GetRelayResponseObject, error)
-	// ListRelayCerts 查看该 relay 在各 workspace 的 relay 证书
-	// (GET /relays/{relay}/certs)
+	// ListRelayCerts 查看该 relay 持有的 relay 证书
+	// (GET /relays/{relayId}/certs)
 	ListRelayCerts(ctx context.Context, request ListRelayCertsRequestObject) (ListRelayCertsResponseObject, error)
 	// GetServer 服务端信息
 	// (GET /server)
@@ -10533,6 +20945,30 @@ type StrictServerInterface interface {
 	// GetStatus 运行状态
 	// (GET /status)
 	GetStatus(ctx context.Context, request GetStatusRequestObject) (GetStatusResponseObject, error)
+	// ListUsers 列出全局用户
+	// (GET /users)
+	ListUsers(ctx context.Context, request ListUsersRequestObject) (ListUsersResponseObject, error)
+	// UpsertUser 创建或更新全局用户
+	// (POST /users)
+	UpsertUser(ctx context.Context, request UpsertUserRequestObject) (UpsertUserResponseObject, error)
+	// DeleteUser 删除全局用户
+	// (DELETE /users/{userId})
+	DeleteUser(ctx context.Context, request DeleteUserRequestObject) (DeleteUserResponseObject, error)
+	// GetUser 查看全局用户
+	// (GET /users/{userId})
+	GetUser(ctx context.Context, request GetUserRequestObject) (GetUserResponseObject, error)
+	// ListUserIdentities 列出用户的外部认证 identity
+	// (GET /users/{userId}/identities)
+	ListUserIdentities(ctx context.Context, request ListUserIdentitiesRequestObject) (ListUserIdentitiesResponseObject, error)
+	// LinkUserIdentity 将外部认证 identity 关联到用户
+	// (POST /users/{userId}/identities)
+	LinkUserIdentity(ctx context.Context, request LinkUserIdentityRequestObject) (LinkUserIdentityResponseObject, error)
+	// UnlinkUserIdentity 解除外部认证 identity
+	// (DELETE /users/{userId}/identities/{identityId})
+	UnlinkUserIdentity(ctx context.Context, request UnlinkUserIdentityRequestObject) (UnlinkUserIdentityResponseObject, error)
+	// SetUserInstanceAdmin 授予或撤销 instance admin
+	// (POST /users/{userId}/instance-admin)
+	SetUserInstanceAdmin(ctx context.Context, request SetUserInstanceAdminRequestObject) (SetUserInstanceAdminResponseObject, error)
 	// ListWorkspaces 列出 workspace
 	// (GET /workspaces)
 	ListWorkspaces(ctx context.Context, request ListWorkspacesRequestObject) (ListWorkspacesResponseObject, error)
@@ -10540,85 +20976,85 @@ type StrictServerInterface interface {
 	// (POST /workspaces)
 	CreateWorkspace(ctx context.Context, request CreateWorkspaceRequestObject) (CreateWorkspaceResponseObject, error)
 	// DeleteWorkspace 删除 workspace
-	// (DELETE /workspaces/{ws})
+	// (DELETE /workspaces/{workspaceId})
 	DeleteWorkspace(ctx context.Context, request DeleteWorkspaceRequestObject) (DeleteWorkspaceResponseObject, error)
-	// GetWorkspace 查看 workspace（含公钥、证书状态、指派的 relay）
-	// (GET /workspaces/{ws})
+	// GetWorkspace 查看 workspace（公钥、基础域名、状态和证书）
+	// (GET /workspaces/{workspaceId})
 	GetWorkspace(ctx context.Context, request GetWorkspaceRequestObject) (GetWorkspaceResponseObject, error)
-	// UpdateWorkspace 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-	// (PATCH /workspaces/{ws})
-	UpdateWorkspace(ctx context.Context, request UpdateWorkspaceRequestObject) (UpdateWorkspaceResponseObject, error)
-	// ListCerts 查看通配证书
-	// (GET /workspaces/{ws}/certs)
-	ListCerts(ctx context.Context, request ListCertsRequestObject) (ListCertsResponseObject, error)
-	// RenewCert 立即续期
-	// (POST /workspaces/{ws}/certs/renew)
-	RenewCert(ctx context.Context, request RenewCertRequestObject) (RenewCertResponseObject, error)
 	// ListGroups 列出组
-	// (GET /workspaces/{ws}/groups)
+	// (GET /workspaces/{workspaceId}/groups)
 	ListGroups(ctx context.Context, request ListGroupsRequestObject) (ListGroupsResponseObject, error)
 	// CreateGroup 创建组
-	// (POST /workspaces/{ws}/groups)
+	// (POST /workspaces/{workspaceId}/groups)
 	CreateGroup(ctx context.Context, request CreateGroupRequestObject) (CreateGroupResponseObject, error)
 	// DeleteGroup 删除组
-	// (DELETE /workspaces/{ws}/groups/{group})
+	// (DELETE /workspaces/{workspaceId}/groups/{groupId})
 	DeleteGroup(ctx context.Context, request DeleteGroupRequestObject) (DeleteGroupResponseObject, error)
 	// GetGroup 查看组
-	// (GET /workspaces/{ws}/groups/{group})
+	// (GET /workspaces/{workspaceId}/groups/{groupId})
 	GetGroup(ctx context.Context, request GetGroupRequestObject) (GetGroupResponseObject, error)
-	// RemoveGroupMember 把成员移出组
-	// (DELETE /workspaces/{ws}/groups/{group}/members/{node})
-	RemoveGroupMember(ctx context.Context, request RemoveGroupMemberRequestObject) (RemoveGroupMemberResponseObject, error)
-	// AddGroupMember 把成员加入组
-	// (PUT /workspaces/{ws}/groups/{group}/members/{node})
-	AddGroupMember(ctx context.Context, request AddGroupMemberRequestObject) (AddGroupMemberResponseObject, error)
+	// RemoveGroupNode 把 node 移出组
+	// (DELETE /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId})
+	RemoveGroupNode(ctx context.Context, request RemoveGroupNodeRequestObject) (RemoveGroupNodeResponseObject, error)
+	// AddGroupNode 把 node 加入组
+	// (PUT /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId})
+	AddGroupNode(ctx context.Context, request AddGroupNodeRequestObject) (AddGroupNodeResponseObject, error)
+	// ListWorkspaceMembers 列出 workspace 成员
+	// (GET /workspaces/{workspaceId}/members)
+	ListWorkspaceMembers(ctx context.Context, request ListWorkspaceMembersRequestObject) (ListWorkspaceMembersResponseObject, error)
+	// UpsertWorkspaceMember 添加或调整 用户角色
+	// (POST /workspaces/{workspaceId}/members)
+	UpsertWorkspaceMember(ctx context.Context, request UpsertWorkspaceMemberRequestObject) (UpsertWorkspaceMemberResponseObject, error)
+	// RemoveWorkspaceMember 移除 workspace 成员
+	// (DELETE /workspaces/{workspaceId}/members/{memberId})
+	RemoveWorkspaceMember(ctx context.Context, request RemoveWorkspaceMemberRequestObject) (RemoveWorkspaceMemberResponseObject, error)
 	// ListNodes 列出成员
-	// (GET /workspaces/{ws}/nodes)
+	// (GET /workspaces/{workspaceId}/nodes)
 	ListNodes(ctx context.Context, request ListNodesRequestObject) (ListNodesResponseObject, error)
 	// RemoveNode 移除成员
-	// (DELETE /workspaces/{ws}/nodes/{node})
+	// (DELETE /workspaces/{workspaceId}/nodes/{nodeId})
 	RemoveNode(ctx context.Context, request RemoveNodeRequestObject) (RemoveNodeResponseObject, error)
 	// GetNode 查看成员
-	// (GET /workspaces/{ws}/nodes/{node})
+	// (GET /workspaces/{workspaceId}/nodes/{nodeId})
 	GetNode(ctx context.Context, request GetNodeRequestObject) (GetNodeResponseObject, error)
 	// UpdateNode 改名或调整角色上限
-	// (PATCH /workspaces/{ws}/nodes/{node})
+	// (PATCH /workspaces/{workspaceId}/nodes/{nodeId})
 	UpdateNode(ctx context.Context, request UpdateNodeRequestObject) (UpdateNodeResponseObject, error)
 	// ListPolicies 列出中央策略语句
-	// (GET /workspaces/{ws}/policies)
+	// (GET /workspaces/{workspaceId}/policies)
 	ListPolicies(ctx context.Context, request ListPoliciesRequestObject) (ListPoliciesResponseObject, error)
 	// AddPolicy 追加一条策略语句
-	// (POST /workspaces/{ws}/policies)
+	// (POST /workspaces/{workspaceId}/policies)
 	AddPolicy(ctx context.Context, request AddPolicyRequestObject) (AddPolicyResponseObject, error)
 	// ReplacePolicies 整体替换中央策略
-	// (PUT /workspaces/{ws}/policies)
+	// (PUT /workspaces/{workspaceId}/policies)
 	ReplacePolicies(ctx context.Context, request ReplacePoliciesRequestObject) (ReplacePoliciesResponseObject, error)
 	// DeletePolicy 删除一条策略语句
-	// (DELETE /workspaces/{ws}/policies/{policyId})
+	// (DELETE /workspaces/{workspaceId}/policies/{policyId})
 	DeletePolicy(ctx context.Context, request DeletePolicyRequestObject) (DeletePolicyResponseObject, error)
 	// GetRouteTable 查看路由表
-	// (GET /workspaces/{ws}/routes)
+	// (GET /workspaces/{workspaceId}/routes)
 	GetRouteTable(ctx context.Context, request GetRouteTableRequestObject) (GetRouteTableResponseObject, error)
 	// AddRoute 追加一条路由
-	// (POST /workspaces/{ws}/routes)
+	// (POST /workspaces/{workspaceId}/routes)
 	AddRoute(ctx context.Context, request AddRouteRequestObject) (AddRouteResponseObject, error)
 	// ReplaceRouteTable 整体替换路由表
-	// (PUT /workspaces/{ws}/routes)
+	// (PUT /workspaces/{workspaceId}/routes)
 	ReplaceRouteTable(ctx context.Context, request ReplaceRouteTableRequestObject) (ReplaceRouteTableResponseObject, error)
 	// DeleteRoute 删除一条路由
-	// (DELETE /workspaces/{ws}/routes/{routeId})
+	// (DELETE /workspaces/{workspaceId}/routes/{routeId})
 	DeleteRoute(ctx context.Context, request DeleteRouteRequestObject) (DeleteRouteResponseObject, error)
 	// ListServices 列出已注册的服务
-	// (GET /workspaces/{ws}/services)
+	// (GET /workspaces/{workspaceId}/services)
 	ListServices(ctx context.Context, request ListServicesRequestObject) (ListServicesResponseObject, error)
 	// ListTokens 列出未使用的加入令牌
-	// (GET /workspaces/{ws}/tokens)
+	// (GET /workspaces/{workspaceId}/tokens)
 	ListTokens(ctx context.Context, request ListTokensRequestObject) (ListTokensResponseObject, error)
 	// CreateToken 签发加入令牌并返回加入链接
-	// (POST /workspaces/{ws}/tokens)
+	// (POST /workspaces/{workspaceId}/tokens)
 	CreateToken(ctx context.Context, request CreateTokenRequestObject) (CreateTokenResponseObject, error)
 	// RevokeToken 作废未使用的令牌
-	// (DELETE /workspaces/{ws}/tokens/{tokenId})
+	// (DELETE /workspaces/{workspaceId}/tokens/{tokenId})
 	RevokeToken(ctx context.Context, request RevokeTokenRequestObject) (RevokeTokenResponseObject, error)
 }
 
@@ -10659,6 +21095,763 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListAuditEvents operation middleware
+func (sh *strictHandler) ListAuditEvents(w http.ResponseWriter, r *http.Request, params ListAuditEventsParams) {
+	var request ListAuditEventsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAuditEvents(ctx, request.(ListAuditEventsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAuditEvents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAuditEventsResponseObject); ok {
+		if err := validResponse.VisitListAuditEventsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAuditEvent operation middleware
+func (sh *strictHandler) GetAuditEvent(w http.ResponseWriter, r *http.Request, eventId Uuid) {
+	var request GetAuditEventRequestObject
+
+	request.EventId = eventId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAuditEvent(ctx, request.(GetAuditEventRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAuditEvent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAuditEventResponseObject); ok {
+		if err := validResponse.VisitGetAuditEventResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListAuthProviders operation middleware
+func (sh *strictHandler) ListAuthProviders(w http.ResponseWriter, r *http.Request) {
+	var request ListAuthProvidersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListAuthProviders(ctx, request.(ListAuthProvidersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListAuthProviders")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListAuthProvidersResponseObject); ok {
+		if err := validResponse.VisitListAuthProvidersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateAuthProvider operation middleware
+func (sh *strictHandler) CreateAuthProvider(w http.ResponseWriter, r *http.Request) {
+	var request CreateAuthProviderRequestObject
+
+	var body CreateAuthProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateAuthProvider(ctx, request.(CreateAuthProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateAuthProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateAuthProviderResponseObject); ok {
+		if err := validResponse.VisitCreateAuthProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteAuthProvider operation middleware
+func (sh *strictHandler) DeleteAuthProvider(w http.ResponseWriter, r *http.Request, providerId Uuid) {
+	var request DeleteAuthProviderRequestObject
+
+	request.ProviderId = providerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteAuthProvider(ctx, request.(DeleteAuthProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteAuthProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteAuthProviderResponseObject); ok {
+		if err := validResponse.VisitDeleteAuthProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAuthProvider operation middleware
+func (sh *strictHandler) GetAuthProvider(w http.ResponseWriter, r *http.Request, providerId Uuid) {
+	var request GetAuthProviderRequestObject
+
+	request.ProviderId = providerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAuthProvider(ctx, request.(GetAuthProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAuthProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAuthProviderResponseObject); ok {
+		if err := validResponse.VisitGetAuthProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateAuthProvider operation middleware
+func (sh *strictHandler) UpdateAuthProvider(w http.ResponseWriter, r *http.Request, providerId Uuid) {
+	var request UpdateAuthProviderRequestObject
+
+	request.ProviderId = providerId
+
+	var body UpdateAuthProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateAuthProvider(ctx, request.(UpdateAuthProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateAuthProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateAuthProviderResponseObject); ok {
+		if err := validResponse.VisitUpdateAuthProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCertificateIssuers operation middleware
+func (sh *strictHandler) ListCertificateIssuers(w http.ResponseWriter, r *http.Request) {
+	var request ListCertificateIssuersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCertificateIssuers(ctx, request.(ListCertificateIssuersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCertificateIssuers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCertificateIssuersResponseObject); ok {
+		if err := validResponse.VisitListCertificateIssuersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCertificateIssuer operation middleware
+func (sh *strictHandler) CreateCertificateIssuer(w http.ResponseWriter, r *http.Request) {
+	var request CreateCertificateIssuerRequestObject
+
+	var body CreateCertificateIssuerJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCertificateIssuer(ctx, request.(CreateCertificateIssuerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCertificateIssuer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCertificateIssuerResponseObject); ok {
+		if err := validResponse.VisitCreateCertificateIssuerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteCertificateIssuer operation middleware
+func (sh *strictHandler) DeleteCertificateIssuer(w http.ResponseWriter, r *http.Request, issuerId Uuid) {
+	var request DeleteCertificateIssuerRequestObject
+
+	request.IssuerId = issuerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteCertificateIssuer(ctx, request.(DeleteCertificateIssuerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteCertificateIssuer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteCertificateIssuerResponseObject); ok {
+		if err := validResponse.VisitDeleteCertificateIssuerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCertificateIssuer operation middleware
+func (sh *strictHandler) GetCertificateIssuer(w http.ResponseWriter, r *http.Request, issuerId Uuid) {
+	var request GetCertificateIssuerRequestObject
+
+	request.IssuerId = issuerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCertificateIssuer(ctx, request.(GetCertificateIssuerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCertificateIssuer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCertificateIssuerResponseObject); ok {
+		if err := validResponse.VisitGetCertificateIssuerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateCertificateIssuer operation middleware
+func (sh *strictHandler) UpdateCertificateIssuer(w http.ResponseWriter, r *http.Request, issuerId Uuid) {
+	var request UpdateCertificateIssuerRequestObject
+
+	request.IssuerId = issuerId
+
+	var body UpdateCertificateIssuerJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateCertificateIssuer(ctx, request.(UpdateCertificateIssuerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateCertificateIssuer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateCertificateIssuerResponseObject); ok {
+		if err := validResponse.VisitUpdateCertificateIssuerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCertificates operation middleware
+func (sh *strictHandler) ListCertificates(w http.ResponseWriter, r *http.Request, params ListCertificatesParams) {
+	var request ListCertificatesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCertificates(ctx, request.(ListCertificatesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCertificates")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListCertificatesResponseObject); ok {
+		if err := validResponse.VisitListCertificatesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// IssueCertificate operation middleware
+func (sh *strictHandler) IssueCertificate(w http.ResponseWriter, r *http.Request) {
+	var request IssueCertificateRequestObject
+
+	var body IssueCertificateJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.IssueCertificate(ctx, request.(IssueCertificateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "IssueCertificate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(IssueCertificateResponseObject); ok {
+		if err := validResponse.VisitIssueCertificateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCertificate operation middleware
+func (sh *strictHandler) GetCertificate(w http.ResponseWriter, r *http.Request, certificateId CertificateId) {
+	var request GetCertificateRequestObject
+
+	request.CertificateId = certificateId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCertificate(ctx, request.(GetCertificateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCertificate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCertificateResponseObject); ok {
+		if err := validResponse.VisitGetCertificateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RenewCertificate operation middleware
+func (sh *strictHandler) RenewCertificate(w http.ResponseWriter, r *http.Request, certificateId CertificateId) {
+	var request RenewCertificateRequestObject
+
+	request.CertificateId = certificateId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RenewCertificate(ctx, request.(RenewCertificateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RenewCertificate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RenewCertificateResponseObject); ok {
+		if err := validResponse.VisitRenewCertificateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevokeCertificate operation middleware
+func (sh *strictHandler) RevokeCertificate(w http.ResponseWriter, r *http.Request, certificateId CertificateId) {
+	var request RevokeCertificateRequestObject
+
+	request.CertificateId = certificateId
+
+	var body RevokeCertificateJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeCertificate(ctx, request.(RevokeCertificateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeCertificate")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevokeCertificateResponseObject); ok {
+		if err := validResponse.VisitRevokeCertificateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListDNSProviders operation middleware
+func (sh *strictHandler) ListDNSProviders(w http.ResponseWriter, r *http.Request) {
+	var request ListDNSProvidersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListDNSProviders(ctx, request.(ListDNSProvidersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListDNSProviders")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListDNSProvidersResponseObject); ok {
+		if err := validResponse.VisitListDNSProvidersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateDNSProvider operation middleware
+func (sh *strictHandler) CreateDNSProvider(w http.ResponseWriter, r *http.Request) {
+	var request CreateDNSProviderRequestObject
+
+	var body CreateDNSProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateDNSProvider(ctx, request.(CreateDNSProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateDNSProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateDNSProviderResponseObject); ok {
+		if err := validResponse.VisitCreateDNSProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteDNSProvider operation middleware
+func (sh *strictHandler) DeleteDNSProvider(w http.ResponseWriter, r *http.Request, providerId Uuid) {
+	var request DeleteDNSProviderRequestObject
+
+	request.ProviderId = providerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteDNSProvider(ctx, request.(DeleteDNSProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteDNSProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteDNSProviderResponseObject); ok {
+		if err := validResponse.VisitDeleteDNSProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetDNSProvider operation middleware
+func (sh *strictHandler) GetDNSProvider(w http.ResponseWriter, r *http.Request, providerId Uuid) {
+	var request GetDNSProviderRequestObject
+
+	request.ProviderId = providerId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetDNSProvider(ctx, request.(GetDNSProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetDNSProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetDNSProviderResponseObject); ok {
+		if err := validResponse.VisitGetDNSProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateDNSProvider operation middleware
+func (sh *strictHandler) UpdateDNSProvider(w http.ResponseWriter, r *http.Request, providerId Uuid) {
+	var request UpdateDNSProviderRequestObject
+
+	request.ProviderId = providerId
+
+	var body UpdateDNSProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateDNSProvider(ctx, request.(UpdateDNSProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateDNSProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateDNSProviderResponseObject); ok {
+		if err := validResponse.VisitUpdateDNSProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListInstanceDomains operation middleware
+func (sh *strictHandler) ListInstanceDomains(w http.ResponseWriter, r *http.Request) {
+	var request ListInstanceDomainsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListInstanceDomains(ctx, request.(ListInstanceDomainsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListInstanceDomains")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListInstanceDomainsResponseObject); ok {
+		if err := validResponse.VisitListInstanceDomainsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateInstanceDomain operation middleware
+func (sh *strictHandler) CreateInstanceDomain(w http.ResponseWriter, r *http.Request) {
+	var request CreateInstanceDomainRequestObject
+
+	var body CreateInstanceDomainJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateInstanceDomain(ctx, request.(CreateInstanceDomainRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateInstanceDomain")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateInstanceDomainResponseObject); ok {
+		if err := validResponse.VisitCreateInstanceDomainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteInstanceDomain operation middleware
+func (sh *strictHandler) DeleteInstanceDomain(w http.ResponseWriter, r *http.Request, domainId Uuid) {
+	var request DeleteInstanceDomainRequestObject
+
+	request.DomainId = domainId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteInstanceDomain(ctx, request.(DeleteInstanceDomainRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteInstanceDomain")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteInstanceDomainResponseObject); ok {
+		if err := validResponse.VisitDeleteInstanceDomainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetInstanceDomain operation middleware
+func (sh *strictHandler) GetInstanceDomain(w http.ResponseWriter, r *http.Request, domainId Uuid) {
+	var request GetInstanceDomainRequestObject
+
+	request.DomainId = domainId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetInstanceDomain(ctx, request.(GetInstanceDomainRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetInstanceDomain")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetInstanceDomainResponseObject); ok {
+		if err := validResponse.VisitGetInstanceDomainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateInstanceDomain operation middleware
+func (sh *strictHandler) UpdateInstanceDomain(w http.ResponseWriter, r *http.Request, domainId Uuid) {
+	var request UpdateInstanceDomainRequestObject
+
+	request.DomainId = domainId
+
+	var body UpdateInstanceDomainJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateInstanceDomain(ctx, request.(UpdateInstanceDomainRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateInstanceDomain")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateInstanceDomainResponseObject); ok {
+		if err := validResponse.VisitUpdateInstanceDomainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ListRelays operation middleware
@@ -10775,7 +21968,7 @@ func (sh *strictHandler) CreateRelayToken(w http.ResponseWriter, r *http.Request
 }
 
 // RevokeRelayToken operation middleware
-func (sh *strictHandler) RevokeRelayToken(w http.ResponseWriter, r *http.Request, tokenId string) {
+func (sh *strictHandler) RevokeRelayToken(w http.ResponseWriter, r *http.Request, tokenId Uuid) {
 	var request RevokeRelayTokenRequestObject
 
 	request.TokenId = tokenId
@@ -10801,10 +21994,10 @@ func (sh *strictHandler) RevokeRelayToken(w http.ResponseWriter, r *http.Request
 }
 
 // RemoveRelay operation middleware
-func (sh *strictHandler) RemoveRelay(w http.ResponseWriter, r *http.Request, relay RelayName) {
+func (sh *strictHandler) RemoveRelay(w http.ResponseWriter, r *http.Request, relayId RelayId) {
 	var request RemoveRelayRequestObject
 
-	request.Relay = relay
+	request.RelayId = relayId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.RemoveRelay(ctx, request.(RemoveRelayRequestObject))
@@ -10827,10 +22020,10 @@ func (sh *strictHandler) RemoveRelay(w http.ResponseWriter, r *http.Request, rel
 }
 
 // GetRelay operation middleware
-func (sh *strictHandler) GetRelay(w http.ResponseWriter, r *http.Request, relay RelayName) {
+func (sh *strictHandler) GetRelay(w http.ResponseWriter, r *http.Request, relayId RelayId) {
 	var request GetRelayRequestObject
 
-	request.Relay = relay
+	request.RelayId = relayId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetRelay(ctx, request.(GetRelayRequestObject))
@@ -10853,10 +22046,10 @@ func (sh *strictHandler) GetRelay(w http.ResponseWriter, r *http.Request, relay 
 }
 
 // ListRelayCerts operation middleware
-func (sh *strictHandler) ListRelayCerts(w http.ResponseWriter, r *http.Request, relay RelayName) {
+func (sh *strictHandler) ListRelayCerts(w http.ResponseWriter, r *http.Request, relayId RelayId) {
 	var request ListRelayCertsRequestObject
 
-	request.Relay = relay
+	request.RelayId = relayId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListRelayCerts(ctx, request.(ListRelayCertsRequestObject))
@@ -10926,6 +22119,232 @@ func (sh *strictHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ListUsers operation middleware
+func (sh *strictHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	var request ListUsersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListUsers(ctx, request.(ListUsersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListUsers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListUsersResponseObject); ok {
+		if err := validResponse.VisitListUsersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpsertUser operation middleware
+func (sh *strictHandler) UpsertUser(w http.ResponseWriter, r *http.Request) {
+	var request UpsertUserRequestObject
+
+	var body UpsertUserJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpsertUser(ctx, request.(UpsertUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpsertUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpsertUserResponseObject); ok {
+		if err := validResponse.VisitUpsertUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteUser operation middleware
+func (sh *strictHandler) DeleteUser(w http.ResponseWriter, r *http.Request, userId Uuid) {
+	var request DeleteUserRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteUser(ctx, request.(DeleteUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteUserResponseObject); ok {
+		if err := validResponse.VisitDeleteUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetUser operation middleware
+func (sh *strictHandler) GetUser(w http.ResponseWriter, r *http.Request, userId Uuid) {
+	var request GetUserRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetUser(ctx, request.(GetUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetUserResponseObject); ok {
+		if err := validResponse.VisitGetUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListUserIdentities operation middleware
+func (sh *strictHandler) ListUserIdentities(w http.ResponseWriter, r *http.Request, userId Uuid) {
+	var request ListUserIdentitiesRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListUserIdentities(ctx, request.(ListUserIdentitiesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListUserIdentities")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListUserIdentitiesResponseObject); ok {
+		if err := validResponse.VisitListUserIdentitiesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// LinkUserIdentity operation middleware
+func (sh *strictHandler) LinkUserIdentity(w http.ResponseWriter, r *http.Request, userId Uuid) {
+	var request LinkUserIdentityRequestObject
+
+	request.UserId = userId
+
+	var body LinkUserIdentityJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.LinkUserIdentity(ctx, request.(LinkUserIdentityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "LinkUserIdentity")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LinkUserIdentityResponseObject); ok {
+		if err := validResponse.VisitLinkUserIdentityResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UnlinkUserIdentity operation middleware
+func (sh *strictHandler) UnlinkUserIdentity(w http.ResponseWriter, r *http.Request, userId Uuid, identityId Uuid) {
+	var request UnlinkUserIdentityRequestObject
+
+	request.UserId = userId
+	request.IdentityId = identityId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UnlinkUserIdentity(ctx, request.(UnlinkUserIdentityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UnlinkUserIdentity")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UnlinkUserIdentityResponseObject); ok {
+		if err := validResponse.VisitUnlinkUserIdentityResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetUserInstanceAdmin operation middleware
+func (sh *strictHandler) SetUserInstanceAdmin(w http.ResponseWriter, r *http.Request, userId Uuid) {
+	var request SetUserInstanceAdminRequestObject
+
+	request.UserId = userId
+
+	var body SetUserInstanceAdminJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetUserInstanceAdmin(ctx, request.(SetUserInstanceAdminRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetUserInstanceAdmin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetUserInstanceAdminResponseObject); ok {
+		if err := validResponse.VisitSetUserInstanceAdminResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListWorkspaces operation middleware
 func (sh *strictHandler) ListWorkspaces(w http.ResponseWriter, r *http.Request) {
 	var request ListWorkspacesRequestObject
@@ -10982,10 +22401,10 @@ func (sh *strictHandler) CreateWorkspace(w http.ResponseWriter, r *http.Request)
 }
 
 // DeleteWorkspace operation middleware
-func (sh *strictHandler) DeleteWorkspace(w http.ResponseWriter, r *http.Request, ws WorkspaceName, params DeleteWorkspaceParams) {
+func (sh *strictHandler) DeleteWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params DeleteWorkspaceParams) {
 	var request DeleteWorkspaceRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -11009,10 +22428,10 @@ func (sh *strictHandler) DeleteWorkspace(w http.ResponseWriter, r *http.Request,
 }
 
 // GetWorkspace operation middleware
-func (sh *strictHandler) GetWorkspace(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) GetWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request GetWorkspaceRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetWorkspace(ctx, request.(GetWorkspaceRequestObject))
@@ -11034,96 +22453,11 @@ func (sh *strictHandler) GetWorkspace(w http.ResponseWriter, r *http.Request, ws
 	}
 }
 
-// UpdateWorkspace operation middleware
-func (sh *strictHandler) UpdateWorkspace(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
-	var request UpdateWorkspaceRequestObject
-
-	request.Ws = ws
-
-	var body UpdateWorkspaceJSONRequestBody
-	if err := runtime.BindJSONBody(r, &body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateWorkspace(ctx, request.(UpdateWorkspaceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateWorkspace")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UpdateWorkspaceResponseObject); ok {
-		if err := validResponse.VisitUpdateWorkspaceResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListCerts operation middleware
-func (sh *strictHandler) ListCerts(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
-	var request ListCertsRequestObject
-
-	request.Ws = ws
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListCerts(ctx, request.(ListCertsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListCerts")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListCertsResponseObject); ok {
-		if err := validResponse.VisitListCertsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// RenewCert operation middleware
-func (sh *strictHandler) RenewCert(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
-	var request RenewCertRequestObject
-
-	request.Ws = ws
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.RenewCert(ctx, request.(RenewCertRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "RenewCert")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(RenewCertResponseObject); ok {
-		if err := validResponse.VisitRenewCertResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // ListGroups operation middleware
-func (sh *strictHandler) ListGroups(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) ListGroups(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request ListGroupsRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListGroups(ctx, request.(ListGroupsRequestObject))
@@ -11146,10 +22480,10 @@ func (sh *strictHandler) ListGroups(w http.ResponseWriter, r *http.Request, ws W
 }
 
 // CreateGroup operation middleware
-func (sh *strictHandler) CreateGroup(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) CreateGroup(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request CreateGroupRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	var body CreateGroupJSONRequestBody
 	if err := runtime.BindJSONBody(r, &body); err != nil {
@@ -11179,11 +22513,11 @@ func (sh *strictHandler) CreateGroup(w http.ResponseWriter, r *http.Request, ws 
 }
 
 // DeleteGroup operation middleware
-func (sh *strictHandler) DeleteGroup(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName) {
+func (sh *strictHandler) DeleteGroup(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId) {
 	var request DeleteGroupRequestObject
 
-	request.Ws = ws
-	request.Group = group
+	request.WorkspaceId = workspaceId
+	request.GroupId = groupId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.DeleteGroup(ctx, request.(DeleteGroupRequestObject))
@@ -11206,11 +22540,11 @@ func (sh *strictHandler) DeleteGroup(w http.ResponseWriter, r *http.Request, ws 
 }
 
 // GetGroup operation middleware
-func (sh *strictHandler) GetGroup(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName) {
+func (sh *strictHandler) GetGroup(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId) {
 	var request GetGroupRequestObject
 
-	request.Ws = ws
-	request.Group = group
+	request.WorkspaceId = workspaceId
+	request.GroupId = groupId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetGroup(ctx, request.(GetGroupRequestObject))
@@ -11232,27 +22566,27 @@ func (sh *strictHandler) GetGroup(w http.ResponseWriter, r *http.Request, ws Wor
 	}
 }
 
-// RemoveGroupMember operation middleware
-func (sh *strictHandler) RemoveGroupMember(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName, node NodeName) {
-	var request RemoveGroupMemberRequestObject
+// RemoveGroupNode operation middleware
+func (sh *strictHandler) RemoveGroupNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId) {
+	var request RemoveGroupNodeRequestObject
 
-	request.Ws = ws
-	request.Group = group
-	request.Node = node
+	request.WorkspaceId = workspaceId
+	request.GroupId = groupId
+	request.NodeId = nodeId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.RemoveGroupMember(ctx, request.(RemoveGroupMemberRequestObject))
+		return sh.ssi.RemoveGroupNode(ctx, request.(RemoveGroupNodeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "RemoveGroupMember")
+		handler = middleware(handler, "RemoveGroupNode")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(RemoveGroupMemberResponseObject); ok {
-		if err := validResponse.VisitRemoveGroupMemberResponse(w); err != nil {
+	} else if validResponse, ok := response.(RemoveGroupNodeResponseObject); ok {
+		if err := validResponse.VisitRemoveGroupNodeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -11260,27 +22594,113 @@ func (sh *strictHandler) RemoveGroupMember(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// AddGroupMember operation middleware
-func (sh *strictHandler) AddGroupMember(w http.ResponseWriter, r *http.Request, ws WorkspaceName, group GroupName, node NodeName) {
-	var request AddGroupMemberRequestObject
+// AddGroupNode operation middleware
+func (sh *strictHandler) AddGroupNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, groupId GroupId, nodeId NodeId) {
+	var request AddGroupNodeRequestObject
 
-	request.Ws = ws
-	request.Group = group
-	request.Node = node
+	request.WorkspaceId = workspaceId
+	request.GroupId = groupId
+	request.NodeId = nodeId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AddGroupMember(ctx, request.(AddGroupMemberRequestObject))
+		return sh.ssi.AddGroupNode(ctx, request.(AddGroupNodeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AddGroupMember")
+		handler = middleware(handler, "AddGroupNode")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AddGroupMemberResponseObject); ok {
-		if err := validResponse.VisitAddGroupMemberResponse(w); err != nil {
+	} else if validResponse, ok := response.(AddGroupNodeResponseObject); ok {
+		if err := validResponse.VisitAddGroupNodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWorkspaceMembers operation middleware
+func (sh *strictHandler) ListWorkspaceMembers(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request ListWorkspaceMembersRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkspaceMembers(ctx, request.(ListWorkspaceMembersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkspaceMembers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWorkspaceMembersResponseObject); ok {
+		if err := validResponse.VisitListWorkspaceMembersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpsertWorkspaceMember operation middleware
+func (sh *strictHandler) UpsertWorkspaceMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request UpsertWorkspaceMemberRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body UpsertWorkspaceMemberJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpsertWorkspaceMember(ctx, request.(UpsertWorkspaceMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpsertWorkspaceMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpsertWorkspaceMemberResponseObject); ok {
+		if err := validResponse.VisitUpsertWorkspaceMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveWorkspaceMember operation middleware
+func (sh *strictHandler) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId Uuid) {
+	var request RemoveWorkspaceMemberRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveWorkspaceMember(ctx, request.(RemoveWorkspaceMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveWorkspaceMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveWorkspaceMemberResponseObject); ok {
+		if err := validResponse.VisitRemoveWorkspaceMemberResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -11289,10 +22709,10 @@ func (sh *strictHandler) AddGroupMember(w http.ResponseWriter, r *http.Request, 
 }
 
 // ListNodes operation middleware
-func (sh *strictHandler) ListNodes(w http.ResponseWriter, r *http.Request, ws WorkspaceName, params ListNodesParams) {
+func (sh *strictHandler) ListNodes(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListNodesParams) {
 	var request ListNodesRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -11316,11 +22736,11 @@ func (sh *strictHandler) ListNodes(w http.ResponseWriter, r *http.Request, ws Wo
 }
 
 // RemoveNode operation middleware
-func (sh *strictHandler) RemoveNode(w http.ResponseWriter, r *http.Request, ws WorkspaceName, node NodeName) {
+func (sh *strictHandler) RemoveNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, nodeId NodeId) {
 	var request RemoveNodeRequestObject
 
-	request.Ws = ws
-	request.Node = node
+	request.WorkspaceId = workspaceId
+	request.NodeId = nodeId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.RemoveNode(ctx, request.(RemoveNodeRequestObject))
@@ -11343,11 +22763,11 @@ func (sh *strictHandler) RemoveNode(w http.ResponseWriter, r *http.Request, ws W
 }
 
 // GetNode operation middleware
-func (sh *strictHandler) GetNode(w http.ResponseWriter, r *http.Request, ws WorkspaceName, node NodeName) {
+func (sh *strictHandler) GetNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, nodeId NodeId) {
 	var request GetNodeRequestObject
 
-	request.Ws = ws
-	request.Node = node
+	request.WorkspaceId = workspaceId
+	request.NodeId = nodeId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetNode(ctx, request.(GetNodeRequestObject))
@@ -11370,11 +22790,11 @@ func (sh *strictHandler) GetNode(w http.ResponseWriter, r *http.Request, ws Work
 }
 
 // UpdateNode operation middleware
-func (sh *strictHandler) UpdateNode(w http.ResponseWriter, r *http.Request, ws WorkspaceName, node NodeName) {
+func (sh *strictHandler) UpdateNode(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, nodeId NodeId) {
 	var request UpdateNodeRequestObject
 
-	request.Ws = ws
-	request.Node = node
+	request.WorkspaceId = workspaceId
+	request.NodeId = nodeId
 
 	var body UpdateNodeJSONRequestBody
 	if err := runtime.BindJSONBody(r, &body); err != nil {
@@ -11404,10 +22824,10 @@ func (sh *strictHandler) UpdateNode(w http.ResponseWriter, r *http.Request, ws W
 }
 
 // ListPolicies operation middleware
-func (sh *strictHandler) ListPolicies(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) ListPolicies(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request ListPoliciesRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListPolicies(ctx, request.(ListPoliciesRequestObject))
@@ -11430,10 +22850,10 @@ func (sh *strictHandler) ListPolicies(w http.ResponseWriter, r *http.Request, ws
 }
 
 // AddPolicy operation middleware
-func (sh *strictHandler) AddPolicy(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) AddPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request AddPolicyRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	var body AddPolicyJSONRequestBody
 	if err := runtime.BindJSONBody(r, &body); err != nil {
@@ -11463,10 +22883,10 @@ func (sh *strictHandler) AddPolicy(w http.ResponseWriter, r *http.Request, ws Wo
 }
 
 // ReplacePolicies operation middleware
-func (sh *strictHandler) ReplacePolicies(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) ReplacePolicies(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request ReplacePoliciesRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	var body ReplacePoliciesJSONRequestBody
 	if err := runtime.BindJSONBody(r, &body); err != nil {
@@ -11496,10 +22916,10 @@ func (sh *strictHandler) ReplacePolicies(w http.ResponseWriter, r *http.Request,
 }
 
 // DeletePolicy operation middleware
-func (sh *strictHandler) DeletePolicy(w http.ResponseWriter, r *http.Request, ws WorkspaceName, policyId string) {
+func (sh *strictHandler) DeletePolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, policyId Uuid) {
 	var request DeletePolicyRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 	request.PolicyId = policyId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -11523,10 +22943,10 @@ func (sh *strictHandler) DeletePolicy(w http.ResponseWriter, r *http.Request, ws
 }
 
 // GetRouteTable operation middleware
-func (sh *strictHandler) GetRouteTable(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) GetRouteTable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request GetRouteTableRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetRouteTable(ctx, request.(GetRouteTableRequestObject))
@@ -11549,10 +22969,10 @@ func (sh *strictHandler) GetRouteTable(w http.ResponseWriter, r *http.Request, w
 }
 
 // AddRoute operation middleware
-func (sh *strictHandler) AddRoute(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) AddRoute(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request AddRouteRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	var body AddRouteJSONRequestBody
 	if err := runtime.BindJSONBody(r, &body); err != nil {
@@ -11582,10 +23002,10 @@ func (sh *strictHandler) AddRoute(w http.ResponseWriter, r *http.Request, ws Wor
 }
 
 // ReplaceRouteTable operation middleware
-func (sh *strictHandler) ReplaceRouteTable(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) ReplaceRouteTable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request ReplaceRouteTableRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	var body ReplaceRouteTableJSONRequestBody
 	if err := runtime.BindJSONBody(r, &body); err != nil {
@@ -11615,10 +23035,10 @@ func (sh *strictHandler) ReplaceRouteTable(w http.ResponseWriter, r *http.Reques
 }
 
 // DeleteRoute operation middleware
-func (sh *strictHandler) DeleteRoute(w http.ResponseWriter, r *http.Request, ws WorkspaceName, routeId string) {
+func (sh *strictHandler) DeleteRoute(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, routeId Uuid) {
 	var request DeleteRouteRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 	request.RouteId = routeId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -11642,10 +23062,10 @@ func (sh *strictHandler) DeleteRoute(w http.ResponseWriter, r *http.Request, ws 
 }
 
 // ListServices operation middleware
-func (sh *strictHandler) ListServices(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) ListServices(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request ListServicesRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListServices(ctx, request.(ListServicesRequestObject))
@@ -11668,10 +23088,10 @@ func (sh *strictHandler) ListServices(w http.ResponseWriter, r *http.Request, ws
 }
 
 // ListTokens operation middleware
-func (sh *strictHandler) ListTokens(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) ListTokens(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request ListTokensRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListTokens(ctx, request.(ListTokensRequestObject))
@@ -11694,10 +23114,10 @@ func (sh *strictHandler) ListTokens(w http.ResponseWriter, r *http.Request, ws W
 }
 
 // CreateToken operation middleware
-func (sh *strictHandler) CreateToken(w http.ResponseWriter, r *http.Request, ws WorkspaceName) {
+func (sh *strictHandler) CreateToken(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request CreateTokenRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 
 	var body CreateTokenJSONRequestBody
 	if err := runtime.BindJSONBody(r, &body); err != nil {
@@ -11727,10 +23147,10 @@ func (sh *strictHandler) CreateToken(w http.ResponseWriter, r *http.Request, ws 
 }
 
 // RevokeToken operation middleware
-func (sh *strictHandler) RevokeToken(w http.ResponseWriter, r *http.Request, ws WorkspaceName, tokenId string) {
+func (sh *strictHandler) RevokeToken(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, tokenId Uuid) {
 	var request RevokeTokenRequestObject
 
-	request.Ws = ws
+	request.WorkspaceId = workspaceId
 	request.TokenId = tokenId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
@@ -11758,156 +23178,276 @@ func (sh *strictHandler) RevokeToken(w http.ResponseWriter, r *http.Request, ws 
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"w0W7NgV1NZRADJgRaQeBga6B/xkA",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

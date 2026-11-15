@@ -4,6 +4,311 @@
  */
 
 export interface paths {
+    "/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 列出 instance 域名 */
+        get: operations["listInstanceDomains"];
+        put?: never;
+        /** 添加 instance 域名 */
+        post: operations["createInstanceDomain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/domains/{domainId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 域名实体 UUID */
+                domainId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        /** 查看 instance 域名 */
+        get: operations["getInstanceDomain"];
+        /** 更新 instance 域名 */
+        put: operations["updateInstanceDomain"];
+        post?: never;
+        /** 删除 instance 域名 */
+        delete: operations["deleteInstanceDomain"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dns-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 列出 DNS providers */
+        get: operations["listDNSProviders"];
+        put?: never;
+        /** 创建 DNS provider */
+        post: operations["createDNSProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dns-providers/{providerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        /** 查看 DNS provider */
+        get: operations["getDNSProvider"];
+        /** 更新 DNS provider */
+        put: operations["updateDNSProvider"];
+        post?: never;
+        /** 删除 DNS provider */
+        delete: operations["deleteDNSProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certificate-issuers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 列出 certificate issuers */
+        get: operations["listCertificateIssuers"];
+        put?: never;
+        /** 创建 certificate issuer */
+        post: operations["createCertificateIssuer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certificate-issuers/{issuerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issuerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        /** 查看 certificate issuer */
+        get: operations["getCertificateIssuer"];
+        /** 更新 certificate issuer */
+        put: operations["updateCertificateIssuer"];
+        post?: never;
+        /** 删除 certificate issuer */
+        delete: operations["deleteCertificateIssuer"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 列出认证 providers */
+        get: operations["listAuthProviders"];
+        put?: never;
+        /** 创建认证 provider */
+        post: operations["createAuthProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth-providers/{providerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        /** 查看认证 provider */
+        get: operations["getAuthProvider"];
+        /** 更新认证 provider */
+        put: operations["updateAuthProvider"];
+        post?: never;
+        /** 删除认证 provider */
+        delete: operations["deleteAuthProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 列出全局用户
+         * @description 用户目录是 instance 级资源；workspace 成员关系只保存角色，不复制用户资料。
+         */
+        get: operations["listUsers"];
+        put?: never;
+        /** 创建或更新全局用户 */
+        post: operations["upsertUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        /** 查看全局用户 */
+        get: operations["getUser"];
+        put?: never;
+        post?: never;
+        /**
+         * 删除全局用户
+         * @description 删除用户目录记录，同时移除其所有 workspace membership；审计记录保留 subject 的不可逆摘要。
+         */
+        delete: operations["deleteUser"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/instance-admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 授予或撤销 instance admin
+         * @description 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。
+         */
+        post: operations["setUserInstanceAdmin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        /** 列出用户的外部认证 identity */
+        get: operations["listUserIdentities"];
+        put?: never;
+        /** 将外部认证 identity 关联到用户 */
+        post: operations["linkUserIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/identities/{identityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["schemas"]["Uuid"];
+                identityId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 解除外部认证 identity */
+        delete: operations["unlinkUserIdentity"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询全局审计记录
+         * @description instance admin 可查询整个 instance 的所有写入事件；响应不包含 token、凭据、私钥或其他敏感正文。
+         */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/audit/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        /** 查看审计事件 */
+        get: operations["getAuditEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/server": {
         parameters: {
             query?: never;
@@ -13,7 +318,7 @@ export interface paths {
         };
         /**
          * 服务端信息
-         * @description 对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。
+         * @description agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。
          */
         get: operations["getServer"];
         put?: never;
@@ -41,6 +346,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 列出 instance 的全部证书
+         * @description 返回 workspace wildcard、relay 和 agentserver 自身证书的统一生命周期视图。私钥和证书链正文不在此接口返回。
+         */
+        get: operations["listCertificates"];
+        put?: never;
+        /**
+         * 签发或重新签发证书
+         * @description 为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。
+         */
+        post: operations["issueCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certificates/{certificateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。 */
+                certificateId: components["parameters"]["CertificateId"];
+            };
+            cookie?: never;
+        };
+        /** 查看证书生命周期状态 */
+        get: operations["getCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certificates/{certificateId}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。 */
+                certificateId: components["parameters"]["CertificateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 立即续期证书
+         * @description 异步触发续期；证书进入 renewing，成功后回到 ready，失败保留旧证书并记录 last_error。 已 revoked 的证书不能自动续期，需先重新签发。
+         */
+        post: operations["renewCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certificates/{certificateId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。 */
+                certificateId: components["parameters"]["CertificateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 吊销证书
+         * @description 立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。
+         */
+        post: operations["revokeCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/workspaces": {
         parameters: {
             query?: never;
@@ -48,13 +443,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 列出 workspace */
+        /**
+         * 列出 workspace
+         * @description 返回 instance 中的全部 workspace。普通用户的 membership 列表使用普通用户 API 的 `GET /api/v1/workspaces`，不调用此 admin operation。
+         */
         get: operations["listWorkspaces"];
         put?: never;
         /**
          * 创建 workspace
-         * @description 对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-         *     完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+         * @description 生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+         *     workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
          */
         post: operations["createWorkspace"];
         delete?: never;
@@ -63,57 +461,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}": {
+    "/workspaces/{workspaceId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
         /**
-         * 查看 workspace（含公钥、证书状态、指派的 relay）
-         * @description `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。
+         * 查看 workspace（公钥、基础域名、状态和证书）
+         * @description `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`。
          */
         get: operations["getWorkspace"];
         put?: never;
         post?: never;
         /**
          * 删除 workspace
-         * @description 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。
+         * @description 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书；成员的密钥文件不受影响。
          */
         delete: operations["deleteWorkspace"];
         options?: never;
         head?: never;
-        /**
-         * 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-         * @description 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-         */
-        patch: operations["updateWorkspace"];
+        patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/tokens": {
+    "/workspaces/{workspaceId}/tokens": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
         /**
          * 列出未使用的加入令牌
-         * @description 对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。
+         * @description 服务端只存令牌的 SHA-256，列表里没有令牌本身。
          */
         get: operations["listTokens"];
         put?: never;
         /**
          * 签发加入令牌并返回加入链接
-         * @description 对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-         *     返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+         * @description 令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+         *     agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+         *     再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
          *     令牌明文只在这次响应里出现一次。
          */
         post: operations["createToken"];
@@ -123,43 +518,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/tokens/{tokenId}": {
+    "/workspaces/{workspaceId}/tokens/{tokenId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                tokenId: string;
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                tokenId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * 作废未使用的令牌
-         * @description 对应 `agentserver token revoke`。
-         */
+        /** 作废未使用的令牌 */
         delete: operations["revokeToken"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/nodes": {
+    "/workspaces/{workspaceId}/members": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        /** 列出 workspace 成员 */
+        get: operations["listWorkspaceMembers"];
+        put?: never;
+        /** 添加或调整 用户角色 */
+        post: operations["upsertWorkspaceMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspaceId}/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description workspace membership 实体 UUID */
+                memberId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 移除 workspace 成员 */
+        delete: operations["removeWorkspaceMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/workspaces/{workspaceId}/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
         /**
          * 列出成员
-         * @description 对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。
+         * @description 在线状态与所连 relay 来自 relay 的 `RelayPresence`。
          */
         get: operations["listNodes"];
         put?: never;
@@ -170,15 +605,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/nodes/{node}": {
+    "/workspaces/{workspaceId}/nodes/{nodeId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 实例名 */
-                node: components["parameters"]["NodeName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description node 实体 UUID */
+                nodeId: components["parameters"]["NodeId"];
             };
             cookie?: never;
         };
@@ -188,7 +623,7 @@ export interface paths {
         post?: never;
         /**
          * 移除成员
-         * @description 对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
+         * @description 目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
          *     向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。
          *     换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。
          */
@@ -197,19 +632,19 @@ export interface paths {
         head?: never;
         /**
          * 改名或调整角色上限
-         * @description 对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+         * @description 改名只改目录，其他节点规则里写的是公钥，不受影响；
          *     调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
          */
         patch: operations["updateNode"];
         trace?: never;
     };
-    "/workspaces/{ws}/groups": {
+    "/workspaces/{workspaceId}/groups": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -218,7 +653,7 @@ export interface paths {
         put?: never;
         /**
          * 创建组
-         * @description 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+         * @description 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
          */
         post: operations["createGroup"];
         delete?: never;
@@ -227,15 +662,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/groups/{group}": {
+    "/workspaces/{workspaceId}/groups/{groupId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 组名 */
-                group: components["parameters"]["GroupName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description group 实体 UUID */
+                groupId: components["parameters"]["GroupId"];
             };
             cookie?: never;
         };
@@ -245,7 +680,7 @@ export interface paths {
         post?: never;
         /**
          * 删除组
-         * @description 对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。
+         * @description 向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。
          */
         delete: operations["deleteGroup"];
         options?: never;
@@ -253,44 +688,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/groups/{group}/members/{node}": {
+    "/workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 组名 */
-                group: components["parameters"]["GroupName"];
-                /** @description 实例名 */
-                node: components["parameters"]["NodeName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description group 实体 UUID */
+                groupId: components["parameters"]["GroupId"];
+                /** @description node 实体 UUID */
+                nodeId: components["parameters"]["NodeId"];
             };
             cookie?: never;
         };
         get?: never;
         /**
-         * 把成员加入组
-         * @description 对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
+         * 把 node 加入组
+         * @description 给该 node 签发 group-node membership 证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
          */
-        put: operations["addGroupMember"];
+        put: operations["addGroupNode"];
         post?: never;
         /**
-         * 把成员移出组
-         * @description 对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。
+         * 把 node 移出组
+         * @description 停止续发并推送吊销记录 `(member, issuer, until)`。
          */
-        delete: operations["removeGroupMember"];
+        delete: operations["removeGroupNode"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/routes": {
+    "/workspaces/{workspaceId}/routes": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -306,7 +741,7 @@ export interface paths {
         put: operations["replaceRouteTable"];
         /**
          * 追加一条路由
-         * @description 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。
+         * @description 追加到末尾；同等具体时书写顺序靠前的优先。
          */
         post: operations["addRoute"];
         delete?: never;
@@ -315,37 +750,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/routes/{routeId}": {
+    "/workspaces/{workspaceId}/routes/{routeId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                routeId: string;
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                routeId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * 删除一条路由
-         * @description 对应 `agentserver route remove`。
-         */
+        /** 删除一条路由 */
         delete: operations["deleteRoute"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/policies": {
+    "/workspaces/{workspaceId}/policies": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -364,14 +796,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/policies/{policyId}": {
+    "/workspaces/{workspaceId}/policies/{policyId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                policyId: string;
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                policyId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
@@ -385,13 +817,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/services": {
+    "/workspaces/{workspaceId}/services": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -408,52 +840,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/workspaces/{ws}/certs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-            };
-            cookie?: never;
-        };
-        /**
-         * 查看通配证书
-         * @description 对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。
-         */
-        get: operations["listCerts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/workspaces/{ws}/certs/renew": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 立即续期
-         * @description 对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。
-         */
-        post: operations["renewCert"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/relays": {
         parameters: {
             query?: never;
@@ -463,14 +849,14 @@ export interface paths {
         };
         /**
          * 列出 relay
-         * @description 对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。
+         * @description `connected` 表示 relay 会话当前在线。
          */
         get: operations["listRelays"];
         put?: never;
         /**
          * 注册 relay
-         * @description 对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-         *     relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+         * @description 登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+         *     relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
          */
         post: operations["registerRelay"];
         delete?: never;
@@ -491,7 +877,7 @@ export interface paths {
         put?: never;
         /**
          * 签发 relay 注册令牌
-         * @description 对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。
+         * @description relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。
          */
         post: operations["createRelayToken"];
         delete?: never;
@@ -505,7 +891,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                tokenId: string;
+                tokenId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
@@ -519,13 +905,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/relays/{relay}": {
+    "/relays/{relayId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description relay 名 */
-                relay: components["parameters"]["RelayName"];
+                /** @description relay 实体 UUID */
+                relayId: components["parameters"]["RelayId"];
             };
             cookie?: never;
         };
@@ -535,7 +921,7 @@ export interface paths {
         post?: never;
         /**
          * 注销 relay
-         * @description 对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。
+         * @description relay 进入 deleted 后不再作为 agentd 候选，关闭 relay 会话；已存在证书按生命周期处理。
          */
         delete: operations["removeRelay"];
         options?: never;
@@ -543,19 +929,19 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/relays/{relay}/certs": {
+    "/relays/{relayId}/certs": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description relay 名 */
-                relay: components["parameters"]["RelayName"];
+                /** @description relay 实体 UUID */
+                relayId: components["parameters"]["RelayId"];
             };
             cookie?: never;
         };
         /**
-         * 查看该 relay 在各 workspace 的 relay 证书
-         * @description 每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。
+         * 查看该 relay 持有的 relay 证书
+         * @description relay 按需缓存 workspace 证书；证书由 workspace 密钥签发，与 `/.well-known/agentd?workspace=…` 公布的内容一致。
          */
         get: operations["listRelayCerts"];
         put?: never;
@@ -570,6 +956,292 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description 实例级管理员，可管理 instance 配置、workspace 生命周期与 relay。
+         * @enum {string}
+         */
+        InstanceRole: "instance_admin";
+        /**
+         * @description workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。
+         * @enum {string}
+         */
+        WorkspaceRole: "owner" | "maintainer" | "member";
+        /**
+         * @description 预期访问者。agentd 与 relay 的机器接口是 Noise/transport，不走本 admin API。
+         * @enum {string}
+         */
+        Audience: "web_user" | "agentd" | "relay";
+        InstanceDomain: {
+            readonly id: components["schemas"]["Uuid"];
+            /**
+             * Format: hostname
+             * @description instance 管理的域名或域名后缀，统一小写且不带末尾点。
+             */
+            domain: string;
+            /** @description 是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。 */
+            default: boolean;
+            /** @description agentserver 对该域名配置和证书/DNS 准备情况的状态。 */
+            readonly status?: components["schemas"]["DomainStatus"];
+            /** @description status=failed 时的最近错误。 */
+            readonly last_error?: string;
+            /**
+             * Format: date-time
+             * @description 域名最近一次验证或成功配置的时间。
+             */
+            readonly verified_at?: string;
+            /** @description 负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。 */
+            dns_provider_id?: components["schemas"]["Uuid"];
+            /** @description 为该域名签发证书的 CertificateIssuer.id。 */
+            certificate_issuer_id?: components["schemas"]["Uuid"];
+        };
+        DNSProvider: {
+            readonly id: components["schemas"]["Uuid"];
+            name: components["schemas"]["Label"];
+            /** @enum {string} */
+            kind: "dnspod" | "cloudflare";
+            /** @description 该账号允许操作的 DNS zone；域名按最长后缀匹配。 */
+            zones: string[];
+            /** @description 写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。 */
+            credentials?: {
+                [key: string]: string;
+            };
+            readonly status?: components["schemas"]["DNSProviderStatus"];
+        };
+        CertificateIssuer: {
+            readonly id: components["schemas"]["Uuid"];
+            name: components["schemas"]["Label"];
+            /** @enum {string} */
+            kind: "lets_encrypt" | "google_trust_services";
+            /**
+             * Format: uri
+             * @description ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。
+             */
+            directory: string;
+            /** @description 写入时提交的 EAB key id，不返回。 */
+            eab_key_id?: string;
+            /** @description 写入时提交的 EAB HMAC secret，不返回。 */
+            eab_hmac_key?: string;
+            /** Format: email */
+            email?: string;
+            readonly account_status?: components["schemas"]["IssuerAccountStatus"];
+            /** Format: date-time */
+            readonly account_created_at?: string;
+            readonly status?: components["schemas"]["CertificateIssuerStatus"];
+        };
+        /** @description 可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段， 不改变 auth_providers 集合的资源模型。 */
+        AuthProvider: {
+            /**
+             * @description 第一期开启的认证类型；保留为可扩展 discriminator。
+             * @enum {string}
+             */
+            kind: "oidc";
+            readonly id: components["schemas"]["Uuid"];
+            name: components["schemas"]["Label"];
+            /**
+             * Format: uri
+             * @description OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。
+             */
+            issuer: string;
+            client_id: string;
+            /** @description 写入时提交的 OIDC client secret，不返回明文。 */
+            client_secret?: string;
+            /**
+             * @default [
+             *       "openid",
+             *       "profile",
+             *       "email"
+             *     ]
+             */
+            scopes: string[];
+            /** @description 将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。 */
+            claim_mapping?: {
+                [key: string]: string;
+            };
+            readonly status?: components["schemas"]["AuthProviderStatus"];
+        };
+        InstanceDomainWrite: {
+            /** Format: hostname */
+            domain: string;
+            default: boolean;
+            dns_provider_id?: components["schemas"]["Uuid"];
+            certificate_issuer_id?: components["schemas"]["Uuid"];
+        };
+        DNSProviderWrite: {
+            name: components["schemas"]["Label"];
+            /** @enum {string} */
+            kind: "dnspod" | "cloudflare";
+            zones: string[];
+            credentials?: {
+                [key: string]: string;
+            };
+        };
+        CertificateIssuerWrite: {
+            name: components["schemas"]["Label"];
+            /** @enum {string} */
+            kind: "lets_encrypt" | "google_trust_services";
+            /** Format: uri */
+            directory: string;
+            eab_key_id?: string;
+            eab_hmac_key?: string;
+            /** Format: email */
+            email?: string;
+        };
+        AuthProviderWrite: {
+            name: components["schemas"]["Label"];
+            /** @enum {string} */
+            kind: "oidc";
+            /** Format: uri */
+            issuer: string;
+            client_id: string;
+            client_secret?: string;
+            scopes?: string[];
+            claim_mapping?: {
+                [key: string]: string;
+            };
+        };
+        User: {
+            id: components["schemas"]["Uuid"];
+            /**
+             * Format: email
+             * @description 归并用户的 canonical email；来自已验证的外部 identity。
+             */
+            email: string;
+            /** @description 与 OIDC name claim 同步的用户名称。 */
+            readonly name?: string;
+            /**
+             * Format: uri
+             * @description 与 OIDC picture claim 同步的头像 URL。
+             */
+            readonly picture?: string;
+            /** @description 是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。 */
+            readonly instance_admin?: boolean;
+            status: components["schemas"]["UserStatus"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        UserWrite: {
+            /** Format: email */
+            email: string;
+            /**
+             * @default active
+             * @enum {string}
+             */
+            status: "active" | "disabled";
+        };
+        InstanceAdminGrant: {
+            instance_admin: boolean;
+        };
+        UserIdentity: {
+            id: components["schemas"]["Uuid"];
+            user_id: components["schemas"]["Uuid"];
+            provider_id: components["schemas"]["Uuid"];
+            /** @description 该认证 provider 返回的稳定 subject */
+            subject: string;
+            status: components["schemas"]["UserIdentityStatus"];
+            email_verified?: boolean;
+            /** Format: date-time */
+            last_login_at?: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        UserIdentityWrite: {
+            provider_id: components["schemas"]["Uuid"];
+            subject: string;
+            email_verified?: boolean;
+        };
+        WorkspaceMember: {
+            id: components["schemas"]["Uuid"];
+            user_id: components["schemas"]["Uuid"];
+            role: components["schemas"]["WorkspaceRole"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            status?: components["schemas"]["WorkspaceMemberStatus"];
+        };
+        WorkspaceMemberWrite: {
+            user_id: components["schemas"]["Uuid"];
+            role: components["schemas"]["WorkspaceRole"];
+        };
+        /**
+         * Format: uuid
+         * @description 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+         */
+        Uuid: string;
+        /** @enum {string} */
+        AuditOutcome: "success" | "failure";
+        AuditActor: {
+            /** @enum {string} */
+            kind: "instance_admin" | "user" | "agentd" | "relay" | "system";
+            /** @description actor UUID、external identity 或机器公钥标识 */
+            id: string;
+            auth_provider_id?: components["schemas"]["Uuid"];
+        };
+        AuditEvent: {
+            id: components["schemas"]["Uuid"];
+            /** Format: date-time */
+            occurred_at: string;
+            actor: components["schemas"]["AuditActor"];
+            /** @description 例如 workspace.create、certificate.renew、node.remove */
+            action: string;
+            resource_type: string;
+            resource_id?: components["schemas"]["Uuid"];
+            workspace_id?: components["schemas"]["Uuid"];
+            /** @description 同一个 HTTP/协议请求及其后台任务的关联 ID */
+            request_id: string;
+            outcome: components["schemas"]["AuditOutcome"];
+            error_code?: string;
+            /** @description 已脱敏上下文；不会包含 token、密码、凭据、私钥或证书正文。 */
+            metadata?: {
+                [key: string]: unknown;
+            };
+        };
+        AuditEventPage: {
+            items: components["schemas"]["AuditEvent"][];
+            next_cursor?: string;
+        };
+        /**
+         * @description 域名配置状态；pending 表示等待 DNS/证书等准备，active 表示可用，disabled 表示管理员停用。
+         * @enum {string}
+         */
+        DomainStatus: "pending" | "active" | "disabled" | "failed" | "deleted";
+        /** @enum {string} */
+        DNSProviderStatus: "pending" | "active" | "disabled" | "failed" | "deleted";
+        /** @enum {string} */
+        CertificateIssuerStatus: "pending" | "active" | "disabled" | "failed" | "deleted";
+        /**
+         * @description ACME account 由 agentserver 生成和持久化的状态。
+         * @enum {string}
+         */
+        IssuerAccountStatus: "not_created" | "creating" | "ready" | "failed";
+        /** @enum {string} */
+        AuthProviderStatus: "pending" | "active" | "disabled" | "failed" | "deleted";
+        /** @enum {string} */
+        UserStatus: "pending" | "active" | "disabled" | "deleted";
+        /** @enum {string} */
+        UserIdentityStatus: "active" | "disabled" | "deleted";
+        /** @enum {string} */
+        WorkspaceStatus: "provisioning" | "active" | "disabled" | "failed" | "deleting" | "deleted";
+        /** @enum {string} */
+        WorkspaceMemberStatus: "active" | "suspended" | "revoked" | "deleted";
+        /** @enum {string} */
+        JoinTokenStatus: "active" | "used" | "expired" | "revoked" | "deleted";
+        /** @enum {string} */
+        NodeStatus: "joining" | "active" | "disabled" | "failed" | "removed" | "deleted";
+        /** @enum {string} */
+        GroupStatus: "active" | "disabled" | "deleted";
+        /** @enum {string} */
+        RouteStatus: "active" | "disabled" | "deleted";
+        /** @enum {string} */
+        PolicyStatus: "active" | "disabled" | "deleted";
+        /** @enum {string} */
+        ServiceStatus: "pending" | "ready" | "failed" | "disabled" | "deleted";
+        /** @enum {string} */
+        RelayStatus: "registering" | "active" | "draining" | "disabled" | "failed" | "deleted";
+        /** @enum {string} */
+        RelayTokenStatus: "active" | "used" | "expired" | "revoked" | "deleted";
         /** @description RFC 1123 label，小写，≤ 63 字符 */
         Label: string;
         /** @description Ed25519 公钥，base64url 无填充，43 字符 */
@@ -619,8 +1291,13 @@ export interface components {
                 min?: number;
                 max?: number;
             };
-            /** @description agentserver 的域名，也是 workspace 基础域名的默认父域 */
+            /**
+             * @deprecated
+             * @description 兼容字段；instance 的完整域名配置见 GET /instance.domains
+             */
             domain?: string;
+            /** @description instance 当前管理的全部域名。 */
+            readonly domains?: components["schemas"]["InstanceDomain"][];
         };
         Status: {
             uptime_seconds?: number;
@@ -633,22 +1310,21 @@ export interface components {
             certs_pending?: number;
         };
         Workspace: {
+            id: components["schemas"]["Uuid"];
             name: components["schemas"]["Label"];
-            /** @description 基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>` */
-            base_domain: string;
+            /** @description 创建 workspace 时选择的 instance domain。 */
+            domain_id: components["schemas"]["Uuid"];
+            /** @description agentserver 根据 workspace name 和 domain_id 生成的最终基础域名；服务域名是 `<服务名>.<base_domain>`。 */
+            readonly base_domain: string;
             /** @description workspace 公钥，成员唯一钉住的信任根；加入链接的 `key` */
             public_key: components["schemas"]["PublicKey"];
-            /** @description 名字形式 `agentd://<base_domain>/`，代表这把公钥 */
-            uri?: string;
-            /** @description 指派的 relay 名；MVP 每个 workspace 一个 */
-            relay: string;
-            /** @description 签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider */
-            readonly dns_provider?: string;
-            /** @description 是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问 */
-            publish_dns?: boolean;
-            cert?: components["schemas"]["Cert"];
+            status: components["schemas"]["WorkspaceStatus"];
+            /** @description workspace 用户成员数，来自 workspace_members */
             members?: number;
-            members_online?: number;
+            /** @description workspace 中 agentd 节点总数 */
+            nodes?: number;
+            /** @description 当前与 relay 保持在线会话的 agentd 节点数 */
+            nodes_online?: number;
             routes_version?: number;
             directory_version?: number;
             /** Format: date-time */
@@ -656,20 +1332,11 @@ export interface components {
         };
         WorkspaceCreate: {
             name: components["schemas"]["Label"];
-            /** @description 省略则用 `<name>.<agentserver 域名>`；通配证书由基础域名所在 zone 的 DNS 提供方签发 */
-            base_domain?: string;
-            /** @default false */
-            publish_dns: boolean;
-            /** @description 指派的 relay 名 */
-            relay: string;
-        };
-        WorkspacePatch: {
-            relay?: string;
-            publish_dns?: boolean;
+            /** @description 可选的 instance domain；省略使用 instance 的默认 domain。不能直接提交 base_domain。 */
+            domain_id?: components["schemas"]["Uuid"];
         };
         Token: {
-            /** @description 令牌记录的标识，不是令牌本身 */
-            id: string;
+            id: components["schemas"]["Uuid"];
             /** @description 绑定的实例名；为空表示由加入的设备提出 */
             name?: components["schemas"]["Label"];
             /** @description 角色上限 */
@@ -678,6 +1345,7 @@ export interface components {
             expires_at: string;
             /** Format: date-time */
             created_at: string;
+            status: components["schemas"]["JoinTokenStatus"];
         };
         TokenCreate: {
             name?: components["schemas"]["Label"];
@@ -687,23 +1355,24 @@ export interface components {
             ttl?: string;
         };
         TokenCreated: components["schemas"]["Token"] & {
+            /** @description 一次性 join token；只返回这一次，agentd 用它向 machine join API 查询 candidates 并完成加入。 */
+            join_token: string;
             /**
-             * @description 完整的加入链接，带 relay、key（workspace 公钥）、token；只返回这一次
-             * @example agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.com&key=Rt7aB…&token=Qm9…
+             * @deprecated
+             * @description 完整的加入链接，带 bootstrap relay、key（workspace 公钥）、token；只返回这一次
+             * @example agentd://home.agentsrv.example.com/dorm?key=Rt7aB…&token=Qm9…
              */
-            join_link: string;
+            join_link?: string;
         };
         Node: {
+            id: components["schemas"]["Uuid"];
             name: components["schemas"]["Label"];
             public_key: components["schemas"]["PublicKey"];
-            /** @description `agentd://<公钥>` */
-            uri_key?: string;
-            /** @description `agentd://<base_domain>/<name>` */
-            uri_name?: string;
             role_caps: components["schemas"]["Role"][];
             online: boolean;
-            /** @description 当前所连 relay 名；离线时为空 */
-            relay?: string;
+            status: components["schemas"]["NodeStatus"];
+            /** @description 当前所连 relay 实体 UUID；离线时为空 */
+            relay_id?: components["schemas"]["Uuid"];
             /** Format: date-time */
             last_seen?: string;
             /** Format: date-time */
@@ -728,9 +1397,11 @@ export interface components {
             role_caps?: components["schemas"]["Role"][];
         };
         Group: {
+            id: components["schemas"]["Uuid"];
             name: components["schemas"]["Label"];
-            /** @description 组公钥；节点规则里写它，持有该组成员证书的节点即命中 */
+            /** @description 组公钥；节点规则里写它，持有该组 membership 证书的 node 即命中 */
             public_key: components["schemas"]["PublicKey"];
+            status: components["schemas"]["GroupStatus"];
             /** @description `agentd://<base_domain>/group/<name>` */
             uri?: string;
             members: components["schemas"]["Label"][];
@@ -740,7 +1411,8 @@ export interface components {
             members?: components["schemas"]["Label"][];
         };
         Route: {
-            id: string;
+            id: components["schemas"]["Uuid"];
+            status: components["schemas"]["RouteStatus"];
             /** @description 源：`node:`、`group:` 或 `workspace` */
             from: components["schemas"]["Subject"];
             /** @description 空表示 tls 与 ssh 都适用 */
@@ -841,15 +1513,18 @@ export interface components {
             comment?: string;
         };
         PolicyStatement: components["schemas"]["PolicyStatementWrite"] & {
-            id: string;
+            id: components["schemas"]["Uuid"];
+            status: components["schemas"]["PolicyStatus"];
         };
         Service: {
+            id: components["schemas"]["Uuid"];
+            status: components["schemas"]["ServiceStatus"];
             name: components["schemas"]["Label"];
             fqdn: string;
             /** @enum {string} */
             proto: "http" | "ssh";
-            /** @description 所在节点 */
-            node: components["schemas"]["Label"];
+            /** @description 所在节点实体 UUID */
+            node_id?: components["schemas"]["Uuid"];
             node_online?: boolean;
             /** @enum {string} */
             state: "ready" | "cert_pending";
@@ -858,24 +1533,51 @@ export interface components {
             /** @description 该服务节点的生效策略里是否有 `public_key: "*"` 的 allow（只对 http 有意义） */
             public?: boolean;
         };
-        Cert: {
-            workspace: components["schemas"]["Label"];
-            /** @description 通配名，如 `*.home.agentsrv.example.com` */
-            domain: string;
-            /** @enum {string} */
-            state: "pending" | "ready" | "renewing" | "failed";
+        /** @enum {string} */
+        CertificateKind: "workspace_wildcard" | "relay" | "agentserver";
+        /** @enum {string} */
+        CertificateState: "pending" | "ready" | "renewing" | "expired" | "revoked" | "failed" | "deleted";
+        Certificate: {
+            id: components["schemas"]["Uuid"];
+            kind: components["schemas"]["CertificateKind"];
+            workspace_id?: components["schemas"]["Uuid"];
+            relay_id?: components["schemas"]["Uuid"];
+            /** @description 证书的 DNS names 或控制面身份 */
+            subject?: string;
+            issuer: components["schemas"]["Uuid"];
+            state: components["schemas"]["CertificateState"];
             /** Format: date-time */
             not_before?: string;
             /** Format: date-time */
             not_after?: string;
-            /** @description CA 名 */
-            issuer?: string;
-            /** @description state 为 failed 时的 ACME 错误 */
+            /** @description 剩余多久进入自动续期窗口 */
+            renew_before?: string;
+            /** Format: date-time */
+            revoked_at?: string;
+            revocation_reason?: string;
             last_error?: string;
-            /** @description 已持有该证书的 relay 名 */
-            relays?: string[];
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CertificateRevoke: {
+            reason?: string;
+        };
+        CertificateIssue: {
+            kind: components["schemas"]["CertificateKind"];
+            workspace_id: components["schemas"]["Uuid"];
+        };
+        RelayCandidate: {
+            relay_id: components["schemas"]["Uuid"];
+            /** Format: uri */
+            url: string;
+            status: components["schemas"]["RelayStatus"];
+            connected?: boolean;
+            /** @description agentserver 给出的候选顺序，agentd 可结合本地连接质量调整 */
+            preference?: number;
         };
         Relay: {
+            id: components["schemas"]["Uuid"];
+            status: components["schemas"]["RelayStatus"];
             name: components["schemas"]["Label"];
             public_key: components["schemas"]["PublicKey"];
             /** @description 基础 URL，如 `https://relay-hk.agentsrv.example.com` */
@@ -897,8 +1599,6 @@ export interface components {
             connected: boolean;
             /** Format: date-time */
             connected_since?: string;
-            /** @description 指派给它的 workspace */
-            workspaces?: components["schemas"]["Label"][];
             nodes_online?: number;
         };
         RelayCreate: {
@@ -912,7 +1612,8 @@ export interface components {
             stun?: string;
         };
         RelayToken: {
-            id: string;
+            id: components["schemas"]["Uuid"];
+            status: components["schemas"]["RelayTokenStatus"];
             /** Format: date-time */
             expires_at: string;
             /** Format: date-time */
@@ -927,8 +1628,10 @@ export interface components {
             token: string;
         };
         RelayCert: {
-            workspace: components["schemas"]["Label"];
-            relay: components["schemas"]["Label"];
+            id: components["schemas"]["Uuid"];
+            state: components["schemas"]["CertificateState"];
+            workspace_id: components["schemas"]["Uuid"];
+            relay_id: components["schemas"]["Uuid"];
             /** Format: date-time */
             issued_at: string;
             /** Format: date-time */
@@ -947,6 +1650,24 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
+        /** @description 当前用户没有该 workspace 或 operation 的权限（code FORBIDDEN） */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description 操作违反资源约束（code CONFLICT） */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
         /** @description 对象不存在（code NOT_FOUND） */
         NotFound: {
             headers: {
@@ -958,14 +1679,16 @@ export interface components {
         };
     };
     parameters: {
-        /** @description workspace 名（如 `home`） */
-        WorkspaceName: components["schemas"]["Label"];
-        /** @description 实例名 */
-        NodeName: components["schemas"]["Label"];
-        /** @description 组名 */
-        GroupName: components["schemas"]["Label"];
-        /** @description relay 名 */
-        RelayName: components["schemas"]["Label"];
+        /** @description workspace 实体 UUID */
+        WorkspaceId: components["schemas"]["Uuid"];
+        /** @description node 实体 UUID */
+        NodeId: components["schemas"]["Uuid"];
+        /** @description group 实体 UUID */
+        GroupId: components["schemas"]["Uuid"];
+        /** @description relay 实体 UUID */
+        RelayId: components["schemas"]["Uuid"];
+        /** @description 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。 */
+        CertificateId: components["schemas"]["Uuid"];
     };
     requestBodies: never;
     headers: never;
@@ -973,6 +1696,755 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listInstanceDomains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDomain"][];
+                };
+            };
+        };
+    };
+    createInstanceDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstanceDomainWrite"];
+            };
+        };
+        responses: {
+            /** @description 已添加 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDomain"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getInstanceDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 域名实体 UUID */
+                domainId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDomain"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateInstanceDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 域名实体 UUID */
+                domainId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstanceDomainWrite"];
+            };
+        };
+        responses: {
+            /** @description 已更新 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDomain"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteInstanceDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 域名实体 UUID */
+                domainId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listDNSProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSProvider"][];
+                };
+            };
+        };
+    };
+    createDNSProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DNSProviderWrite"];
+            };
+        };
+        responses: {
+            /** @description 已保存 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSProvider"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getDNSProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSProvider"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateDNSProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DNSProviderWrite"];
+            };
+        };
+        responses: {
+            /** @description 已更新 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DNSProvider"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDNSProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listCertificateIssuers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateIssuer"][];
+                };
+            };
+        };
+    };
+    createCertificateIssuer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CertificateIssuerWrite"];
+            };
+        };
+        responses: {
+            /** @description 已保存 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateIssuer"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getCertificateIssuer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issuerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateIssuer"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCertificateIssuer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issuerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CertificateIssuerWrite"];
+            };
+        };
+        responses: {
+            /** @description 已更新 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateIssuer"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteCertificateIssuer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issuerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listAuthProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthProvider"][];
+                };
+            };
+        };
+    };
+    createAuthProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthProviderWrite"];
+            };
+        };
+        responses: {
+            /** @description 已保存 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthProvider"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getAuthProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthProvider"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateAuthProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthProviderWrite"];
+            };
+        };
+        responses: {
+            /** @description 已更新 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthProvider"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteAuthProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"][];
+                };
+            };
+        };
+    };
+    upsertUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserWrite"];
+            };
+        };
+        responses: {
+            /** @description 已保存 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description email 已存在或用户归并冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            /** @description 用户仍是某个 workspace 的最后一个 owner */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setUserInstanceAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstanceAdminGrant"];
+            };
+        };
+        responses: {
+            /** @description 已更新 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listUserIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserIdentity"][];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    linkUserIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 全局用户实体 UUID */
+                userId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserIdentityWrite"];
+            };
+        };
+        responses: {
+            /** @description 已关联 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserIdentity"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    unlinkUserIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["schemas"]["Uuid"];
+                identityId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已解除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                actor_id?: string;
+                resource_type?: string;
+                resource_id?: components["schemas"]["Uuid"];
+                workspace_id?: components["schemas"]["Uuid"];
+                action?: string;
+                outcome?: components["schemas"]["AuditOutcome"];
+                since?: string;
+                until?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventPage"];
+                };
+            };
+        };
+    };
+    getAuditEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEvent"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     getServer: {
         parameters: {
             query?: never;
@@ -1011,6 +2483,135 @@ export interface operations {
                     "application/json": components["schemas"]["Status"];
                 };
             };
+        };
+    };
+    listCertificates: {
+        parameters: {
+            query?: {
+                workspace?: components["schemas"]["Label"];
+                state?: components["schemas"]["CertificateState"];
+                kind?: components["schemas"]["CertificateKind"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"][];
+                };
+            };
+        };
+    };
+    issueCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CertificateIssue"];
+            };
+        };
+        responses: {
+            /** @description 已开始签发 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。 */
+                certificateId: components["parameters"]["CertificateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    renewCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。 */
+                certificateId: components["parameters"]["CertificateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已开始续期 */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    revokeCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。 */
+                certificateId: components["parameters"]["CertificateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CertificateRevoke"];
+            };
+        };
+        responses: {
+            /** @description 已吊销 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     listWorkspaces: {
@@ -1072,8 +2673,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1099,8 +2700,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1125,42 +2726,13 @@ export interface operations {
             };
         };
     };
-    updateWorkspace: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WorkspacePatch"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Workspace"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            404: components["responses"]["NotFound"];
-        };
-    };
     listTokens: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1182,8 +2754,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1219,9 +2791,9 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                tokenId: string;
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                tokenId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
@@ -1237,6 +2809,101 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listWorkspaceMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceMember"][];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    upsertWorkspaceMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceMemberWrite"];
+            };
+        };
+        responses: {
+            /** @description 已保存 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceMember"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description 会破坏 workspace 的 owner 约束 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    removeWorkspaceMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description workspace membership 实体 UUID */
+                memberId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已移除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            /** @description workspace 必须至少保留一个 owner */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listNodes: {
         parameters: {
             query?: {
@@ -1245,8 +2912,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1268,10 +2935,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 实例名 */
-                node: components["parameters"]["NodeName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description node 实体 UUID */
+                nodeId: components["parameters"]["NodeId"];
             };
             cookie?: never;
         };
@@ -1294,10 +2961,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 实例名 */
-                node: components["parameters"]["NodeName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description node 实体 UUID */
+                nodeId: components["parameters"]["NodeId"];
             };
             cookie?: never;
         };
@@ -1318,10 +2985,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 实例名 */
-                node: components["parameters"]["NodeName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description node 实体 UUID */
+                nodeId: components["parameters"]["NodeId"];
             };
             cookie?: never;
         };
@@ -1358,8 +3025,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1381,8 +3048,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1418,10 +3085,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 组名 */
-                group: components["parameters"]["GroupName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description group 实体 UUID */
+                groupId: components["parameters"]["GroupId"];
             };
             cookie?: never;
         };
@@ -1444,10 +3111,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 组名 */
-                group: components["parameters"]["GroupName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description group 实体 UUID */
+                groupId: components["parameters"]["GroupId"];
             };
             cookie?: never;
         };
@@ -1463,17 +3130,17 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    addGroupMember: {
+    addGroupNode: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 组名 */
-                group: components["parameters"]["GroupName"];
-                /** @description 实例名 */
-                node: components["parameters"]["NodeName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description group 实体 UUID */
+                groupId: components["parameters"]["GroupId"];
+                /** @description node 实体 UUID */
+                nodeId: components["parameters"]["NodeId"];
             };
             cookie?: never;
         };
@@ -1489,17 +3156,17 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    removeGroupMember: {
+    removeGroupNode: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                /** @description 组名 */
-                group: components["parameters"]["GroupName"];
-                /** @description 实例名 */
-                node: components["parameters"]["NodeName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                /** @description group 实体 UUID */
+                groupId: components["parameters"]["GroupId"];
+                /** @description node 实体 UUID */
+                nodeId: components["parameters"]["NodeId"];
             };
             cookie?: never;
         };
@@ -1520,8 +3187,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1543,8 +3210,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1571,8 +3238,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1599,9 +3266,9 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                routeId: string;
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                routeId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
@@ -1622,8 +3289,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1645,8 +3312,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1673,8 +3340,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1701,9 +3368,9 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-                policyId: string;
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
+                policyId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
@@ -1724,8 +3391,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
+                /** @description workspace 实体 UUID */
+                workspaceId: components["parameters"]["WorkspaceId"];
             };
             cookie?: never;
         };
@@ -1740,53 +3407,6 @@ export interface operations {
                     "application/json": components["schemas"]["Service"][];
                 };
             };
-        };
-    };
-    listCerts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Cert"][];
-                };
-            };
-        };
-    };
-    renewCert: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description workspace 名（如 `home`） */
-                ws: components["parameters"]["WorkspaceName"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 已开始续期 */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Cert"];
-                };
-            };
-            404: components["responses"]["NotFound"];
         };
     };
     listRelays: {
@@ -1892,7 +3512,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tokenId: string;
+                tokenId: components["schemas"]["Uuid"];
             };
             cookie?: never;
         };
@@ -1913,8 +3533,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description relay 名 */
-                relay: components["parameters"]["RelayName"];
+                /** @description relay 实体 UUID */
+                relayId: components["parameters"]["RelayId"];
             };
             cookie?: never;
         };
@@ -1937,8 +3557,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description relay 名 */
-                relay: components["parameters"]["RelayName"];
+                /** @description relay 实体 UUID */
+                relayId: components["parameters"]["RelayId"];
             };
             cookie?: never;
         };
@@ -1952,7 +3572,7 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["NotFound"];
-            /** @description 仍被 workspace 指派（code RELAY_IN_USE） */
+            /** @description relay 仍有活动会话或证书引用（code RELAY_IN_USE） */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1968,8 +3588,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description relay 名 */
-                relay: components["parameters"]["RelayName"];
+                /** @description relay 实体 UUID */
+                relayId: components["parameters"]["RelayId"];
             };
             cookie?: never;
         };

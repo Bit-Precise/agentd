@@ -58,15 +58,18 @@ for _ in $(seq 1 60); do (echo > /dev/tcp/127.0.0.1/55432) 2>/dev/null && break;
 start agentserver bin/agentserver run -c "$DEV/agentserver.yaml"
 for _ in $(seq 1 30); do curl -fs http://127.0.0.1:7800/healthz >/dev/null 2>&1 && break; sleep 1; done
 start agentrelay bin/agentrelay run -c "$DEV/agentrelay.yaml"
-for _ in $(seq 1 30); do bin/agentserver relay list 2>/dev/null | grep -q 'relay-local.*yes' && break; sleep 1; done
+for _ in $(seq 1 30); do
+  curl -fs --noproxy '*' -H "Authorization: Bearer $AGENTSERVER_ADMIN_TOKEN" http://127.0.0.1:7800/api/v1/admin/relays 2>/dev/null | grep -q '"connected":true' && break
+  sleep 1
+done
 
 cat <<MSG
 
 agentserver console: http://127.0.0.1:7800   (admin token: $AGENTSERVER_ADMIN_TOKEN)
 
 Next steps (in a shell with: source .dev/env.sh):
-  bin/agentserver workspace create home --relay relay-local
-  bin/agentserver token create -w home --name laptop
+  create a workspace and a join token in the console (workspaces, then tokens),
+  or with the admin API as shown in the README
   bin/agentd --home .dev/laptop join '<link>'
   # enable roles in .dev/laptop/config.yaml, then:
   bin/agentd --home .dev/laptop run

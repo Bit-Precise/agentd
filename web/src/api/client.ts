@@ -37,7 +37,7 @@ const auth: Middleware = {
 };
 
 export const api = createClient<paths>({
-  baseUrl: new URL("/api/v1", location.origin).toString(),
+  baseUrl: new URL("/api/v1/admin", location.origin).toString(),
   // Resolve fetch per call (lets tests and polyfills replace it).
   fetch: (req: Request) => globalThis.fetch(req),
 });

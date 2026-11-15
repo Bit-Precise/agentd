@@ -1,20 +1,22 @@
 agentd {{ .Chart.AppVersion }} is installed.
 
-1. Admin token (for the console and the agentserver CLI):
+1. Admin token (for the console and the admin API):
    kubectl -n {{ .Release.Namespace }} get secret {{ include "agentd.serverSecret" . }} -o jsonpath='{.data.admin-token}' | base64 -d; echo
 
 2. Console and admin API (keep them private):
    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "agentd.serverSvc" . }} 7800:{{ .Values.agentserver.service.adminPort }}
-   open http://127.0.0.1:7800  (CLI: AGENTSERVER_ADMIN_URL=http://127.0.0.1:7800 AGENTSERVER_ADMIN_TOKEN=… agentserver status)
+   open http://127.0.0.1:7800  (API: curl -H "Authorization: Bearer <token>" http://127.0.0.1:7800/api/v1/admin/status)
 
 3. Relays register themselves with the bootstrap token. Point DNS at each relay Service:
 {{- range .Values.relays }}
    {{ .domain }} -> kubectl -n {{ $.Release.Namespace }} get svc {{ include "agentd.fullname" $ }}-{{ .name }}
 {{- end }}
 
-4. Create a workspace and a join link, then join from each machine:
-   agentserver workspace create home --relay {{ (index .Values.relays 0).name }}
-   agentserver token create -w home --name laptop
+4. In the console, create a workspace and a join token (workspaces, then tokens),
+   or with the admin API:
+   curl -H "Authorization: Bearer <token>" -d '{"name":"home"}' http://127.0.0.1:7800/api/v1/admin/workspaces
+   curl -H "Authorization: Bearer <token>" -d '{"name":"laptop"}' http://127.0.0.1:7800/api/v1/admin/workspaces/home/tokens   # join_link
+   Then join from each machine:
    agentd join '<link>'
 {{- $first := merge (deepCopy (index .Values.relays 0)) (dict "tls" (dict "mode" "selfsigned")) }}
 {{- if eq $first.tls.mode "selfsigned" }}

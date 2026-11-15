@@ -64,9 +64,6 @@ func (c *Coordinator) lookupNode(ctx context.Context, relay string, q *pb.NodeLo
 	if err != nil {
 		return answerErr(pb.Status_SERVER_BUSY, err.Error())
 	}
-	if ws.Relay != relay {
-		return c.wrongRelay(ctx, ws)
-	}
 	return c.nodeAnswer(ctx, ws, n, ttlOK)
 }
 
@@ -77,11 +74,6 @@ func (c *Coordinator) join(ctx context.Context, relay string, q *pb.JoinLookup) 
 	}
 	if err != nil {
 		return &pb.RelayAnswer{Status: pb.Status_SERVER_BUSY, Message: err.Error()}
-	}
-	if ws.Relay != relay {
-		a := c.wrongRelay(ctx, ws)
-		a.TtlSeconds = 0
-		return a
 	}
 	n, err := c.st.Join(ctx, store.JoinRequest{TokenHash: store.HashToken(q.Token), WorkspaceDomain: q.Workspace, Identity: q.Identity, ProposedName: q.ProposedName, Timestamp: q.Timestamp})
 	if err != nil {
@@ -95,8 +87,8 @@ func (c *Coordinator) join(ctx context.Context, relay string, q *pb.JoinLookup) 
 
 func (c *Coordinator) lookupCert(ctx context.Context, relay string, q *pb.CertLookup) *pb.RelayAnswer {
 	ws, err := c.st.GetWorkspaceByDomain(ctx, q.Workspace)
-	if err != nil || ws.Relay != relay {
-		return answerErr(pb.Status_BAD_REQUEST, "workspace not assigned to this relay")
+	if err != nil {
+		return answerErr(pb.Status_BAD_REQUEST, "unknown workspace")
 	}
 	wc := c.workspaceCert(ctx, ws)
 	if wc == nil {
@@ -136,9 +128,6 @@ func (c *Coordinator) lookupStream(ctx context.Context, relay string, q *pb.Stre
 	ws, err := c.st.GetWorkspaceByDomain(ctx, q.Workspace)
 	if err != nil {
 		return answerErr(pb.Status_BAD_REQUEST, "unknown workspace")
-	}
-	if ws.Relay != relay {
-		return answerErr(pb.Status_WRONG_RELAY, "workspace is not assigned to this relay")
 	}
 	var from *store.Node
 	var ids [][]byte
@@ -289,7 +278,7 @@ func (c *Coordinator) lookupTask(ctx context.Context, ws store.Workspace, from *
 // HandleNodeMessage processes a message a node sent on its control stream.
 func (c *Coordinator) HandleNodeMessage(ctx context.Context, relay string, nm *pb.NodeMessage) {
 	n, ws, err := c.st.GetNodeByKey(ctx, nm.Identity)
-	if err != nil || ws.Relay != relay {
+	if err != nil {
 		return
 	}
 	switch m := nm.Msg.GetMsg().(type) {

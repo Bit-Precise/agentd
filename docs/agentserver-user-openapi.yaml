@@ -1,0 +1,273 @@
+openapi: 3.0.3
+info:
+  title: agentserver user API
+  version: v1
+  description: |
+    面向普通 Web 用户的 workspace API。它与 instance admin API 使用不同的 URL 前缀、Bearer 凭据和 OpenAPI 文档。
+
+    - 基础地址是 `/api/v1`；OIDC provider 返回的 `(provider_id, subject)` 先映射到 instance User，再按 user_id 查 membership。
+    - `GET /workspaces` 只返回当前用户有 membership 的 workspace。
+    - 所有 workspace 资源都按 owner / maintainer / member 授权；instance admin 不通过本 surface 操作；资源不存在和当前用户无权访问都返回 404，避免泄露资源存在性，
+      需要使用 `docs/agentserver-openapi.yaml` 的 `/api/v1/admin`。
+servers:
+  - url: http://127.0.0.1:7800/api/v1
+    description: 本机 Web 用户端点（默认）
+security:
+  - UserBearer: []
+x-api-surface: user
+x-admin-counterpart: docs/agentserver-openapi.yaml
+x-error-policy:
+  resource_existence: denied_or_missing_returns_404
+tags:
+  - name: workspaces
+    description: 当前用户有 membership 的 workspace
+  - name: members
+    description: workspace Web 用户成员；只有 owner 可改角色
+  - name: nodes
+    description: workspace 节点目录
+  - name: routes
+    description: workspace 路由表
+  - name: policies
+    description: workspace 中央策略
+  - name: services
+    description: workspace 已注册服务
+  - name: certs
+    description: workspace 通配证书状态
+  - name: audit
+    description: 当前用户有权限的 workspace 写入审计记录
+
+paths:
+  /workspaces:
+    get:
+      tags: [workspaces]
+      operationId: listMyWorkspaces
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer, member]
+        visibility: memberships_only
+      summary: 列出当前用户的 workspace
+      description: 只返回当前 bearer principal 在 `workspace_members` 中有角色的 workspace。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./agentserver-openapi.yaml#/components/schemas/Workspace" }
+
+  /workspaces/{workspaceId}:
+    parameters:
+      - $ref: "./agentserver-openapi.yaml#/components/parameters/WorkspaceId"
+    get:
+      tags: [workspaces]
+      operationId: getMyWorkspace
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer, member]
+      summary: 查看自己有权限的 workspace
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/Workspace" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
+
+  /workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: "./agentserver-openapi.yaml#/components/parameters/WorkspaceId"
+    get:
+      tags: [members]
+      operationId: listMyWorkspaceMembers
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer, member]
+      summary: 查看 workspace 成员
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./agentserver-openapi.yaml#/components/schemas/WorkspaceMember" }
+    post:
+      tags: [members]
+      operationId: upsertMyWorkspaceMember
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner]
+      summary: 添加或调整 workspace 成员角色
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/WorkspaceMemberWrite" }
+      responses:
+        "200":
+          description: 已保存
+          content:
+            application/json:
+              schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/WorkspaceMember" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
+        "409": { $ref: "./agentserver-openapi.yaml#/components/responses/Conflict" }
+
+  /workspaces/{workspaceId}/members/{memberId}:
+    parameters:
+      - $ref: "./agentserver-openapi.yaml#/components/parameters/WorkspaceId"
+      - name: memberId
+        in: path
+        required: true
+        description: workspace membership 实体 UUID
+        schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/Uuid" }
+    delete:
+      tags: [members]
+      operationId: removeMyWorkspaceMember
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner]
+      summary: 移除 workspace 成员
+      responses:
+        "204": { description: 已移除 }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
+        "409": { $ref: "./agentserver-openapi.yaml#/components/responses/Conflict" }
+
+  /workspaces/{workspaceId}/nodes:
+    parameters:
+      - $ref: "./agentserver-openapi.yaml#/components/parameters/WorkspaceId"
+    get:
+      tags: [nodes]
+      operationId: listMyWorkspaceNodes
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer, member]
+      summary: 查看 workspace 节点目录
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./agentserver-openapi.yaml#/components/schemas/Node" }
+
+  /workspaces/{workspaceId}/routes:
+    parameters:
+      - $ref: "./agentserver-openapi.yaml#/components/parameters/WorkspaceId"
+    get:
+      tags: [routes]
+      operationId: getMyRouteTable
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer, member]
+      summary: 查看 workspace 路由表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/RouteTable" }
+    put:
+      tags: [routes]
+      operationId: replaceMyRouteTable
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer]
+      summary: 替换 workspace 路由表
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/RouteTableWrite" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/RouteTable" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
+
+  /workspaces/{workspaceId}/policies:
+    parameters:
+      - $ref: "./agentserver-openapi.yaml#/components/parameters/WorkspaceId"
+    get:
+      tags: [policies]
+      operationId: listMyPolicies
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer, member]
+      summary: 查看 workspace 策略
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./agentserver-openapi.yaml#/components/schemas/PolicyStatement" }
+    put:
+      tags: [policies]
+      operationId: replaceMyPolicies
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer]
+      summary: 替换 workspace 策略
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: "./agentserver-openapi.yaml#/components/schemas/PolicyStatementWrite" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./agentserver-openapi.yaml#/components/schemas/PolicyStatement" }
+        "404": { $ref: "./agentserver-openapi.yaml#/components/responses/NotFound" }
+
+  /workspaces/{workspaceId}/services:
+    parameters:
+      - $ref: "./agentserver-openapi.yaml#/components/parameters/WorkspaceId"
+    get:
+      tags: [services]
+      operationId: listMyServices
+      x-audience: [web_user]
+      x-authorization:
+        scope: workspace_membership
+        roles: [owner, maintainer, member]
+      summary: 查看 workspace 服务
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "./agentserver-openapi.yaml#/components/schemas/Service" }
+
+components:
+  securitySchemes:
+    UserBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: OIDC
+      description: OIDC 登录后由 agentserver user surface 校验的 bearer token。

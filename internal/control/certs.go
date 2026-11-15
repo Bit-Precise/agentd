@@ -86,6 +86,9 @@ func (m *CertManager) issuerFor(ws store.Workspace) (Issuer, string, error) {
 func (m *CertManager) needsRenewal(ctx context.Context, ws store.Workspace) bool {
 	c, err := m.st.GetCert(ctx, ws.Name)
 	if err != nil || c.State != "ready" || c.NotAfter == nil {
+		if err == nil && c.State == "revoked" {
+			return false
+		}
 		return true
 	}
 	return time.Until(*c.NotAfter) < RenewBefore

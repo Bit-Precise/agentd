@@ -3,6 +3,9 @@ import { meta } from "./api/meta.gen";
 import { getToken, setToken, workspaces, ApiError } from "./api/client";
 import { ResourceView } from "./components/ResourceView";
 import { Dashboard } from "./components/Dashboard";
+import { Button } from "./components/ui/button";
+import { Select } from "./components/ui/select";
+import { Input } from "./components/ui/input";
 
 function readHash() {
   const h = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
@@ -13,7 +16,7 @@ function readHash() {
 export function App() {
   const [token, setTok] = useState(getToken());
   const [authError, setAuthError] = useState("");
-  const [wsList, setWsList] = useState<string[]>([]);
+  const [wsList, setWsList] = useState<{ id: string; name: string }[]>([]);
   const [{ view, ws }, setRoute] = useState(readHash());
 
   useEffect(() => {
@@ -29,10 +32,12 @@ export function App() {
   const loadWs = useCallback(async () => {
     try {
       const list = await workspaces();
-      const names = list.map((w) => w.name);
-      setWsList(names);
+      const workspaceItems = list.map((w) => ({ id: w.id || w.name, name: w.name }));
+      setWsList(workspaceItems);
       setAuthError("");
-      if (!ws && names.length) go(view, names[0]);
+      const current = workspaceItems.find((item) => item.id === ws || item.name === ws);
+      if (current && current.id !== ws) go(view, current.id);
+      else if (!ws && workspaceItems.length) go(view, workspaceItems[0].id);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setAuthError("The admin token was rejected.");
@@ -62,16 +67,16 @@ export function App() {
         ))}
         <div className="ws-picker">
           <label>workspace</label>
-          <select value={ws} onChange={(e) => go(view, e.target.value)}>
+          <Select value={ws} onChange={(e) => go(view, e.target.value)}>
             {!wsList.length && <option value="">none yet</option>}
-            {wsList.map((w) => <option key={w} value={w}>{w}</option>)}
-          </select>
+            {wsList.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </Select>
         </div>
         {scoped.map((r) => (
           <a key={r.key} className={view === r.key ? "active" : ""} onClick={() => go(r.key)}>{r.label}</a>
         ))}
         <div className="spacer" />
-        <a className="muted" onClick={() => { setToken(""); setTok(""); }}>sign out</a>
+        <Button variant="ghost" className="muted" onClick={() => { setToken(""); setTok(""); }}>sign out</Button>
         <div className="muted small">API {meta.version}</div>
       </nav>
       <main>
@@ -88,9 +93,9 @@ function Login({ onLogin, error }: { onLogin: (t: string) => void; error: string
       <form onSubmit={(e) => { e.preventDefault(); if (t.trim()) onLogin(t.trim()); }}>
         <h1>agentserver</h1>
         <p className="muted">Enter the admin token (the value of AGENTSERVER_ADMIN_TOKEN).</p>
-        <input type="password" autoFocus value={t} onChange={(e) => setT(e.target.value)} placeholder="admin token" />
+        <Input type="password" autoFocus value={t} onChange={(e) => setT(e.target.value)} placeholder="admin token" />
         {error && <div className="error">{error}</div>}
-        <button type="submit">sign in</button>
+        <Button type="submit">sign in</Button>
       </form>
     </div>
   );

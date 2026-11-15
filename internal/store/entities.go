@@ -3,11 +3,13 @@ package store
 import (
 	"context"
 	"crypto/ed25519"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 
@@ -16,6 +18,424 @@ import (
 	"agentd/internal/wire"
 	"agentd/internal/wire/pb"
 )
+
+// AuditEvent is an append-only record of a state-changing operation.
+type AuditEvent struct {
+	ID           string
+	OccurredAt   time.Time
+	ActorKind    string
+	ActorID      string
+	Action       string
+	ResourceType string
+	ResourceID   string
+	WorkspaceID  string
+	RequestID    string
+	Outcome      string
+	ErrorCode    string
+	Metadata     map[string]any
+}
+
+type AuditFilter struct {
+	ActorID      string
+	ResourceType string
+	ResourceID   string
+	WorkspaceID  string
+	Action       string
+	Outcome      string
+	Limit        int
+}
+
+// RecordAudit appends an audit event. Callers must redact secrets before
+// putting values in Metadata; request bodies are intentionally not accepted.
+func (s *Store) RecordAudit(ctx context.Context, e AuditEvent) error {
+	if e.ID == "" {
+		e.ID = uuid.NewString()
+	}
+	if e.RequestID == "" {
+		e.RequestID = uuid.NewString()
+	}
+	if e.OccurredAt.IsZero() {
+		e.OccurredAt = time.Now()
+	}
+	if e.Outcome == "" {
+		e.Outcome = "success"
+	}
+	if e.Metadata == nil {
+		e.Metadata = map[string]any{}
+	}
+	meta, err := json.Marshal(e.Metadata)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `INSERT INTO audit_events(id, occurred_at, actor_kind, actor_id, action, resource_type, resource_id, workspace_id, request_id, outcome, error_code, metadata)
+		VALUES ($1, $2, $3,$4,$5,$6,NULLIF($7,''),NULLIF($8,''),$9,$10,$11,$12)`,
+		e.ID, e.OccurredAt, e.ActorKind, e.ActorID, e.Action, e.ResourceType, e.ResourceID, e.WorkspaceID, e.RequestID, e.Outcome, e.ErrorCode, meta)
+	return err
+}
+
+type rowScanner interface{ Scan(...any) error }
+
+func scanAudit(row rowScanner) (AuditEvent, error) {
+	var e AuditEvent
+	var meta []byte
+	err := row.Scan(&e.ID, &e.OccurredAt, &e.ActorKind, &e.ActorID, &e.Action, &e.ResourceType, &e.ResourceID, &e.WorkspaceID, &e.RequestID, &e.Outcome, &e.ErrorCode, &meta)
+	if err != nil {
+		return e, notFound(err)
+	}
+	_ = json.Unmarshal(meta, &e.Metadata)
+	return e, nil
+}
+
+// GetAuditEvent returns an immutable audit event by UUID.
+func (s *Store) GetAuditEvent(ctx context.Context, id string) (AuditEvent, error) {
+	return scanAudit(s.pool.QueryRow(ctx, `SELECT id, occurred_at, actor_kind, actor_id, action, resource_type, resource_id, workspace_id, request_id, outcome, error_code, metadata FROM audit_events WHERE id=$1`, id))
+}
+
+// ListAuditEvents returns newest audit events, optionally scoped to a resource.
+func (s *Store) ListAuditEvents(ctx context.Context, f AuditFilter) ([]AuditEvent, error) {
+	limit := f.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx, `SELECT id, occurred_at, actor_kind, actor_id, action, resource_type, resource_id, workspace_id, request_id, outcome, error_code, metadata
+		FROM audit_events
+		WHERE ($1='' OR actor_id=$1) AND ($2='' OR resource_type=$2) AND ($3='' OR resource_id=$3)
+		  AND ($4='' OR workspace_id=$4) AND ($5='' OR action=$5) AND ($6='' OR outcome=$6)
+		ORDER BY occurred_at DESC, id DESC LIMIT $7`, f.ActorID, f.ResourceType, f.ResourceID, f.WorkspaceID, f.Action, f.Outcome, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AuditEvent
+	for rows.Next() {
+		e, err := scanAudit(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
+// InstanceSettings contains the mutable, instance-scoped settings exposed by
+// the admin API. Transport and database settings remain process configuration.
+type InstanceSettings struct {
+	Domain                 string
+	DomainsJSON            []byte
+	DNSProvidersJSON       []byte
+	CertificateIssuersJSON []byte
+	AuthProvidersJSON      []byte
+	UpdatedAt              time.Time
+}
+
+// GetInstanceSettings returns the persisted instance settings.
+func (s *Store) GetInstanceSettings(ctx context.Context) (InstanceSettings, error) {
+	var out InstanceSettings
+	err := s.pool.QueryRow(ctx, `SELECT domain, domains, dns_providers, certificate_issuers, auth_providers, updated_at
+		FROM instance_settings WHERE id=1`).Scan(&out.Domain, &out.DomainsJSON, &out.DNSProvidersJSON, &out.CertificateIssuersJSON, &out.AuthProvidersJSON, &out.UpdatedAt)
+	return out, notFound(err)
+}
+
+// SetInstanceSettings stores the persisted instance settings.
+func (s *Store) SetInstanceSettings(ctx context.Context, settings InstanceSettings) error {
+	_, err := s.pool.Exec(ctx, `INSERT INTO instance_settings(id, domain, domains, dns_providers, certificate_issuers, auth_providers)
+		VALUES (1,$1,COALESCE($2::jsonb,'[]'::jsonb),COALESCE($3::jsonb,'[]'::jsonb),COALESCE($4::jsonb,'[]'::jsonb),COALESCE($5::jsonb,'[]'::jsonb))
+		ON CONFLICT (id) DO UPDATE SET domain=EXCLUDED.domain, domains=EXCLUDED.domains,
+		dns_providers=EXCLUDED.dns_providers, certificate_issuers=EXCLUDED.certificate_issuers,
+		auth_providers=EXCLUDED.auth_providers, updated_at=now()`, settings.Domain,
+		settings.DomainsJSON, settings.DNSProvidersJSON, settings.CertificateIssuersJSON, settings.AuthProvidersJSON)
+	return err
+}
+
+// User is a global Web identity managed by the instance administrator.
+type User struct {
+	ID            string
+	Subject       string
+	Provider      string
+	DisplayName   string
+	Email         string
+	Name          string
+	Picture       string
+	InstanceAdmin bool
+	Status        string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// ListUsers lists all global Web users.
+func (s *Store) ListUsers(ctx context.Context) ([]User, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id, subject, provider, display_name, email, name, picture, instance_admin, status, created_at, updated_at FROM users ORDER BY subject`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Subject, &u.Provider, &u.DisplayName, &u.Email, &u.Name, &u.Picture, &u.InstanceAdmin, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// GetUser returns a global Web user.
+func (s *Store) GetUser(ctx context.Context, subject string) (User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx, `SELECT id, subject, provider, display_name, email, name, picture, instance_admin, status, created_at, updated_at FROM users WHERE subject=$1`, subject).
+		Scan(&u.ID, &u.Subject, &u.Provider, &u.DisplayName, &u.Email, &u.Name, &u.Picture, &u.InstanceAdmin, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	return u, notFound(err)
+}
+
+// GetUserByID returns a user by its stable API id.
+func (s *Store) GetUserByID(ctx context.Context, id string) (User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx, `SELECT id, subject, provider, display_name, email, name, picture, instance_admin, status, created_at, updated_at FROM users WHERE id=$1`, id).
+		Scan(&u.ID, &u.Subject, &u.Provider, &u.DisplayName, &u.Email, &u.Name, &u.Picture, &u.InstanceAdmin, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	return u, notFound(err)
+}
+
+// UpsertUser creates or updates a global Web user.
+func (s *Store) UpsertUser(ctx context.Context, u User) error {
+	if u.ID == "" {
+		u.ID = uuid.NewSHA1(uuid.NameSpaceURL, []byte("agentd/user/"+u.Subject)).String()
+	}
+	if u.Status == "" {
+		u.Status = "active"
+	}
+	if u.Status != "active" && u.Status != "disabled" {
+		return fmt.Errorf("invalid user status %q", u.Status)
+	}
+	_, err := s.pool.Exec(ctx, `INSERT INTO users(id, subject, provider, display_name, email, name, picture, instance_admin, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (subject) DO UPDATE SET id=EXCLUDED.id, provider=EXCLUDED.provider,
+		display_name=EXCLUDED.display_name, email=EXCLUDED.email, name=EXCLUDED.name, picture=EXCLUDED.picture,
+		instance_admin=users.instance_admin, status=EXCLUDED.status, updated_at=now()`,
+		u.ID, u.Subject, u.Provider, u.DisplayName, u.Email, u.Name, u.Picture, u.InstanceAdmin, u.Status)
+	return err
+}
+
+// SetUserInstanceAdmin updates the durable instance-admin flag.
+func (s *Store) SetUserInstanceAdmin(ctx context.Context, subject string, enabled bool) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET instance_admin=$2, updated_at=now() WHERE subject=$1`, subject, enabled)
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return err
+}
+
+type UserIdentity struct {
+	ID            string
+	UserSubject   string
+	ProviderID    string
+	Subject       string
+	Status        string
+	EmailVerified *bool
+	LastLoginAt   *time.Time
+	CreatedAt     time.Time
+}
+
+func (s *Store) ListUserIdentities(ctx context.Context, user string) ([]UserIdentity, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id, user_subject, provider_id, subject, status, email_verified, last_login_at, created_at FROM user_identities WHERE user_subject=$1 ORDER BY created_at`, user)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []UserIdentity
+	for rows.Next() {
+		var v UserIdentity
+		if err := rows.Scan(&v.ID, &v.UserSubject, &v.ProviderID, &v.Subject, &v.Status, &v.EmailVerified, &v.LastLoginAt, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+func (s *Store) AddUserIdentity(ctx context.Context, v UserIdentity) error {
+	if v.ID == "" {
+		v.ID = uuid.NewSHA1(uuid.NameSpaceURL, []byte("agentd/identity/"+v.ProviderID+"/"+v.Subject)).String()
+	}
+	_, err := s.pool.Exec(ctx, `INSERT INTO user_identities(id,user_subject,provider_id,subject,status,email_verified,last_login_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`, v.ID, v.UserSubject, v.ProviderID, v.Subject, orString(v.Status, "active"), v.EmailVerified, v.LastLoginAt)
+	if isUnique(err) {
+		return ErrConflict
+	}
+	if isFK(err) {
+		return ErrNotFound
+	}
+	return err
+}
+func (s *Store) DeleteUserIdentity(ctx context.Context, user, id string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM user_identities WHERE user_subject=$1 AND (id=$2 OR id=$3)`, user, id, uuid.NewSHA1(uuid.NameSpaceURL, []byte("agentd/identity/"+id)).String())
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return err
+}
+func orString(v, d string) string {
+	if v == "" {
+		return d
+	}
+	return v
+}
+
+// DeleteUser removes a global user and all of its workspace memberships.
+func (s *Store) DeleteUser(ctx context.Context, subject string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	rows, err := tx.Query(ctx, `SELECT workspace FROM workspace_members WHERE subject=$1 AND role='owner'`, subject)
+	if err != nil {
+		return err
+	}
+	var owned []string
+	for rows.Next() {
+		var workspace string
+		if err := rows.Scan(&workspace); err != nil {
+			rows.Close()
+			return err
+		}
+		owned = append(owned, workspace)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	for _, workspace := range owned {
+		var owners int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM workspace_members WHERE workspace=$1 AND role='owner'`, workspace).Scan(&owners); err != nil {
+			return err
+		}
+		if owners <= 1 {
+			return fmt.Errorf("%w: workspace %s must keep an owner", ErrConflict, workspace)
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM workspace_members WHERE subject=$1`, subject); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `DELETE FROM users WHERE subject=$1`, subject)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return tx.Commit(ctx)
+}
+
+// WorkspaceRole is the role of a human/API principal in a workspace.
+type WorkspaceRole string
+
+const (
+	WorkspaceOwner      WorkspaceRole = "owner"
+	WorkspaceMaintainer WorkspaceRole = "maintainer"
+	WorkspaceRoleMember WorkspaceRole = "member"
+)
+
+// WorkspaceMember is a human/API principal's workspace membership.
+type WorkspaceMember struct {
+	ID        string
+	Workspace string
+	Subject   string
+	UserID    string
+	Role      WorkspaceRole
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// ListWorkspaceMembers lists memberships by subject.
+func (s *Store) ListWorkspaceMembers(ctx context.Context, workspace string) ([]WorkspaceMember, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id, workspace, subject, user_id, role, created_at, updated_at
+		FROM workspace_members WHERE workspace=$1 ORDER BY subject`, workspace)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []WorkspaceMember
+	for rows.Next() {
+		var m WorkspaceMember
+		var role string
+		if err := rows.Scan(&m.ID, &m.Workspace, &m.Subject, &m.UserID, &role, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, err
+		}
+		m.Role = WorkspaceRole(role)
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// GetWorkspaceMember returns one membership.
+func (s *Store) GetWorkspaceMember(ctx context.Context, workspace, subject string) (WorkspaceMember, error) {
+	var m WorkspaceMember
+	var role string
+	err := s.pool.QueryRow(ctx, `SELECT id, workspace, subject, user_id, role, created_at, updated_at
+		FROM workspace_members WHERE workspace=$1 AND subject=$2`, workspace, subject).
+		Scan(&m.ID, &m.Workspace, &m.Subject, &m.UserID, &role, &m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		return m, notFound(err)
+	}
+	m.Role = WorkspaceRole(role)
+	return m, nil
+}
+
+// UpsertWorkspaceMember adds or changes a membership.
+func (s *Store) UpsertWorkspaceMember(ctx context.Context, m WorkspaceMember) error {
+	if m.ID == "" {
+		m.ID = uuid.NewSHA1(uuid.NameSpaceURL, []byte("agentd/membership/"+m.Workspace+"/"+m.Subject)).String()
+	}
+	if m.UserID == "" {
+		if u, err := s.GetUser(ctx, m.Subject); err == nil {
+			m.UserID = u.ID
+		}
+	}
+	if m.Role != WorkspaceOwner && m.Role != WorkspaceMaintainer && m.Role != WorkspaceRoleMember {
+		return fmt.Errorf("invalid workspace role %q", m.Role)
+	}
+	var members, owners int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE role='owner')
+		FROM workspace_members WHERE workspace=$1`, m.Workspace).Scan(&members, &owners); err != nil {
+		return err
+	}
+	if members == 0 && m.Role != WorkspaceOwner {
+		return fmt.Errorf("%w: the first workspace member must be an owner", ErrConflict)
+	}
+	if current, err := s.GetWorkspaceMember(ctx, m.Workspace, m.Subject); err == nil && current.Role == WorkspaceOwner && m.Role != WorkspaceOwner && owners == 1 {
+		return fmt.Errorf("%w: workspace must keep an owner", ErrConflict)
+	} else if err != nil && !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	_, err := s.pool.Exec(ctx, `INSERT INTO workspace_members(id, workspace, subject, user_id, role)
+		VALUES ($1,$2,$3,$4,$5) ON CONFLICT (workspace, subject) DO UPDATE
+		SET id=EXCLUDED.id, user_id=EXCLUDED.user_id, role=EXCLUDED.role, updated_at=now()`, m.ID, m.Workspace, m.Subject, m.UserID, string(m.Role))
+	if isFK(err) {
+		return ErrNotFound
+	}
+	return err
+}
+
+// DeleteWorkspaceMember removes a membership.
+func (s *Store) DeleteWorkspaceMember(ctx context.Context, workspace, subject string) error {
+	var role string
+	if err := s.pool.QueryRow(ctx, `SELECT role FROM workspace_members WHERE workspace=$1 AND subject=$2`, workspace, subject).Scan(&role); err != nil {
+		return notFound(err)
+	}
+	if role == string(WorkspaceOwner) {
+		var owners int
+		if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM workspace_members WHERE workspace=$1 AND role='owner'`, workspace).Scan(&owners); err != nil {
+			return err
+		}
+		if owners <= 1 {
+			return fmt.Errorf("%w: workspace must keep an owner", ErrConflict)
+		}
+	}
+	tag, err := s.pool.Exec(ctx, `DELETE FROM workspace_members WHERE workspace=$1 AND subject=$2`, workspace, subject)
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return err
+}
 
 // ReservedNames cannot be used for nodes or services (protocol 8.4).
 var ReservedNames = map[string]bool{"www": true, "agentserver": true, "group": true}
@@ -112,6 +532,26 @@ func (s *Store) DeleteRelay(ctx context.Context, name string) error {
 	return err
 }
 
+// RelayLoads counts the workspaces assigned to each relay; relays without
+// workspaces are absent.
+func (s *Store) RelayLoads(ctx context.Context) (map[string]int, error) {
+	rows, err := s.pool.Query(ctx, `SELECT relay, count(*) FROM workspaces GROUP BY relay`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var name string
+		var n int
+		if err := rows.Scan(&name, &n); err != nil {
+			return nil, err
+		}
+		out[name] = n
+	}
+	return out, rows.Err()
+}
+
 // TouchRelay records that a relay connected.
 func (s *Store) TouchRelay(ctx context.Context, name string) error {
 	_, err := s.pool.Exec(ctx, `UPDATE relays SET last_seen=now() WHERE name=$1`, name)
@@ -180,19 +620,18 @@ type Workspace struct {
 	PrivateKey       ed25519.PrivateKey
 	PublicKey        []byte
 	Relay            string
-	PublishDNS       bool
 	RoutesVersion    uint64
 	RoutesDefault    string
 	DirectoryVersion uint64
 	CreatedAt        time.Time
 }
 
-const wsCols = `name, base_domain, private_key, public_key, relay, publish_dns, routes_version, routes_default, directory_version, created_at`
+const wsCols = `name, base_domain, private_key, public_key, COALESCE(relay,''), routes_version, routes_default, directory_version, created_at`
 
 func (s *Store) scanWS(row pgx.Row) (Workspace, error) {
 	var w Workspace
 	var sealed []byte
-	err := row.Scan(&w.Name, &w.BaseDomain, &sealed, &w.PublicKey, &w.Relay, &w.PublishDNS, &w.RoutesVersion, &w.RoutesDefault, &w.DirectoryVersion, &w.CreatedAt)
+	err := row.Scan(&w.Name, &w.BaseDomain, &sealed, &w.PublicKey, &w.Relay, &w.RoutesVersion, &w.RoutesDefault, &w.DirectoryVersion, &w.CreatedAt)
 	if err != nil {
 		return w, notFound(err)
 	}
@@ -202,8 +641,12 @@ func (s *Store) scanWS(row pgx.Row) (Workspace, error) {
 
 // CreateWorkspace inserts a workspace. PublicKey is derived from PrivateKey.
 func (s *Store) CreateWorkspace(ctx context.Context, w Workspace) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO workspaces(name, base_domain, private_key, public_key, relay, publish_dns) VALUES ($1,$2,$3,$4,$5,$6)`,
-		w.Name, w.BaseDomain, s.box.sealKey(w.PrivateKey), []byte(identity.Public(w.PrivateKey)), w.Relay, w.PublishDNS)
+	var relay any
+	if w.Relay != "" {
+		relay = w.Relay
+	}
+	_, err := s.pool.Exec(ctx, `INSERT INTO workspaces(name, base_domain, private_key, public_key, relay) VALUES ($1,$2,$3,$4,$5)`,
+		w.Name, w.BaseDomain, s.box.sealKey(w.PrivateKey), []byte(identity.Public(w.PrivateKey)), relay)
 	if isUnique(err) {
 		return fmt.Errorf("%w: workspace name or base domain already used", ErrConflict)
 	}
@@ -260,11 +703,11 @@ func (s *Store) WorkspacesOfRelay(ctx context.Context, relay string) ([]Workspac
 	return out, nil
 }
 
-// UpdateWorkspace changes relay assignment or DNS publication.
-func (s *Store) UpdateWorkspace(ctx context.Context, name string, relay *string, publish *bool) error {
-	tag, err := s.pool.Exec(ctx, `UPDATE workspaces SET relay=COALESCE($2, relay), publish_dns=COALESCE($3, publish_dns), directory_version=directory_version+1 WHERE name=$1`, name, relay, publish)
+// SetWorkspaceRelay reassigns a workspace to another relay.
+func (s *Store) SetWorkspaceRelay(ctx context.Context, name, relay string) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE workspaces SET relay=$2, directory_version=directory_version+1 WHERE name=$1`, name, relay)
 	if isFK(err) {
-		return fmt.Errorf("%w: relay %q", ErrNotFound, *relay)
+		return fmt.Errorf("%w: relay %q", ErrNotFound, relay)
 	}
 	if err == nil && tag.RowsAffected() == 0 {
 		return ErrNotFound
@@ -345,6 +788,28 @@ func (s *Store) DeleteJoinToken(ctx context.Context, ws, id string) error {
 		return ErrNotFound
 	}
 	return err
+}
+
+// ProbeJoinToken validates a join token without consuming it. Consumption is
+// performed atomically by Join after the agentd has selected a relay.
+func (s *Store) ProbeJoinToken(ctx context.Context, hash []byte) (JoinToken, error) {
+	var t JoinToken
+	var used *time.Time
+	err := s.pool.QueryRow(ctx, `SELECT id, workspace, name, roles, expires_at, created_at, used_at FROM join_tokens WHERE token_hash=$1`, hash).
+		Scan(&t.ID, &t.Workspace, &t.Name, &t.Roles, &t.ExpiresAt, &t.CreatedAt, &used)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return t, wire.Errorf(pb.Status_TOKEN_INVALID, "unknown join token")
+	}
+	if err != nil {
+		return t, err
+	}
+	if used != nil {
+		return t, wire.Errorf(pb.Status_TOKEN_INVALID, "join token already used")
+	}
+	if time.Now().After(t.ExpiresAt) {
+		return t, wire.Errorf(pb.Status_TOKEN_EXPIRED, "join token expired")
+	}
+	return t, nil
 }
 
 type querier interface {
@@ -429,6 +894,7 @@ func (s *Store) Join(ctx context.Context, r JoinRequest) (Node, error) {
 	if err := tx.Commit(ctx); err != nil {
 		return Node{}, err
 	}
+	_ = s.RecordAudit(ctx, AuditEvent{ActorKind: "agentd", ActorID: hex.EncodeToString(r.Identity), Action: "join.consume", ResourceType: "node", WorkspaceID: t.Workspace, Outcome: "success", Metadata: map[string]any{"node_name": name}})
 	n, _, err := s.GetNodeByKey(ctx, r.Identity)
 	return n, err
 }
@@ -1046,6 +1512,17 @@ func (s *Store) PutCert(ctx context.Context, c Cert) error {
 		ON CONFLICT (workspace) DO UPDATE SET state=EXCLUDED.state, cert_chain_pem=COALESCE(EXCLUDED.cert_chain_pem, certs.cert_chain_pem), key_pem=COALESCE(EXCLUDED.key_pem, certs.key_pem),
 		not_before=COALESCE(EXCLUDED.not_before, certs.not_before), not_after=COALESCE(EXCLUDED.not_after, certs.not_after), issuer=EXCLUDED.issuer, last_error=EXCLUDED.last_error, updated_at=now()`,
 		c.Workspace, c.State, c.ChainPEM, sealed, c.NotBefore, c.NotAfter, c.Issuer, c.LastError)
+	return err
+}
+
+// RevokeCert marks a workspace certificate revoked. The issuer integration is
+// responsible for any external revocation request; this state change stops
+// the certificate from being served by agentserver immediately.
+func (s *Store) RevokeCert(ctx context.Context, workspace, reason string) error {
+	tag, err := s.pool.Exec(ctx, `UPDATE certs SET state='revoked', last_error=$2, updated_at=now() WHERE workspace=$1`, workspace, reason)
+	if err == nil && tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
 	return err
 }
 

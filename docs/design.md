@@ -1,9 +1,9 @@
 # agentd 设计文档
 
-- 状态：v0.20 草案，已有可运行实现
-- 日期：2026-11-10
+- 状态：v0.31 草案，已有可运行实现
+- 日期：2026-11-14
 - 范围：评估原始方案，并给出可以直接开工的初步设计；标注「待定」的地方汇总在第 10 节；历次评审与反馈的处理见第 12 节；SSH 可行性研究见附录 A
-- 配套：协议规范 `docs/protocol.md`（线上格式、状态机、校验顺序、常量），protobuf 定义 `proto/agentd/v1/wire.proto`，agentd 实例配置参考 `docs/agentd-config.yaml`，agentserver admin API 定义 `docs/agentserver-openapi.yaml`
+- 配套：协议规范 `docs/protocol.md`（线上格式、状态机、校验顺序、常量），protobuf 定义 `proto/agentd/v1/wire.proto`，agentd 实例配置参考 `docs/agentd-config.yaml`，instance admin API 定义 `docs/agentserver-openapi.yaml`，user API 定义 `docs/agentserver-user-openapi.yaml`
 
 修订记录
 
@@ -29,6 +29,17 @@
 | v0.18 | 2026-11-09 | TUN 补齐 Windows 并改进 macOS：Windows 的 elevator 是系统服务（`agentd elevator install` 在管理员 shell 里注册，下载并按 SHA-256 校验 wintun 0.14.1 放到 agentd.exe 旁），socket 的 ACL 只允许安装者的 SID；wintun 会话不能跨进程传递，所以 elevator 持有适配器并在 socket 上以 `[类型][u16 长度][载荷]` 帧转发数据包，agentd 自身套接字用 `IP_UNICAST_IF` 绕过 TUN，适配器用 netsh 配地址、路由与 DNS，关闭即删除；macOS 的 DNS 接管改为在动态存储里写主服务的 `Setup:` DNS（DHCP 来的 `State:` DNS 会被绑定到物理接口，查询不进 TUN），退出时写回或删除；elevator 退出前等待会话完成恢复，agentd 停止时先释放设备再拆协议栈；新增 `tun.capture: all | fakeip`，fakeip 只把 fake-IP 段路由进 TUN、不接管默认路由；TUN 端到端测试在 GitHub 的 Linux、macOS、Windows runner 上跑真实设备 |
 | v0.19 | 2026-11-10 | workspace 通配证书的签发方按域名选择，不再按 workspace 指定：`dns_providers` 的每一项用 `zones` 列出它的账号托管的 zone，workspace 的基础域名在所有 zone 里取最长匹配（被委派出去的子域可以用另一家），都不匹配时用 `default_dns_provider`（默认 selfsigned）；同一个 zone 只能属于一个提供方。workspace 的 `dns_provider` 不再是输入（admin API 只读返回实际选中的提供方，CLI 去掉 `--dns-provider`，状态库删掉该列）。DNS-01 新增 DNSPod（腾讯云 API 3.0，用官方 Go SDK `tencentcloud-sdk-go` 的 dnspod 模块签名与调用）：`provider: dnspod` 配 `secret_id_env` / `secret_key_env`，挑战记录写在默认线路、TTL 至少 600（DNSPod 各套餐都接受的下限）；ACME 签发器改为接 `DNSClient` 接口，Cloudflare 与 DNSPod 各一个实现并共用同一组契约测试；chart 的 `dnsProviders` 支持 `zones`、`secretIdSecret` / `secretKeySecret`、`acmeDirectory`、`propagationWait` |
 | v0.20 | 2026-11-10 | workspace 证书可以来自要求外部账号绑定（EAB）的 CA，如 Google Trust Services（`acme_directory: https://dv.acme-v02.api.pki.goog/directory`）：`dns_providers` 的每一项可配 `eab_key_id_env` / `eab_hmac_key_env`（HMAC 为 base64url）。GTS 的一个 EAB 密钥只能注册一个账号，注册后作废，所以 agentserver 先按账号私钥查找已有账号（`onlyReturnExisting`），查不到才带 EAB 注册；同一进程内账号的建立串行进行，`acme_directory` 与 `email` 相同的提供方共用一个账号；状态库里的账号私钥只插入不覆盖。可用 `account_key_env` 指定 PEM 账号私钥（ECDSA 或 RSA），不再生成、也不写入状态库，状态库重建后账号不丢。`acme_directory` 必须是 https。zone 的 CAA 记录要允许所选 CA（如 `cs.ac.cn` 只允许 `pki.goog`）。chart 的 `dnsProviders` 加 `eabKeyIdSecret` / `eabHmacKeySecret` / `accountKeySecret` |
+| v0.21 | 2026-11-10 | 新增 5.9：多 relay 的方案（阶段 5，未实现）。workspace 不再绑定 relay，同一个 agentserver 下的 relay 组成池；每个节点只连一个主 relay，从 `Welcome.relays` 里选；节点在哪个 relay 由 agentserver 按 `RelayPresence` 记录，随选路答案下发（`StreamRoute.target_relay`）；主 relay 不同的两个节点之间由 relay 间会话转发，最多一跳；relay 证书与服务证书改为按需取；需要协议次版本 2。5.9 同时记下现状与协议规范 5.8 的两处差距：relay 故障时的自动改派与 relay 证书的按期续签都没有实现。9.5 新增 relay 的注册步骤；第 10 节新增第 28 到 30 条 |
+| v0.22 | 2026-11-10 | agentserver 是服务端程序，不再带管理命令：二进制只有 `run`、`backup`、`version`，原来的四十来个管理子命令（workspace、relay、token、node、group、route、policy、service、cert、status、key、apply）全部去掉，管理的唯一入口是 admin API 与由它生成的 Web 控制台（5.7、9.3）；`apply -f` 与 `kind: Workspace` 文件随之取消，9.1 的 workspace 示例只说明数据模型。文档里凡是写管理命令的地方改成 admin API 的操作。创建 workspace 不再指定 relay（5.9 落地顺序的第 1 步）：agentserver 取已连接的 relay 里 workspace 最少的，同数取名字靠前的，没有已注册的 relay 时返回 409 `NO_RELAY`；`WorkspaceCreate` 去掉 `relay`，改派仍用 `PATCH /workspaces/{ws}` |
+| v0.23 | 2026-11-14 | 按实现核对多 relay 并把现状写进正文。4.2 增加多 relay 的拓扑：一个 agentserver 下多个 relay，各自一条 relay 会话，每个 workspace 指派给其中一个，现在解决的是容量与隔离。5.9 的「现状」展开为注册、指派、relay 手里的东西、节点侧、改派的实际过程，并列出限制：人工改派依赖旧 relay 在线并连着 agentserver（旧 relay 宕机时要改成员的 `workspace.relay.url` 并重启 agentd），`agentd join` 不跟随 `WRONG_RELAY`。更正与实现不符的几处：4.5 与 5.7 写的 `Update.assigned_relay` 与 `RelayReport` 改派没有实现，改派走旧 relay 的 `WRONG_RELAY`；7.3 的 relay 握手载荷带注册信息与注册令牌；7.4 与 9.1 写的 relay 证书续签没有实现。9.5 新增 relay 故障时的处理步骤；协议规范 5.8 加一段实现状态 |
+| v0.24 | 2026-11-14 | 7.8 的 P2P 直连重写成可以开工的方案（仍未实现）。骨架按协议栈来：p2p 是第四种 transport，与 ws、httpupgrade、xhttp 用同一个抽象，对上只交出一条字节流，候选地址、信令内容、探测与 QUIC 都封在 transport 内；会话层（Noise_IK 加 yamux）与流的格式不变，上层只认会话的对端，agentd 只多出多会话与流的放置，agentrelay 的会话与转发不变（第 10 节第 22 条按此定）。transport 内部：一个 UDP 套接字同时承载 STUN 查询、探测与 QUIC；候选地址按次交换，agentserver 只转交、不保存（`P2PConnect` → `P2PInvite` → `P2PCandidates`）；探测改用带 MAC 的 STUN Binding 并学习对端反射地址。上层：流的放置与回退，egress 的出口记忆改为按分流表条目；会话对端是成员节点时由接收方补做 relay 与控制面原来的检查（`from` 等于会话对端、必须出示有效的 workspace 成员证书、按证书里新增的 `role_caps` 核对角色上限）。列出与协议规范 2.6 现有预留的差异，方案定稿后再改协议。第 10 节新增第 31 到 34 条，12.2 新增 R28 |
+| v0.25 | 2026-11-14 | 按反馈改 egress 流放到直连会话上的办法（7.8、6.5）：路由表项新增开关 `reveal_to`（默认关），打开后这一条的目的节点公钥随分流表下发给源里的 ingress，ingress 提前知道出口，与它有直连会话就直接把流放上去；取代 v0.24 里按分流表条目记住 `Ack.responder` 的做法，`Ack.responder` 只用于日志。关着的路由行为不变，三段式仍是默认。第 10 节第 34 条按此定，12.2 新增 R29 |
+| v0.26 | 2026-11-14 | 签哪家的证书、要不要发布公网解析都是 agentserver 实例级的事，从 workspace 上拿掉（6.1、6.2、9.1、9.3）：admin API 的 `Workspace` 去掉只读的 `dns_provider`（每张证书实际由谁签发看 `cert.issuer`，它本来就记着提供方的名字），`Workspace`、`WorkspaceCreate` 与 `WorkspacePatch` 去掉 公网 DNS 记录管理（它只存进状态库、从来没有生效），`PATCH /workspaces/{ws}` 只剩改派 relay；状态库删掉 `workspaces.publish_dns` 列（迁移 0005）。公网解析改为在 agentserver 配置的 `dns_providers` 每一项上开关（公网 DNS 记录管理，未实现）：打开后，基础域名落在它的 zones 里的每个 workspace 都由 agentserver 维护 `*.<基础域名>` 指向所在 relay 的记录。12.2 新增 R30 |
+| v0.27 | 2026-11-14 | 引入管理面 RBAC：instance admin 管理 instance 配置（包括默认域名）、workspace 生命周期与 relay；workspace 用户分为 owner、maintainer、member；新增 instance 与 workspace members API；OpenAPI 每个 operation 标注 `x-audience` 与 `x-authorization`，区分 web_user、agentd、relay。 |
+| v0.28 | 2026-11-14 | 明确 instance admin 的全局边界：instance 支持多域名、DNSPod/Cloudflare DNS provider、Let's Encrypt/GTS certificate issuer、多个 OIDC provider；新增全局 users 目录，instance admin 可管理 users、workspaces、nodes、routes、policies 与 relay。 |
+| v0.29 | 2026-11-14 | 明确 `GET /workspaces` 的集合可见性：instance admin 返回全部 workspace，普通用户只返回自己的 membership；不能通过查询参数扩大可见范围。 |
+| v0.30 | 2026-11-14 | 将 Web 管理面拆成独立的 instance admin API（`/api/v1/admin`）和普通用户 API（`/api/v1`）；两套 API 不共享 operation、凭据或全局资源视图。 |
+| v0.31 | 2026-11-15 | 所有持久化 entity 统一使用 UUID `id`；name、subject 和 path 参数只作为可读索引或查找键。 |
 
 目录
 
@@ -69,7 +80,7 @@ agentd 不是 cloudflared 或 Tailscale 那样的三层组网工具。访问和�
 | 学校宿舍台式机 | `dorm` | egress | 作为出口访问校园网，如 course.ucas.edu.cn，也可作为 SSH 跳板进校园网主机 |
 | 家中台式机 | `homepc` | service | 以 `https://nas.home.agentsrv.example.com` 暴露本机 127.0.0.1:8080 的 NAS 网站；以 `homepc.home.agentsrv.example.com:22` 暴露本机 sshd |
 | 公司台式机 | `office` | executor | 接收任务，执行 lark-cli 等只在公司机器上可用的工具 |
-| 服务器 A | 无（不是节点） | agentserver（控制面，管理平台） | workspace、目录、分组与成员证书、路由表与策略、证书签发、relay 指派；只对 relay 与管理员可达，可以放在内网 |
+| 服务器 A | 无（不是节点） | agentserver（控制面，管理平台） | workspace、目录、分组与成员证书、路由表与策略、证书签发、relay 候选池；只对 relay 与管理员可达，可以放在内网 |
 | 公网服务器 B | 无（不是节点） | agentrelay（数据面） | 节点唯一连接的服务端：维持节点的会话，终结控制流，转发 `tcp` 与 `task` 流，充当 HTTP 服务的 HTTPS 边缘；与控制面分开部署，可多实例，可放在 Cloudflare 后面 |
 
 四条典型链路：
@@ -107,8 +118,8 @@ agentd 不是 cloudflared 或 Tailscale 那样的三层组网工具。访问和�
 | 2 | 任务是什么 | 任务就是 Codex 的 tool call：`function_call` 进，`function_call_output` 出；MVP 实现 Codex 的 `exec_command` 和 `write_stdin`，输出文本格式与 Codex 发给模型的一致（7.6） |
 | 3 | 节点的身份是什么 | 一对 Ed25519 静态密钥，像 WireGuard 的 peer。私钥只在本机；agentserver 维护公钥到名字的目录；策略里的「谁」直接写对端公钥或 `*`，没有别名。与 relay、agentserver 的 Noise 握手用同一把密钥派生的 X25519 密钥；节点间认证靠这把密钥对开流头部和任务内容的签名（7.3）。组、workspace、agentserver 也各有一对 Ed25519 密钥，前两者由 agentserver 保管：组密钥签组成员证书，workspace 密钥签 workspace 成员证书、发给成员的控制消息和 relay 证书，是成员唯一钉住的信任根；agentserver 的密钥只用于 relay 会话（6.8、7.3、7.5、8.2） |
 | 4 | 中心能不能看到明文 | 节点与 relay 之间跑 Noise_IK，CDN 只见密文；控制流在 relay 终结，relay 读得到控制内容，但 agentserver 发出的消息都有签名、改不了。节点之间不加密：relay 能看到任务的内容和被转发连接的字节（后者是 TLS / SSH 密文），也是 HTTP 服务的 HTTPS 边缘；agentserver 不在数据路径上。两者都不能冒充节点、不能篡改签过名的头部与任务、不能把任务或服务流送到签名绑定之外的节点，因为开流头部和任务由发起方签名、输出由 executor 签名（7.5、8.1、8.4） |
-| 5 | 控制面和数据面在哪，节点连谁 | 两个独立程序、分开部署：agentserver 是控制面、管理平台（目录、分组、路由表、策略、证书、relay 指派），只对 relay 可达；agentrelay 是数据面（节点的会话、流转发、HTTP 服务边缘），是节点唯一直接连接的服务端。每个 agentd 只维护一条到被指派 relay 的会话：流 1 是在 relay 终结的控制流，其余是数据流；agentserver 是 relay 的后端，发给节点的消息由它签名、relay 转交。relay 不持有目录、路由表或策略的副本，转发所需的判断按需向控制面查询并缓存答案（4.1、4.3、5.7、5.8） |
-| 6 | 路由表长什么样，谁来选出口 | 路由表在 agentserver 上按 workspace 配置，每条是（源：节点、组或 workspace，协议，域名模式，目的节点 / direct / reject），只有域名级，没有 CIDR；域名集合第一期不做。路由表不下发：ingress 只收到去掉目的的分流表（协议、域名 → 直连 / 交给下一跳 / 拒绝），不知道最终目的实例；出口由控制面在 relay 查询时选出（6.5） |
+| 5 | 控制面和数据面在哪，节点连谁 | 两个独立程序、分开部署：agentserver 是控制面、管理平台（目录、分组、路由表、策略、证书、relay 候选池），只对 relay 可达；agentrelay 是数据面（节点的会话、流转发、HTTP 服务边缘），是节点唯一直接连接的服务端。每个 agentd 只维护一条当前 relay 会话，并可从候选池切换；agentserver 是 relay 的后端，发给节点的消息由它签名、relay 转交。relay 不持有目录、路由表或策略的副本，转发所需的判断按需向控制面查询并缓存答案（4.1、4.3、5.7、5.8） |
+| 6 | 路由表长什么样，谁来选出口 | 路由表在 agentserver 上按 workspace 配置，每条是（源：节点、组或 workspace，协议，域名模式，目的节点 / direct / reject），只有域名级，没有 CIDR；域名集合第一期不做。路由表不下发：ingress 只收到去掉目的的分流表（协议、域名 → 直连 / 交给下一跳 / 拒绝），不知道最终目的实例；出口由控制面在 relay 查询时选出。P2P 方案里路由表项可以打开 `reveal_to`，把这一条的目的节点下发给 ingress 供直连（6.5、7.8） |
 | 7 | 服务用什么名字，HTTPS 证书怎么办 | 每个 agentserver 有自己的域名；workspace 默认用它的子域 `<ws>.<agentserver 域名>`，也可配自定义域名并提供 DNS 凭据；agentserver 用 ACME DNS-01 为每个 workspace 申请一张通配证书并保管私钥，下发给服务该 workspace 的 relay（只存内存），由 relay 的边缘终结 TLS（5.4、5.8、6.2） |
 | 8 | 转发哪些协议 | TLS（按 SNI）和 SSH（域名来自代理请求、ProxyCommand 或 fake-IP 映射）。明文 HTTP 不支持（6.3、附录 A） |
 | 9 | 谁能用谁 | 提供侧节点执行的策略统一是 (公钥, allow/deny, target)，target 是字面的域名模式加协议、argv 前缀或服务名，节点上没有目标组；显式 deny 优先、其余取 allow 的并集、默认拒绝。策略的权威来源由每个提供侧角色的 `policy_source` 二选一：`local` 用本地配置，`server` 用 agentserver 渲染并经控制通道下发的策略（本地 deny 仍作刹车）。agentserver 上的策略用主体书写（实例、实例组、workspace、已登录用户、public），渲染时主体换成节点、组或 workspace 的公钥，不展开成员；请求方用成员证书证明自己属于组或 workspace。策略是唯一的授权抽象，没有单独的接受名单：relay 转发前向控制面查询预检结果，控制面用目的节点的策略判定（受管节点是它渲染的，自管节点随 `Advertise` 上报生效策略）（5.8、6.6 到 6.8） |
@@ -134,7 +145,7 @@ agentd 不是 cloudflared 或 Tailscale 那样的三层组网工具。访问和�
 | 任务内容对 agentserver 可见 | 节点之间只签名不加密，agentserver 看得到 `function_call` 的参数和输出，被攻破时泄露命令与结果；HTTP 服务的明文同理 | 用户决定 MVP 接受；签名保证它不能伪造或篡改；将来需要时通过协议次版本加节点间加密，不改骨架 |
 | `server` 模式下策略由 agentserver 下发 | 它被攻破时可以把受管节点的策略改宽 | 这是节点自己选择的信任；本地 deny 仍然生效，可写入刹车规则；随时可切回 `local`（6.7） |
 | CDN 的限制 | Cloudflare 对代理连接有约 100 秒空闲超时、请求体大小上限、回源默认 HTTP/1.1，Bot Fight Mode 会对非浏览器 TLS 指纹出挑战；免费的 Universal SSL 只覆盖一级通配，`nas.home.agentsrv.example.com` 这种两级名字不能走橙云 | 保活 30 秒；WebSocket 为默认 transport，XHTTP packet-up 为回退；关闭 Bot Fight Mode、缓存、压缩和脚本改写；服务域名的公网记录用灰云直指 relay，或后续改单级命名；这些要实测（7.2） |
-| 控制面或 relay 不可用 | agentserver 挂了：不能加入、改策略、续发成员证书，控制流上没有新消息，relay 只能转发已缓存过判断的（发起方, 目的）组合，新组合要等它恢复，成员证书约 1 小时后陆续过期；relay 挂了：该 workspace 的控制与数据都中断，直到节点连上别的 relay 或控制面改派 | 分开部署本身就是故障隔离；MVP 每个 workspace 一个 relay，多 relay 与自动改派放后续 |
+| 控制面或 relay 不可用 | agentserver 挂了：不能加入、改策略、续发成员证书，控制流上没有新消息，relay 只能转发已缓存过判断的（发起方, 目的）组合，新组合要等它恢复，成员证书约 1 小时后陆续过期；relay 挂了：指派给它的 workspace 的控制与数据都中断，直到它恢复，或管理员改派并让成员得知新 relay | 分开部署本身就是故障隔离，别的 relay 上的 workspace 不受影响；MVP 每个 workspace 一个 relay，relay 故障时的处理步骤见 9.5，多 relay 的现状与方案见 5.9 |
 | TUN 模式的兼容性 | 接管默认路由后所有本机流量进用户态栈；macOS 的 iCloud Private Relay 走 QUIC/MASQUE，被 QUIC 嗅探阻断后的回退行为未知 | UDP 直通；只对命中规则的 QUIC 阻断；Private Relay 列入阶段 2 的兼容测试 |
 | 时钟依赖 | Noise_IK 第一条消息和开流签名都靠时间戳防重放：会话握手要求时间戳单调递增，开流签名要求在 5 分钟窗口内 | 与 WireGuard 相同的取舍；启动时检查与 agentserver 的时钟偏差；拒绝时在 `agentd status` 和日志里明示原因 |
 
@@ -144,7 +155,7 @@ agentd 不是 cloudflared 或 Tailscale 那样的三层组网工具。访问和�
 
 | 术语 | 定义 |
 | --- | --- |
-| agentserver（控制面，管理平台兼后端） | 一个实例服务多个 workspace：目录、分组与组密钥、workspace 密钥与成员证书、路由表、策略、服务注册、域名与证书签发、relay 注册与 relay 证书、P2P 会合、管理 API 与 CLI。节点不连它：它只和 relay 与管理员说话，回答 relay 的查询，用各 workspace 的密钥签名发给节点的控制消息；不在数据路径上。它自己的一对 Ed25519 密钥只用于 relay 会话，节点不需要知道。 |
+| agentserver（控制面，管理平台兼后端） | 一个实例服务多个 workspace：目录、分组与组密钥、workspace 密钥与成员证书、路由表、策略、服务注册、域名与证书签发、relay 注册与 relay 证书、P2P 会合、admin API 与 Web 控制台。节点不连它：它只和 relay 与管理员说话，回答 relay 的查询，用各 workspace 的密钥签名发给节点的控制消息；不在数据路径上。它自己的一对 Ed25519 密钥只用于 relay 会话，节点不需要知道。 |
 | agentrelay（relay，数据面与节点接入） | 节点唯一连接的服务端，与 agentserver 分开部署、可多实例：维护节点的会话，终结控制流并在节点与后端之间转交消息，转发 `tcp` 与 `task` 流（本地校验后向后端查询选路与预检结果），充当 HTTP 服务的 HTTPS 边缘，提供 STUN 反射。没有持久状态，也不持有目录、路由表或策略的副本。有自己的域名和一对 Ed25519 密钥，凭 agentserver 签发的 relay 证书被节点认可。 |
 | relay 证书 | agentserver 用 workspace 密钥为每个 (relay, workspace) 签的短期证书 {relay 公钥, 名字, 各 transport 的 URL, STUN 地址, workspace, 有效期}。节点只钉自己 workspace 的公钥，凭证书认服务该 workspace 的任何 relay；首次接触从 relay 的 `/.well-known/agentd?workspace=<基础域名>` 取得，之后随 `Welcome.relays` 更新（4.5、8.6）。 |
 | relay 缓存 | relay 对后端答案的 TTL 缓存：「这把公钥是谁」「这条流去哪、允不允许」「这个 workspace 的服务证书」。后端变更时按 workspace 清除；后端不可达时已有条目不过期、未命中的请求退避重试。它不是数据副本，relay 不自己做选路或策略判定（5.8）。 |
@@ -164,8 +175,8 @@ agentd 不是 cloudflared 或 Tailscale 那样的三层组网工具。访问和�
 | relay session（relay 会话） | relay 到 agentserver 的一条连接（Noise_IK 加 yamux），只有一条流：relay 的查询与节点消息的转交，后端的答案、发给节点的签名消息、缓存失效与证书推送。 |
 | stream（流） | 会话内的一条双向字节流，有类型：`control`（每会话一条，在 relay 终结）、`tcp`（承载一条被转发的 TCP 连接，`proto` 为 `tls`、`ssh` 或 `http`）、`task`（一次 tool call）。所有类型共用节点的那一条会话；relay 把两条会话里的流拼接起来。 |
 | open signature（开流签名） | 每条 `tcp` / `task` 流的第一帧 `Open` 由发起节点用自己的 Ed25519 密钥签名（任务时含整个 `function_call`）。会话的 Noise 只认证了节点与 relay，提供侧要独立于 relay 确认发起者，靠的就是这个签名：relay 转发前验一次，提供侧再验一次。流上随后的字节不再签名也不在节点间加密，靠两跳（发起方 ⇄ relay、relay ⇄ 提供侧）的 Noise 会话保护。 |
-| route table（路由表） | agentserver 上按 workspace 配置的表，每条是（源：节点、组或 workspace，协议，域名模式，目的：某个 egress 节点、`direct` 或 `reject`）。只在 agentserver 上，由它在 relay 查询时选出口；不下发给节点（6.5）。 |
-| ingress routes（分流表） | agentserver 按节点从路由表渲染给 ingress 的投影：（协议，域名模式）→ 直连 / 交给下一跳 / 拒绝，不含目的节点；ingress 据此决定一条连接是否交给 relay，不知道出口是谁（6.5）。 |
+| route table（路由表） | agentserver 上按 workspace 配置的表，每条是（源：节点、组或 workspace，协议，域名模式，目的：某个 egress 节点、`direct` 或 `reject`）。只在 agentserver 上，由它在 relay 查询时选出口；默认不下发给节点，P2P 方案里可以按条目把目的节点下发给 ingress（6.5、7.8）。 |
+| ingress routes（分流表） | agentserver 按节点从路由表渲染给 ingress 的投影：（协议，域名模式）→ 直连 / 交给下一跳 / 拒绝，默认不含目的节点；ingress 据此决定一条连接是否交给 relay，不知道出口是谁（6.5）。 |
 | domain set（域名集合） | agentserver 上命名的域名模式列表，供路由表和中央策略引用。第一期不做，路由表与策略直接写字面模式；协议里保留位置（6.5）。 |
 | service（服务） | service 角色发布的命名目标：服务名、所在节点、协议（`http`、`ssh` 或 `tcp`）、本地目标地址。域名 `<service>.<基础域名>`。 |
 | policy（策略） | 唯一的授权抽象，对 `tcp`、`task` 与服务访问一视同仁：(public_key, action, target)，public_key 是一把对端公钥或 `*`（任何人：对 egress、executor 与 ssh 服务就是任何成员，对 HTTP 服务还包括公网访问者），action 是 allow / deny，target 按角色是域名模式加协议、argv 前缀或服务名。提供侧节点执行它；控制面在转发前用同一份策略预检（受管节点是它渲染的，自管节点随 `Advertise` 上报生效策略）。显式 deny 优先，默认拒绝（6.6）。 |
@@ -191,7 +202,7 @@ workspace 名和服务名与实例名用同一套规则（3.1）。要用 SSH �
 - 同 workspace 内可以用短名 `laptop` 代替 `agentd://home.agentsrv.example.com/laptop`。配置、CLI 和日志接受三种写法：短名、名字形式、密钥形式。日志同时打印名字和密钥的前 8 个字符，如 `laptop (0rWkXpu4…)`。
 - 解析：两个方向都只靠目录（`agentd peers` 显示）；节点的判定不解析名字，策略里只有公钥。两个 workspace 的名字空间互不相关，一个节点只能解析自己 workspace 的名字。
 - 用在哪里：策略的 `public_key`（公钥形式或 `*`）；任务的目的地（`agentd task exec office -- …`，MCP 工具名用短名）；流头部的 `from`、下一跳 `to` 与任务的 `executor`（线上是公钥）；加入链接（名字形式加查询参数，4.5）；`agentd key show` 与 `agentd status` 同时显示两个名字。
-- 不用 `agentd://` 的东西：服务按协议命名，`https://nas.home.agentsrv.example.com`、`ssh homepc.home.agentsrv.example.com`；agentserver 与 relay 不是 agentd 实例：agentserver 没有节点可见的身份，workspace 用它的公钥表示（`workspace.public_key`，名字形式 `agentd://<ws 域名>/`），relay 用它的 HTTPS URL 与 relay 证书表示（`workspace.relay.url`）。
+- 不用 `agentd://` 的东西：服务按协议命名，`https://nas.home.agentsrv.example.com`、`ssh homepc.home.agentsrv.example.com`；agentserver 与 relay 不是 agentd 实例：agentserver 没有节点可见的身份，workspace 用它的公钥表示（`workspace.public_key`，名字形式 `agentd://<ws 域名>/`），relay 用候选列表里的 HTTPS URL 与 relay 证书表示。
 - 对照：Tailscale 用 `nodekey:<hex>` 加 MagicDNS 名字，WireGuard 的 peer 就是公钥；agentd 把两者都做成可互换的 URI。
 
 ---
@@ -234,6 +245,26 @@ agentserver 是管理平台兼后端：所有状态和所有决策（谁是成�
 ```
 
 每个节点只有图中这一条会话，控制消息走会话里的第一条流，在 relay 终结。Cloudflare 可选地代理 relay 的域名；agentserver 可以放在内网，只要 relay 连得上它。策略里对 `*` 开放的服务，其公网访问直接到 relay 的 edge（`*.home.agentsrv.example.com:443`），不经任何节点。开启 P2P 的两个节点之间还可能有一条直连会话（7.8），只承载数据流。
+
+上图只画了一个 relay。一个 agentserver 下可以注册多个 relay（注册方式见 9.5），每个 relay 各自与 agentserver 保持一条 relay 会话；relay 组成候选池，workspace 不绑定单一 relay，agentd 按 Welcome 和连接质量选择当前 relay：
+
+```
+                          +---------------+
+                          |  agentserver  |
+                          +---+-------+---+
+               relay 会话     |       |     relay 会话
+             +----------------+       +----------------+
+             |                                         |
+  +----------+-----------+                 +-----------+----------+
+  | relay-hk             |                 | relay-sg             |
+  | workspace: home, lab |                 | workspace: work      |
+  +---+-------+-------+--+                 +-----+---------+------+
+      |       |       |                          |         |
+   laptop   dorm   homepc ...                  work 的成员
+   （home 与 lab 的成员）
+```
+
+多 relay 现在解决的是容量与隔离（不同的 workspace 放在不同的 relay 上），还不是就近接入或高可用：同一个 workspace 的节点不能分散在两个 relay 上，relay 之间不转发，relay 故障时它上面的 workspace 要人工处理。现状的细节与限制，以及 relay 池与 relay 间转发的方案，都在 5.9。
 
 ### 4.3 连接模型：一条会话，控制流加数据流
 
@@ -300,49 +331,49 @@ agentserver 是管理平台兼后端：所有状态和所有决策（谁是成�
 接入（join）把一个实例新生成的密钥登记进某个 workspace 的目录，并给它一个名字形式的名字。整个流程只依赖一个一次性令牌和 workspace 的公钥，没有账号密码，也没有长期 bearer 凭据。
 
 ```
-管理员   ── agentserver token create ───────────────────────────────▶ agentserver
-管理员   ◀── 加入链接 agentd://home.agentsrv.example.com/dorm?relay=…&key=…&token=… ── agentserver
+管理员   ── 控制台或 admin API：签发加入令牌 ────────────────────▶ agentserver
+管理员   ◀── 一次性 join token ── agentserver
 管理员   ······ 带外交给设备（聊天工具、复制粘贴、二维码）······▶ 设备
-实例     ── GET https://relay-hk…/.well-known/agentd?workspace=home.… ─▶ relay      （取该 workspace 的 relay 证书，用 key 验签）
-实例     ── transport 连接 + Noise_IK 消息 1 {版本区间, 时间戳, 身份公钥, 令牌, 建议名字} ─▶ relay
+实例     ── 对 candidates 做 TLS / well-known / transport 延迟探测（不消费令牌）
+实例     ── 选择最低延迟 relay；transport 连接 + Noise_IK 消息 1 {版本区间, 时间戳, 身份公钥, 令牌, 建议名字} ─▶ relay
                                                                     relay ── 加入请求 ──▶ agentserver
                                                                     校验令牌、名字、公钥；登记目录；令牌作废
                                                                     relay ◀── 节点信息 + 签名的 Welcome ── agentserver
 实例     ◀── Noise_IK 消息 2 {版本, 会话 ID, joined, 两个名字, 角色上限} ─ relay
 实例     ── 流 1：控制流 ──────────────────────────────────────────▶ relay
-实例     ◀── Welcome（workspace 密钥签名：分流表、服务表、目录、executor 清单、relay 列表与指派）── relay
+实例     ◀── Welcome（workspace 密钥签名：分流表、服务表、目录、executor 清单、relay 候选列表）── relay
 实例     ── Advertise（本机服务、executor 工具、自管时的生效策略）─▶ relay ── 转交 ──▶ agentserver
 其他成员 ◀── Update（workspace 密钥签名：新成员的名字与公钥、在线）── relay ◀── agentserver
 ```
 
 步骤：
 
-1. 前提：agentserver 已有自己的 Ed25519 密钥对（只用于 relay 会话），至少注册了一个 relay，workspace `home` 已创建（有自己的密钥对、基础域名和通配证书）并指派给某个 relay，agentserver 用 `home` 的密钥给该 relay 签了 relay 证书。
-2. 管理员签发令牌：`agentserver token create --workspace home --name dorm --roles egress --ttl 24h`。agentserver 检查 `dorm` 符合实例名规则且在 `home` 内未被任何节点或服务占用，生成 128 位随机令牌，只保存它的 SHA-256，绑定 (workspace, 名字, 角色上限, 过期时间)，输出加入链接：
+1. 前提：agentserver 已有自己的 Ed25519 密钥对（只用于 relay 会话），至少注册了一个 relay，workspace `home` 已创建（有自己的密钥对、基础域名和通配证书），agentserver 已注册 relay 候选。
+2. 管理员在控制台的 tokens 页或经 admin API 签发令牌：`POST /workspaces/<workspace-id>/tokens`，请求体 `{"name": "dorm", "roles": ["egress"], "ttl": "24h"}`。agentserver 检查名字规则与 workspace 内占用情况，生成 128 位随机令牌，只保存 SHA-256，绑定 (workspace, 名字, 角色上限, 过期时间)，只把一次性的 join token 返回给 Web UI：
 
    ```
-   agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.com&key=<workspace 公钥>&token=<令牌>
+   <join-token>
    ```
 
-   链接就是新实例的名字形式加三个参数：`relay` 是被指派 relay 的 transport 端点，`key` 是 workspace 的公钥（base64url，成员唯一的信任根：认 relay 证书、验所有控制消息和 workspace 成员证书的签名），`token` 是令牌。`--name` 可以省略，此时链接的 path 为空，名字在加入时由实例提出。链接是秘密，但 `agentd://` 不是浏览器会发到网上的协议，误贴进浏览器不会泄露给任何服务端或 CDN 日志。
-3. 设备上安装 agentd，执行 `agentd join '<链接>'`（链接也可从标准输入读，避免进 shell 历史；要在同一台设备上加入第二个 workspace，就用 `agentd -i <实例名> join …` 起一个新实例，9.2）。若实例目录下的 `node.key` 不存在则生成 Ed25519 密钥对；若该实例已属于某个 workspace 则拒绝，除非加 `--replace`（先执行 `agentd leave`）；把 `workspace.public_key`、`workspace.relay.url`、`workspace.domain`、`metadata.name` 写入配置。令牌没有指定名字时用 `--name`，否则用清洗过的 hostname。
-4. 认 relay：实例请求 `https://<relay>/.well-known/agentd?workspace=<基础域名>`，得到该 workspace 的 relay 证书 {relay 公钥, 名字, URL, STUN, workspace, 有效期}，用链接里的 `key`（workspace 公钥）验签。通过后建 transport 连接，以 relay 公钥派生的 X25519 公钥作为响应方静态公钥发 Noise_IK 消息 1，载荷是 {会话种类, 版本区间, 时间戳, 身份公钥, 令牌, 建议名字, workspace}。
-5. 加入：relay 完成握手，校验身份公钥的派生结果等于握手静态公钥（握手本身因此证明了身份私钥的持有），把加入请求（身份公钥、令牌、建议名字、workspace）转给后端。agentserver 依次校验：令牌哈希存在、未使用、未过期、所属 workspace 与链接的 authority 一致；该公钥尚未在任何 workspace 的目录中（一把密钥只属于一个实例）；名字仍未被占用；该 workspace 指派给了这个 relay。全部通过则写入目录 (workspace, 名字, 公钥, 角色上限, 加入时间)，令牌作废，把节点信息（workspace、名字、角色上限）和签好名的 `Welcome` 交给 relay。relay 发消息 2，载荷为 {协商版本, 会话 ID, 结果 joined, 两个名字, 角色上限}，从此接受它的数据流。任一项失败则消息 2 带错误码后断开：令牌无效、令牌已使用、令牌过期、名字已占用、公钥已属于其他实例、版本不兼容、时间戳过旧、relay 不对（附带正确的 relay 证书，实例换 relay 重来）、后端不可达。
+   Web UI 不把 relay candidates 与 token 一起返回。
+3. 设备上安装 agentd，执行 `agentd join '<join-token>'`。若实例目录下的 `node.key` 不存在则生成 Ed25519 密钥对；agentd 以 `Authorization: Bearer <join-token>` 调用 agentserver 的 `GET /api/v1/join/candidates`，查询 workspace、workspace 公钥和 relay candidates。
+4. 认 relay：agentd 对返回的候选 relay 请求 `/.well-known/agentd?workspace=<基础域名>`，用 workspace 公钥验签并测量 transport。探测阶段不携带 join token，不会消费令牌；选定 relay 后才建立正式 Noise_IK 连接。
+5. 加入：选定 relay 完成握手并把加入请求转给后端。agentserver 在事务中校验并消费 token：令牌只能成功消费一次；成功后写入目录并返回签名的 `Welcome`。同时提交到其他 relay 的请求返回 `TOKEN_USED`，绝不创建第二个成员。
 6. 实例开控制流（流 1），relay 回 Ack 并送达 `Welcome`；实例验签（workspace 公钥、收件人是自己、时间在窗口内）后发 `Advertise`（只能声明角色上限内的角色；自管的提供侧节点附上生效策略），relay 转给后端，后端经 relay 向 workspace 其他成员推签名的 `Update`。设备上 `agentd status` 显示「已加入」、两个名字和所连的 relay。
 7. 之后每次连接：握手不带令牌；relay 向后端查这把公钥是谁（答案缓存），已知则建会话、放行数据流并送达新的 `Welcome`；未知（已被移除）则消息 2 回 `not-a-member` 并断开，实例停止重连并提示重新 join。后端不可达时 relay 对未缓存的公钥回 `control-not-ready`，实例退避重试。relay 的证书过期或验签失败时实例不连它，换 `Welcome.relays` 里的下一个；控制消息验签失败说明 relay 或链路有问题，实例丢弃该消息并告警。
 8. 其他成员视角：收到 `Update` 后 `agentd peers` 能看到 `dorm  agentd://<公钥>`；要对它授权的提供侧节点把这把公钥写进自己规则的 `public_key`（受管节点由中央策略渲染）。
 
 生命周期操作：
 
-| 操作 | 命令 | 效果 |
+| 操作 | 做法（instance admin API 的路径相对 `/api/v1/admin`；控制台里是同名的页与操作） | 效果 |
 | --- | --- | --- |
-| 改名 | `agentserver node rename --workspace home dorm dorm2` | 目录更新并推送；其他节点的规则不受影响，因为规则里写的是公钥 |
-| 调整角色上限 | `agentserver node set-roles --workspace home dorm egress,executor` | 目录更新，relay 的缓存失效并重新查询；超出上限的 `Advertise` 与开流立即被拒 |
-| 吊销 | `agentserver node remove --workspace home dorm` | 通知 relay 关闭其会话，目录推送移除；其他节点规则里写的旧公钥仍在，但目录里查不到，`agentd status` 对这类规则告警 |
-| 换设备或轮换密钥 | `node remove` 后重新 `token create --name dorm` 并在新设备 join | 新公钥、同名字；其他节点规则里写的旧公钥不再匹配，要改规则。换了设备必须重新信任，这是有意的 |
+| 改名 | `PATCH /workspaces/<workspace-id>/nodes/<node-id>`，`{"name": "dorm2"}` | 目录更新并推送；其他节点的规则不受影响，因为规则里写的是公钥 |
+| 调整角色上限 | `PATCH /workspaces/<workspace-id>/nodes/<node-id>`，`{"role_caps": ["egress", "executor"]}` | 目录更新，relay 的缓存失效并重新查询；超出上限的 `Advertise` 与开流立即被拒 |
+| 吊销 | `DELETE /workspaces/<workspace-id>/nodes/<node-id>` | 通知 relay 关闭其会话，目录推送移除；其他节点规则里写的旧公钥仍在，但目录里查不到，`agentd status` 对这类规则告警 |
+| 换设备或轮换密钥 | 移除节点后重新签发名字为 dorm 的令牌，在新设备 join | 新公钥、同名字；其他节点规则里写的旧公钥不再匹配，要改规则。换了设备必须重新信任，这是有意的 |
 | 节点主动退出 | `agentd leave` | 经 relay 通知 agentserver 移除自己，删除本地 workspace 配置，保留密钥文件 |
-| 令牌管理 | `agentserver token list \| revoke --workspace home` | 查看未用令牌，提前作废 |
-| 换 relay | `agentserver workspace set-relay home relay-sg` | 签名的 `Update.assigned_relay` 推给成员，成员关闭当前会话、连新 relay；旧 relay 收到失效通知 |
+| 令牌管理 | `GET /workspaces/<workspace-id>/tokens`，`DELETE /workspaces/<workspace-id>/tokens/<token-id>` | 查看未用令牌，提前作废 |
+| 选择 relay | agentd 根据 Welcome 中的 relay 候选和连接质量自动选择或切换 | relay 按需取得 workspace 证书，切换不需要修改 workspace 配置。 |
 
 失败与边界：
 
@@ -363,7 +394,7 @@ agentserver 是管理平台兼后端：所有状态和所有决策（谁是成�
 | 消费侧 | ingress、submitter | 本机的应用和 AI agent | 发起流，用自己的节点密钥给 `Open` 头部和任务签名；ingress 只判断直连还是交给下一跳 |
 | 提供侧 | egress、service、executor | workspace 内其他节点 | 验签得到对端身份后，用生效策略（本地或 agentserver 下发，6.7）决定谁能用我、能用到什么程度；自管时把生效策略随 `Advertise` 上报，供控制面预检 |
 | 控制面 | agentserver（独立程序，管理平台） | 整个实例上的所有 workspace | 目录、分组与成员证书、路由表、策略渲染与预检、证书签发、relay 指派；作为 relay 的后端回答查询、签名发给节点的消息，不在数据路径上 |
-| 数据面 | agentrelay（独立程序，可多实例） | 被指派的 workspace | 节点唯一连接的服务端：终结控制流、在节点与后端间转交消息；转发前本地验签，再向控制面查询选路与预检结果（控制面先选目的节点，再查角色，再用目的节点的策略预检），答案缓存；HTTP 服务的边缘；argv 级的细粒度授权留给提供侧（HTTP 服务除外） |
+| 数据面 | agentrelay（独立程序，可多实例） | relay 候选池中的 workspace | 节点唯一连接的服务端：终结控制流、在节点与后端间转交消息；转发前本地验签，再向控制面查询选路与预检结果（控制面先选目的节点，再查角色，再用目的节点的策略预检），答案缓存；HTTP 服务的边缘；argv 级的细粒度授权留给提供侧（HTTP 服务除外） |
 
 ### 5.2 ingress
 
@@ -387,7 +418,7 @@ TUN 模式的具体行为：
 - 系统 DNS 的接管与恢复是独立工作项：macOS 用 `scutil` 写 DNS 配置，Linux 兼容 systemd-resolved 和 resolvconf；elevator 在退出、崩溃和网络切换时负责恢复。
 - TUN、系统 DNS 接管与 53 端口重定向是设备级资源：同一台设备同一时刻只能有一个实例开启 `tun`，elevator 只服务这一个实例，第二个实例请求 TUN 时被拒并告警；其他实例用代理入口（各自的端口）和 `agentd -i <实例名> connect`。TUN 实例只认识自己 workspace 的分流表和服务域名，其他实例的域名在它看来是直连（第 10 节第 13 条）。
 
-判定依据：agentserver 推送的分流表（协议、域名模式到「交给下一跳 / 直连 / 拒绝」，按本节点渲染、不含目的节点）和服务列表（服务域名一律交给下一跳）。ingress 把 `to` 写成所连 relay 的公钥并签名，出口由控制面在 relay 查询时按路由表选出；ingress 从 Ack 的 `responder` 得知这条连接最终由谁服务，只用于日志和 P2P 的流放置（7.8）。
+判定依据：agentserver 推送的分流表（协议、域名模式到「交给下一跳 / 直连 / 拒绝」，按本节点渲染、不含目的节点）和服务列表（服务域名一律交给下一跳）。ingress 把 `to` 写成所连 relay 的公钥并签名，出口由控制面在 relay 查询时按路由表选出；ingress 从 Ack 的 `responder` 得知这条连接最终由谁服务，只用于日志。
 
 其他：
 
@@ -431,7 +462,7 @@ service:
 
 HTTP 服务（`proto: http`，默认）：
 
-- 节点连上 agentserver 时在 `Advertise` 里注册服务；agentserver 分配域名 `nas.home.agentsrv.example.com`（或 workspace 自定义基础域名下的 `nas.<自定义域名>`）。workspace 的通配证书已存在时服务立即 `ready`；刚创建 workspace 或刚绑定自定义域名时处于 `cert_pending`，期间对该域名的连接回错误码 `service-not-ready`。
+- 节点连上 agentserver 时在 `Advertise` 里注册服务；agentserver 分配域名 `nas.home.agentsrv.example.com`（基础域名由 workspace 选择的 instance `domain_id` 生成）。workspace 的通配证书已存在时服务立即 `ready`；刚创建 workspace 或刚绑定 instance domain 时处于 `cert_pending`，期间对该域名的连接回错误码 `service-not-ready`。
 - 边缘在 relay：公网 443 端口和经 ingress 送来的 `tcp/tls` 流进入同一个 TLS 监听逻辑，按 SNI 选 workspace 与服务，用控制面下发的该 workspace 证书终结 TLS。访问控制只有策略：服务节点 `service` 规则的 `public_key` 是成员公钥时，只接受经成员 ingress 送来、身份命中的连接；有 `public_key: "*"` 的 allow 规则时任何人都能访问，公网直连也接受；没有 `*` 规则的服务，公网直连得到一个说明页。判定由控制面按该服务节点的策略做出（relay 查询时给出，答案缓存），relay 的边缘执行，成员身份来自送流会话的节点公钥。
 - relay 用 Go `httputil.ReverseProxy` 把请求以 HTTP/1.1 送到节点：浏览器侧可协商 h2，节点侧 HTTP/1.1；加 `X-Forwarded-For`、`X-Forwarded-Proto: https`、`X-Forwarded-Host`；来源是成员时加 `X-Agentd-Peer: laptop` 和 `X-Agentd-Peer-Key: <公钥>`，公网来源的同名头一律剥离。这给了服务一个免登录的身份信号，类似 Cloudflare Access 的做法。
 - 节点收到 relay 开的 `tcp/http` 流（`from` 是 `Welcome.relays` 里的 relay 公钥）后再做一层 HTTP/1.1 反向代理到 `target`：目标只能是明文 HTTP，保留原始 Host 并加 X-Forwarded-*，没有可配项；WebSocket 升级两层都原样转发。这是 Synology、Home Assistant、Nextcloud、Grafana 一类 Web UI 能正常工作的最低要求。
@@ -495,10 +526,10 @@ executor:
 - **coordinator**：workspace、目录（公钥、名字、角色上限、在线状态）、分组与组密钥、workspace 密钥、成员证书的签发、续期与吊销、路由表、服务注册与状态、各节点上报的策略来源与自管节点的生效策略、加入令牌。处理 relay 转来的节点消息（`Advertise`、`PolicyApplied`、`Pull`、`RelayReport`、P2P 信令），生成发给节点的消息（`Welcome`、`Update`、`PolicyUpdate`、`Notice`、`AdvertiseResult`），用该 workspace 的密钥签名，交 relay 送达。
 - **policy**：中央策略的存储、按节点渲染与 `PolicyUpdate` 下发（6.8）；转发预检的判定（受管节点用渲染结果，自管节点用上报的生效策略）；边缘访问的判定。
 - **routing**：路由表（6.5）：为 relay 的查询选出口，为 ingress 节点渲染分流表。
-- **relay 管理**：注册 relay（名字、公钥、地址、transport 路径、STUN 端口），为它服务的每个 workspace 用该 workspace 的密钥签发短期 relay 证书，给每个 workspace 指派 relay（MVP 一个），维护与每个 relay 的会话：回答查询（这把公钥是谁、加入请求、某条流的选路与预检结果、某 workspace 的服务证书），目录、路由表、服务、策略或证书变更时推 `RelayInvalidate`，推服务证书；在 `Welcome` / `Update` 里把 relay 证书列表与指派告诉节点，收到节点的 `RelayReport` 时改派。
-- **ACME**：按 workspace 基础域名所在 zone 的 DNS 凭据完成 DNS-01，为每个 workspace 签发并续期通配证书 `*.<基础域名>`；证书与私钥加密存在状态库，经 relay 会话下发给服务该 workspace 的 relay；需要公开访问时写入 `*.<基础域名>` 指向 relay 的记录。
-- **P2P 会合**：候选地址保存、`P2PConnect` 的校验与 `P2PInvite` 的下发（7.8），消息都经 relay 转交。
-- **admin API 与 CLI**：管理 workspace、目录、分组、路由表、策略、域名、relay；`agentserver backup` 导出状态库（含服务器私钥、组与 workspace 私钥、ACME 账户密钥、证书私钥和目录，丢失等于全网重新 join）；Web 控制台放后续。
+- **relay 管理**：relay 注册表（名字、公钥、地址、transport 路径、STUN 端口），可以注册多个：relay 凭一次性令牌或引导令牌自注册，或由管理员按公钥预先登记（9.5）。workspace 不绑定 relay；agentd 从候选池中选择当前 relay，运行中可自动切换；为 relay 服务的每个 workspace 用该 workspace 的密钥签发短期 relay 证书。维护与每个 relay 的会话：回答查询（这把公钥是谁、加入请求、某条流的选路与预检结果、某 workspace 的服务证书），目录、路由表、服务、策略或证书变更时向该 workspace 的 relay 推 `RelayInvalidate`，推服务证书；在 `Welcome` 里把 relay 候选列表及其证书信息告诉节点。节点的 `RelayReport` 用于更新候选选择和在线状态。
+- **ACME**：按 workspace 基础域名所在 zone 的 DNS 凭据完成 DNS-01，为每个 workspace 签发并续期通配证书 `*.<基础域名>`；证书与私钥加密存在状态库，经 relay 会话下发给服务该 workspace 的 relay；`dns_providers` 的某一项打开 公网 DNS 记录管理 时，为基础域名落在它的 zones 里的 workspace 写入 `*.<基础域名>` 指向 relay 的记录（6.1，未实现）。
+- **P2P 会合**：校验 `P2PConnect`，在两个节点之间转交候选地址并下发 `P2PInvite`，候选地址不保存（7.8，未实现）；消息都经 relay 转交。
+- **admin API 与 Web 控制台**：管理 workspace、目录、分组、路由表、策略、域名、relay 的唯一入口。控制台由 admin API 的 OpenAPI 文档生成并编译进 agentserver，脚本与自动化直接调 API。agentserver 是服务端程序，没有管理命令：二进制只有 `run`、`version` 与 `backup`（9.3）。`agentserver backup` 导出状态库（含服务器私钥、组与 workspace 私钥、ACME 账户密钥、证书私钥和目录，丢失等于全网重新 join）。
 
 多租户：一个 agentserver 服务多个 workspace，不同 workspace 的节点互不可见；每个 workspace 有自己的基础域名、证书、路由表、分组和目录。agentserver 只需要对 relay 和管理员可达，可以放在内网；它的规模随 relay 数而不是节点数增长。
 
@@ -506,16 +537,106 @@ executor:
 
 职责：作为节点唯一的服务端，维持节点的会话，终结控制流并在节点与后端之间转交消息，在节点之间转发流，充当 HTTP 服务的 HTTPS 边缘。与 agentserver 分开部署，可以多实例；没有持久状态，不持有目录、路由表或策略的副本，只有对后端答案的 TTL 缓存和内存里的证书。
 
-- **hub**：接受节点的会话（Noise_IK 响应方，凭 relay 证书被节点认可）。握手时向后端查这把公钥是谁（答案缓存），带令牌的握手转为加入请求；后端确认后回 `ServerHello{OK}` 并记下 workspace、名字、角色上限，从此接受它的数据流；同一公钥的新会话替换旧会话。节点上下线报告给后端（`RelayPresence`）。
+- **hub**：接受节点的会话（Noise_IK 响应方，凭 relay 证书被节点认可）。握手时向后端查这把公钥是谁（答案缓存），带令牌的握手转为加入请求；后端确认后回 `ServerHello{OK}` 并记下 workspace、名字、角色上限，从此接受它的数据流；节点可以从候选池连接到本 relay；若 relay 不可服务该 workspace，返回候选信息并拒绝；同一公钥的新会话替换旧会话。节点上下线报告给后端（`RelayPresence`）。
 - **control**：节点的流 1 是控制流，在 relay 终结。后端发给该节点的消息（都在 workspace 密钥签名的 `Signed` 信封里）原样送达；节点发来的消息（`Advertise`、`PolicyApplied`、`Pull`、`RelayReport`、P2P 信令）以 `NodeMessage{节点公钥, 消息}` 转给后端，relay 对后端证明消息来自谁。relay 不解释也不缓存这些消息，会话建立时向后端要一份该节点的 `Welcome` 送达。
 - **forwarder**：清单 A（协议规范 4.1）：本地校验（验签、`from` 与会话一致、`to` 是自己、时间戳、随机数），向后端查询这条流的选路与预检结果（后端先按路由表或服务表选出目的节点、任务按 `task.executor`，再查双方角色，再用目的节点的策略预检；答案缓存），确认目的节点在线，然后拼接两条流；填 `RelayInfo`；原样转发 `Open`、成员证书与后续字节。
 - **edge**：公网 443 与经 ingress 送来的服务域名流进入同一监听逻辑，按 SNI 选 workspace 证书（向后端取得，内存持有）与服务，访问者是否被允许（含公网访问者）来自后端按服务策略给出的答案（缓存），以 HTTP/1.1 反向代理到服务节点并注入身份头；edge 发起的流由 relay 的身份密钥签名；公网 80 回 301。
 - **STUN 反射**：UDP 3478，供开启 P2P 的节点获取反射地址（7.8）。
-- **relay 会话**：relay 作为 Noise_IK 发起方连到 agentserver，`session_kind = RELAY`，一条流承载全部消息：relay 的查询（`RelayLookup`）、节点消息转交（`NodeMessage`）、在线状态（`RelayPresence`），以及后端的答案（`RelayAnswer`）、发给节点的签名消息（`Deliver`）、缓存失效（`RelayInvalidate`）、服务证书（`WorkspaceCerts`）和 relay 自己的证书（`RelayCert`）。后端不可达时：已有会话与已缓存的答案继续工作，控制流上没有新消息，新节点与未缓存的组合得到 `CONTROL_NOT_READY` 并退避重试，证书到期不再续；重连后清空缓存并重报在线节点。
+- **relay 会话**：relay 作为 Noise_IK 发起方连到 agentserver，`session_kind = RELAY`，握手载荷里带自己的注册信息（名字、对节点公布的 URL、transport 路径、STUN 地址），公钥尚未登记时另带注册令牌（9.5）；一条流承载全部消息：relay 的查询（`RelayLookup`）、节点消息转交（`NodeMessage`）、在线状态（`RelayPresence`），以及后端的答案（`RelayAnswer`）、发给节点的签名消息（`Deliver`）、缓存失效（`RelayInvalidate`）、服务证书（`WorkspaceCerts`）和 relay 自己的证书（`RelayCert`）。后端不可达时：已有会话与已缓存的答案继续工作，控制流上没有新消息，新节点与未缓存的组合得到 `CONTROL_NOT_READY` 并退避重试，证书到期不再续；重连后清空缓存并重报在线节点。
 - **缓存**：答案以查询内容为键、按后端给的 TTL（默认 60 秒）缓存，LRU 有界；一个 workspace 的任何变更都让后端推一条 `RelayInvalidate`，relay 清掉该 workspace 的全部条目并关闭被移除节点的会话。relay 不自己做选路或策略判定，判定逻辑只有 agentserver 一处实现。
 - **well-known**：`GET /.well-known/agentd?workspace=<基础域名>` 返回本 relay 在该 workspace 的 relay 证书、协议版本区间与 transport 路径，供 `agentd join` 首次接触时用 workspace 公钥验证这个 relay。
 
-MVP：每个 workspace 指派一个 relay，该 workspace 的全部成员都连到它，relay 之间不转发。多 relay、就近指派与 relay 间转发（DERP 网状那种）放后续。
+一个 agentserver 下可以有多个 relay，workspace 不绑定单一 relay；agentd 从 Welcome 的候选池中按优先级和连接质量选择 relay，relay 间按需转发（方案见本节）。
+
+### 5.9 多 relay：现状，relay 池与 relay 间转发
+
+本节先写多 relay 已经实现的部分与它的限制，再写阶段 5 的方案。方案除落地顺序的第 1 步外尚未实现；涉及的协议改动在方案定稿后写入协议规范，待决的三点见第 10 节第 28 到 30 条。
+
+**现状。** relay 已组成候选池，workspace 不绑定单一 relay；agentd 从 Welcome 的候选列表中选择当前 relay，并在故障、排空或连接质量变化时切换。
+
+- 注册：agentserver 维护 relay 注册表（名字、公钥、URL、transport 路径、STUN 地址）。relay 凭一次性令牌、长期引导令牌或预先登记的公钥接入（9.5），每次连接都重报 URL、transport 路径与 STUN 地址。
+- 候选：agentserver 按可用性、标签和策略为 workspace 生成 relay 候选列表，放进 Welcome；节点不保存 workspace.relay，也没有 assigned_relay。
+- relay 手里的东西：relay 按需取得当前连接需要的 workspace relay/service 证书，按证书生命周期续期；relay 可以服务多个 workspace。
+- 节点：agentd 结合候选顺序和本地连接质量选择 relay；workspace 的成员可以分布在不同 relay，跨 relay 流由 relay 间转发。
+
+**目标。** 节点就近接入（校外的 laptop 连香港的 relay，校内的 dorm 连校内的 relay，照常互通）；一个 relay 故障只影响当前连接，agentd 自动换 relay；加 relay 即扩容；使用者不需要知道 relay 的存在，创建 workspace 时不选 relay。
+
+
+**模型。**
+
+- relay 池：同一个 agentserver 下注册的 relay 组成一个池。workspace 不再绑定 relay，默认池里每个 relay 都可以服务任何 workspace；relay 可以带标签（地区、是否公网可达等），workspace 可以用标签选择器限定只用其中一部分。
+- 主 relay：每个节点同一时刻只连一个 relay，称为它的主 relay，由节点从 `Welcome.relays` 里选。节点侧仍然只有一条会话。
+- 位置：节点连在哪个 relay 由 agentserver 记录。数据来自 `RelayPresence`，在线表现在就按节点记着上报它的 relay；位置随选路答案下发给 relay。
+- 一跳转发：发起方与目的节点的主 relay 不同时，由这两个 relay 之间转发，最多一跳。
+
+**一条跨 relay 的流**（laptop 的主 relay 是 relay-hk，dorm 的主 relay 是 relay-ucas）：
+
+```
+laptop ---> relay-hk ======= relay 间会话 =======> relay-ucas ---> dorm
+              |  ^                                    |
+    (1) 查询  |  | (2) 出口 dorm，在 relay-ucas        | RelayPresence：dorm 在线
+              v  |                                    v
+             agentserver <----------------------------+
+```
+
+1. laptop 向主 relay 开流，`Open.to` 是 relay-hk，与单 relay 时相同。
+2. relay-hk 执行清单 A 的第 1 到 9 项。`StreamRoute` 多一项 `target_relay`：目的节点当前所在的 relay；目的节点不在任何 relay 上在线时，控制面直接回 `TARGET_OFFLINE`。
+3. 目的节点在本 relay 有会话就本地送达（与现在相同，优先于 `target_relay`）；否则在到 `target_relay` 的 relay 间会话上开一条流，`StreamOpen` 的 `open` 与 `certs` 原样转发，`RelayInfo` 里注明目的节点。
+4. relay-ucas 按下文的校验确认后，向 dorm 开流。它不再转发：dorm 不在本地就回 `TARGET_OFFLINE`，relay-hk 丢弃这条缓存、向控制面重新查询一次再试。
+5. dorm 执行清单 B；其中第 3 项对经中继的流由「`to` 等于自己所连 relay 的身份」放宽为「`to` 是 `Welcome.relays` 里某个 relay 的身份」。
+
+**relay 间会话。** transport、Noise_IK 与 yamux 都与节点会话相同，走 relay 现有的 443 端口；握手用新的会话种类 `RELAY_PEER`，双方用各自的 relay 身份密钥。agentserver 在 relay 会话上向每个 relay 下发名册（在册 relay 的名字、公钥、URL 与标签，变更时重发），relay 按名册拨号，只接受公钥在名册里的对端。池里的 relay 两两保持一条会话（relay 数量少，全连接即可）；任一方能拨通即可，建立后两个方向都能开流，所以只能出站的 relay（如只在校内可达的）也能加入。同一对 relay 之间的流共用一条 TCP 连接，有队头阻塞，流量大时每对 relay 开多条会话，按（发起方, 目的节点）分配。relay 之间不交换目录或在线信息。
+
+**各方的校验。**
+
+| 位置 | 校验 |
+| --- | --- |
+| 发起方的主 relay | 清单 A 不变，只有第 10 项由「目的节点在本 relay 在线」改为「在本 relay 在线，或答案给出了 `target_relay`」 |
+| 目的节点的主 relay（流来自对端 relay） | 对端在名册里（握手已保证）；`workspace` 是本 relay 可以服务的；节点发起的流 `to` 等于对端 relay 的身份，edge 发起的流 `from` 等于对端 relay 的身份；`sig` 用 `from` 验证；时间窗；`(from, nonce)` 未见过；目的节点在本地在线。不向控制面查询，采信对端给出的目的节点 |
+| 目的节点 | 清单 B，只有第 3 项如上放宽 |
+
+目的节点的主 relay 不重复查询的理由：授权的最终判定在目的节点（验签、成员证书、策略），relay 上的预检只是提前拦截；这样省一次查询，控制面不可达时已缓存的跨 relay 组合也照常工作。代价是一个被攻破的 relay 可以把它经手过、仍在时间窗内的 `Open` 投递给池里任何 relay 上的节点，而不只是连在它自己上面的节点；这些节点仍按自己的策略与防重放缓存判定。
+
+**agentserver 的变化。**
+
+- 握手、加入、在线上报与证书查询接受池里（且标签匹配的）任何 relay，不再比较 workspace 指派的 relay；`WRONG_RELAY` 只在该 relay 不可服务这个 workspace 时出现。
+- 选路答案带 `target_relay`。节点在新的 relay 上线时，agentserver 更新位置，通知相关 relay 丢弃以该节点为目的的答案，并让旧 relay 关闭它残留的会话，保证一个节点同一时刻只在一个 relay 上。
+- `Deliver` 现在就按节点所在的 relay 发送，不变；`RelayInvalidate` 由发给指派的 relay 改为发给全部可服务该 workspace 的 relay。
+- relay 证书与服务证书由推送改为按需：relay 第一次遇到某个 workspace（节点握手、`/.well-known/agentd`、edge 的 SNI）时向后端取，到期前再取，上面的续签缺口随之消失。`Welcome.relays` 列出该 workspace 可用的全部 relay，按建议的优先顺序排列。
+- 不再有 workspace 级的改派：relay 故障时节点各自从候选池切换 relay，位置随 `RelayPresence` 更新；`RelayReport` 只用于统计。
+- 状态库：去掉 `workspaces.relay`，`relays` 增加标签与状态（可用、排空），`workspaces` 增加可选的标签选择器。
+
+**节点怎么选主 relay。** 先做最简单的：按 `Welcome.relays` 的顺序连第一个，连续 3 次失败换下一个（现有逻辑），之后定期探测排在前面的 relay，可达就换回去。再做按延迟选：对列表里的 relay 测 HTTPS 往返时间，选可达且最低的，带迟滞（别的 relay 持续明显更优才切换）以免来回切换。`agentd 根据候选列表和连接质量选择 relay；管理员将 relay 标为排空时，agentserver 从候选列表移除它并推送，节点自动迁走。
+
+**HTTP 服务与公网解析。** 池里任何 relay 的 edge 都可以终结 `*.<基础域名>` 的 TLS（证书按需取）。服务节点不在本 relay 时，edge 发起的第二段流（`from` 是本 relay，`to` 是服务节点）经 relay 间会话送到服务节点的主 relay；节点侧对这类流的校验不用改，清单 B 现在就接受 `Welcome.relays` 里任何 relay 签发的 edge 流。公网 DNS 记录管理 写入的记录指向一个入口域名（配置项，只有一个 relay 时就是它的域名），由运营方决定它解析到哪些 relay（多条地址记录、按地区解析或负载均衡）。代价是服务证书的私钥出现在更多 relay 的内存里；要隔离的 workspace 用标签选择器限定 relay。
+
+**加入。** 加入链接里的 `relay` 只是首次接触的入口，池里任何可服务该 workspace 的 relay 都能处理加入；节点拿到 `Welcome` 后按上面的规则选主 relay。
+
+**故障。**
+
+| 情况 | 行为 |
+| --- | --- |
+| 一个 relay 故障 | 连在它上面的节点换下一个 relay，握手成功后位置更新，其他 relay 丢弃旧答案；别的 relay 上的节点之间不受影响 |
+| agentserver 不可达 | 与单 relay 相同：已有会话与已缓存的答案（含跨 relay 的）继续；节点此时换 relay，新 relay 上没有它的缓存，握手要等控制面恢复 |
+| 两个 relay 之间不通 | 只有跨这两个 relay 的流失败，发起方得到 `TARGET_OFFLINE`（消息里注明原因），ingress 按 `fallback` 处理 |
+
+**部署。** 每个 relay 是一个独立的进程，有自己的名字、密钥、域名与证书，不支持同一把密钥的多个副本挂在一个域名后面。池里的 relay 都要能连到 agentserver 的 relay 端点，彼此之间至少一个方向可达。
+
+**评估过但不采用的做法。**
+
+- workspace 整体绑定一个 relay、故障时整体改派（协议规范 5.8 现在写的）：切换期间成员分散在两个 relay 上互相不通；只有部分成员连不上某个 relay 时无解。
+- 发起方直接去连目的节点的主 relay（Tailscale 跨地区的做法，它的 DERP 只在同一地区的几台之间转发）：少一跳，但公网访问者访问 HTTP 服务时没有发起方节点，relay 间转发仍然需要；目的节点的主 relay 可能从发起方不可达；节点要维持多条会话。可作为以后的优化。
+- relay 之间自己交换在线信息（DERP 同地区多台之间的做法）：只在控制面不可达时有用，而那时节点在新 relay 上本来就完成不了握手。
+- 同一个 relay 的多个副本加一致性哈希：Noise_IK 的发起方要事先知道响应方的静态公钥，副本只能共用密钥；还要在握手之前按 workspace 分流，而负载均衡看不到节点属于哪个 workspace（握手载荷是加密的，重连时里面也只有节点公钥）。
+
+**协议影响。** 次版本升到 2：`StreamRoute.target_relay`、`RelayInfo` 里的目的节点、会话种类 `RELAY_PEER`、名册消息、清单 B 第 3 项的放宽。协商到次版本 1 的节点只接收同一 relay 上发起的流；发给它们的跨 relay 流由目的节点的主 relay 回 `TARGET_OFFLINE`。
+
+**落地顺序。**
+
+1. 创建 workspace 时不选择 relay；agentd 在 join discovery 返回的候选 relay 中测量延迟并选择最合适的一个。**按新设计实现。**
+2. relay 间会话、名册、位置与跨 relay 转发（含 edge 的第二段），证书按需取；节点按列表顺序选主 relay。做完后节点可以在不同 relay 上互通，relay 故障时节点自己切换。
+3. 节点按延迟选主 relay；relay 的排空。
+4. 入口域名与 公网 DNS 记录管理；按标签限定 workspace 可用的 relay。
 
 ---
 
@@ -532,14 +653,14 @@ MVP：每个 workspace 指派一个 relay，该 workspace 的全部成员都连�
 
 节点本身没有 DNS 域名，它的名字是 `agentd://` URI（3.1）：任务的目的地在线上是公钥，配置和 CLI 里可以用名字形式或短名；要用 SSH 登录节点，发布一个同名的 `proto: ssh` 服务即可。
 
-公网解析：默认不发布服务域名的公网记录，成员经 ingress 访问时由 fake-IP 或代理请求提供域名。workspace 打开 `publish_dns` 后，agentserver 用 zone 的 DNS 凭据写入 `*.<基础域名>` 指向服务该 workspace 的 relay 的记录，策略里对 `*` 开放的服务即可被任何浏览器访问。relay 放在 Cloudflare 橙云后面时，这条记录应为灰云（直指 relay），因为免费的 Universal SSL 不覆盖两级通配名。
+公网解析：默认不发布服务域名的公网记录，成员经 ingress 访问时由 fake-IP 或代理请求提供域名，用不到它；只有让非成员访问策略里对 `*` 开放的 HTTP 服务时才需要。发不发布是 agentserver 实例级的决定，不在 workspace 上设置：记录写在运营方的 zone 里、用的是运营方的 DNS 凭据、指向运营方的 relay，和签证书用哪家提供方一样由域名决定。做法（未实现）：`dns_providers` 的某一项写 `公网 DNS 记录管理开启`，基础域名落在它的 zones 里的每个 workspace，agentserver 都维护一条 `*.<基础域名>` 的 CNAME 指向服务该 workspace 的 relay 的域名，改派时改写、删除 workspace 时删除；`selfsigned` 不能发布。按 workspace 开关没有保密上的意义：公共 CA 签的通配证书会进证书透明日志，基础域名本来就是公开的，记录指向 relay 也不放行任何访问，放不放行仍由服务的策略决定。在实现之前，要公开访问就自己在 DNS 里加这条记录。relay 放在 Cloudflare 橙云后面时，这条记录应为灰云（直指 relay），因为免费的 Universal SSL 不覆盖两级通配名。
 
 ### 6.2 证书
 
 - 每个 zone（agentserver 自己的域名，以及 workspace 的自定义域名）配置一份 DNS 提供商凭据（支持 Cloudflare 与 DNSPod（腾讯云 API 3.0），经 `golang.org/x/crypto/acme` 做 DNS-01；阿里云等按同一接口扩展），用于 ACME DNS-01 和（可选）写服务记录。用哪份凭据由域名决定，不由 workspace 指定：DNS-01 只能由托管该 zone 的提供方完成，所以每份凭据列出它的 `zones`，workspace 的基础域名取最长匹配的 zone（委派出去的子域可以用另一家），都不匹配时用 `default_dns_provider`。DNS-01 不要求域名有公网 A 记录，所以服务域名可以只在工作区内解析。
 - 每个 workspace 一张通配证书 `*.<基础域名>`，由 agentserver 在创建 workspace 或绑定自定义域名时申请，到期前 30 天续期；DNS-01 通常要 1 到 3 分钟，期间该 workspace 的 HTTP 服务处于 `cert_pending`。私钥与证书由 agentserver 签发并加密存放在状态库里，经控制面与 relay 的会话下发给服务该 workspace 的 relay，relay 只在内存持有；节点上没有任何公网域名的私钥。
 - 通配证书的前提是私钥不离开运营方的服务端（agentserver 与它指派的 relay），这正是 v0.4 的决定；它也把 Let's Encrypt 的签发配额从「每服务一张」降到「每 workspace 一张」。
-- CA 默认是 Let's Encrypt，每个提供方可用 `acme_directory` 换成别的 ACME CA；zone 的 CAA 记录决定哪些 CA 能签（例如 `cs.ac.cn` 只允许 Google Trust Services 的 `pki.goog`）。要求外部账号绑定（EAB）的 CA（Google Trust Services、ZeroSSL）另配 `eab_key_id_env` / `eab_hmac_key_env`。GTS 的 EAB 密钥只能注册一个账号，注册后即作废，所以 agentserver 先用账号私钥查找已有账号，查不到才带 EAB 注册；账号私钥默认生成后密封在状态库（只插入不覆盖），`acme_directory` 与 `email` 相同的提供方共用它；`account_key_env` 可改用运营方保管的 PEM 私钥，状态库重建后仍是同一个账号。
+- CA 默认是 Let's Encrypt，每个 issuer 可用 `acme_directory` 换成别的 ACME CA；zone 的 CAA 记录决定哪些 CA 能签（例如 `cs.ac.cn` 只允许 Google Trust Services 的 `pki.goog`）。要求外部账号绑定（EAB）的 CA（Google Trust Services、ZeroSSL）另配 `eab_key_id_env` / `eab_hmac_key_env`。GTS 的 EAB 密钥只能注册一个账号，注册后即作废，所以 agentserver 先用 EAB 注册并生成自己的 ACME account key；account key 始终由 agentserver 生成、加密保存和复用，不进入用户配置或写入 API。
 - agentserver 与 relay 各自域名的证书：放在 Cloudflare 后面时可用 Cloudflare 源站证书，直连时同样走 ACME。
 - 自定义域名的 zone 凭据只用于 `_acme-challenge.<基础域名>` 和 `*.<基础域名>` 两条记录，应申请只限该 zone 的最小权限令牌。
 
@@ -585,6 +706,7 @@ default: direct
 - 目的：某个 egress 节点、`direct`、`reject`。服务域名不写路由，服务注册即路由。
 - 判定：先取源包含请求方（节点本身、它所在的组或 workspace）且协议匹配的路由，再在其中取最具体的域名匹配（精确 > 更长的后缀 > 更短的后缀 > 默认）；同等具体时按书写顺序取前者。
 - 路由表只在 agentserver 上，不下发：relay 转发一条流时向控制面查询，控制面按请求方、协议、域名选出目的节点（答案缓存，5.8）。给每个 ingress 节点渲染的是分流表：只取源包含该节点的路由，目的只保留「交给下一跳 / 直连 / 拒绝」，不含任何节点。ingress 因此不知道出口是谁，换出口、加出口只在 agentserver 上改。
+- `reveal_to`（P2P 方案的一部分，未实现，7.8）：路由表项上的开关，默认关，如 `{ from: group:pc, proto: [tls, ssh], domains: […], to: dorm, reveal_to: true }`。打开后，这一条的目的节点公钥随分流表下发给源里的 ingress，ingress 提前知道出口，与它有直连会话时把流直接放上去。它只影响 ingress 选哪条会话：`Open.to` 仍是会话对端，目的节点仍按自己的策略判定，经 relay 时仍由控制面选路。关着的路由行为不变；换出口照旧只在 agentserver 上改。
 - 分流表随 `Welcome` 下发、变更时经 `Update` 整体替换，带版本号；ingress 判分流表与控制面判路由表用同一个比较函数。ingress 收到 `NO_RULE` 且 Ack 里的版本比自己的分流表新时，重新拉取后按新表处理（可能变成直连或拒绝）。
 - Ack 失败时 ingress 的行为：目标离线、无路由、控制面不可达按可配置策略处理，默认回退直连原始 IP 并回放已缓存的首段数据（`fallback: direct`），可配为失败；`reject` 则本地 RST；目标是服务或目的地是 fake-IP 时不回退。已缓存的首段数据保留到收到 Ack 为止。
 - 两个 egress 想负责同一目的时写两条路由，前者优先；故障切换放后续。出口的选择完全在控制面，将来做故障切换或就近选择也不需要改 ingress。
@@ -697,7 +819,7 @@ egress:
 
 **laptop 访问 office 的 lark-cli。**
 
-1. 管理员 `agentserver group create home pc` 生成 pc 组密钥对，`agentserver group add home pc laptop`。office 的策略里写 `{ public_key: "<pc 组公钥>", action: allow, argv: ["lark-cli", "msg"] }`：自管时从 `agentd peers` 复制 pc 组公钥，受管时由渲染结果携带。
+1. 管理员在控制台或经 admin API 创建组 pc（`POST /workspaces/<workspace-id>/groups`，生成组密钥对），把 laptop node 加进去（`PUT /workspaces/<workspace-id>/groups/<group-id>/nodes/<node-id>`）。office 的策略里写 `{ public_key: "<pc 组公钥>", action: allow, argv: ["lark-cli", "msg"] }`：自管时从 `agentd peers` 复制 pc 组公钥，受管时由渲染结果携带。
 2. laptop 在 `Welcome` 里拿到 pc 组和 home workspace 签给它的两份证书，之后每半小时续一次。
 3. laptop 构造并签名 `Open`（TASK，from 为 laptop，to 为 relay，`task.executor` 为 office，整个 `function_call`），附上两份证书，开流。
 4. relay 验签，向控制面查询（控制面确认目的节点 office、查角色、按目录里的成员关系用 office 的策略预检），原样转发 `Open` 与证书。
@@ -750,7 +872,7 @@ egress:
 | WebSocket（默认） | `transport/internet/websocket` | 一条双向连接，上下行对称，最简单；二进制消息按字节流对待 | 可用，所有套餐支持 |
 | XHTTP | `transport/internet/splithttp`（`client.go`、`dialer.go`、`upload_queue.go`、`mux.go`、`hub.go`，模式在 `config.proto` 的 `mode` 字段） | 下行一条长 GET，上行分片 POST；`packet-up` 模式为 CDN 设计，每片带序号、服务端重排 | 可用；作为 WebSocket 被阻断时的回退，上行吞吐受分片与重排限制 |
 | HTTP Upgrade | `transport/internet/httpupgrade` | 发 WebSocket 样式的 Upgrade 头，但之后是裸字节，无帧开销 | 与 Xray 实现一致，需实测 |
-| p2p（预留） | 无 | 节点间 UDP 打洞后的 QUIC 连接，一条双向 QUIC 流作为字节流；只用于直连会话（7.8） | 不经 CDN |
+| p2p（方案见 7.8，未实现） | 无 | 节点间 UDP 打洞后的 QUIC 连接，一条双向 QUIC 流作为字节流；拨号的目标是对端节点的公钥而不是 URL，信令与打洞都在 transport 内部，交给会话层的仍是同一种字节流；只用于直连会话 | 不经 CDN |
 
 CDN 约束（以 Cloudflare 为例，数字需实测）：代理连接约 100 秒无数据即被关闭，会话保活间隔设为 30 秒；请求体有大小上限（Free/Pro 约 100 MB），XHTTP 的分片远低于此；回源默认 HTTP/1.1，这也是 XHTTP 单长 POST 的 `stream-up` 模式会被 CDN 缓冲、必须用 `packet-up` 的原因；边缘到源站没有 UDP，所以经 CDN 的 transport 没有 QUIC 选项。部署时关闭 relay 主机上的 Bot Fight Mode、缓存、压缩和脚本改写，否则 Go 默认 TLS 指纹的非浏览器客户端会被出挑战。
 
@@ -770,7 +892,7 @@ CDN 约束（以 Cloudflare 为例，数字需实测）：代理连接约 100 �
 | 握手 | 发起方知道的响应方公钥从哪来 | 第一条消息的载荷 | 第二条消息的载荷 |
 | --- | --- | --- | --- |
 | 节点 ⇄ relay | relay 证书：首次从 relay 的 `/.well-known/agentd?workspace=…` 取得并用 workspace 公钥验签，之后随 `Welcome.relays` 更新 | 会话种类、版本区间、TAI64N 时间戳、身份公钥；首次加入时加令牌、建议名字与 workspace | 版本、会话 ID、结果码、两个名字、角色上限、relay 身份、服务端时间；`WRONG_RELAY` 时附正确的 relay 证书。relay 回消息 2 之前向后端问这把公钥是谁（或转加入请求），答案缓存 |
-| relay ⇄ agentserver | relay 配置里的 `control.public_key` | 会话种类 relay、版本区间、时间戳、relay 公钥 | 版本、会话 ID |
+| relay ⇄ agentserver | relay 配置里的 `control.public_key`；省略时经校验过的 TLS 从 `/.well-known/agentserver` 取得 | 会话种类 relay、版本区间、时间戳、relay 公钥、注册信息（名字、对节点公布的 URL、transport 路径、STUN 地址）；公钥尚未登记时加 relay 注册令牌 | 版本、会话 ID、结果码、登记的名字 |
 
 时间戳的用法来自 WireGuard 白皮书 §5.1：响应方记住每个公钥上次的时间戳，不大于它的拒绝（relay 记在内存，后端为加入请求持久化）。未在目录中且没有有效令牌的公钥在消息 2 里得到带错误码的拒绝；未在 5 秒内完成握手的连接直接断开，限制扫描者的开销。
 
@@ -791,11 +913,11 @@ CDN 约束（以 Cloudflare 为例，数字需实测）：代理连接约 100 �
 | agentserver → 节点 | `Welcome` | 分流表与版本号（不含目的节点）、服务列表（域名、协议、节点）、目录（公钥、名字、角色、在线状态、组与 workspace 公钥）、executor 清单、提供侧节点的策略（`PolicyUpdate`）、本节点的成员证书、relay 证书列表与当前指派 |
 | 节点 → agentserver | `Advertise` | 本节点的服务定义（名字、协议）、executor 描述与工具、各提供侧角色的策略来源 `policy_sources`，自管角色附生效策略，`p2p_enabled` |
 | agentserver → 节点 | `AdvertiseResult` | 登记结果：服务的 fqdn 与状态、被拒的服务 |
-| agentserver → 节点 | `Update` | 分流表、服务、目录、在线状态的增量，带版本号；续发的成员证书与吊销记录；relay 列表与改派 |
+| agentserver → 节点 | `Update` | 分流表、服务、目录、在线状态的增量，带版本号；续发的成员证书与吊销记录；relay 列表与改派（节点会处理，但 agentserver 目前不经它下发改派，5.9） |
 | 节点 → agentserver | `Pull` | 发现分流表或目录版本过旧时请求全量 |
 | agentserver → 节点 | `PolicyUpdate` | 为该节点渲染好的全量策略与版本号（6.8）；`Welcome` 里也带一份 |
 | 节点 → agentserver | `PolicyApplied` | 已应用的版本，或 `applied: false` 表示节点采用本地策略 |
-| 节点 → agentserver | `RelayReport` | 连不上被指派的 relay，请求改派 |
+| 节点 → agentserver | `RelayReport` | 连续 3 次连不上某个 relay 之后，在下一条就绪的会话上报告；agentserver 目前只记日志，不据此改派（5.9） |
 | agentserver → 节点 | `Notice` | 关闭、移除、改名、角色变化、文本 |
 | 双向 | `P2PCandidates` / `P2PConnect` / `P2PInvite` / `P2PResult` | P2P 会合（7.8，预留） |
 
@@ -810,7 +932,7 @@ relay ⇄ agentserver（relay 会话，协议规范 5.8）：
 | relay → agentserver | `RelayPresence` | 节点上线与下线 |
 | agentserver → relay | `RelayInvalidate` | 某 workspace 的目录、路由表、服务、策略或证书变了：清该 workspace 的缓存，关闭被移除节点的会话 |
 | agentserver → relay | `WorkspaceCerts` | 服务域名的通配证书与私钥，签发或续期时推送（也是证书查询的答案）；relay 只在内存持有 |
-| agentserver → relay | `RelayCert` | relay 在它服务的每个 workspace 的身份证书（由该 workspace 密钥签），注册与续签时推送；relay 在 `/.well-known/agentd` 上按 workspace 公布 |
+| agentserver → relay | `RelayCert` | relay 在它服务的每个 workspace 的身份证书（由该 workspace 密钥签），relay 会话建立、新建或改派 workspace 时推送（按有效期续签还没有实现，5.9）；relay 在 `/.well-known/agentd` 上按 workspace 公布 |
 
 认证、版本协商和加入都在 Noise 握手的载荷里完成，不再有独立的 `Hello` / `Challenge` / `Auth` 消息。未知的控制消息类型忽略并记日志；未知的流类型回 Ack 错误；字段只增不改，弃用字段保留编号。
 
@@ -948,41 +1070,179 @@ Xray-core v26.10.21（提交 1b1647c）里与「把一条 TCP 连接嗅探后经
 
 ### 7.8 P2P 直连
 
-MVP 的数据面全部经 relay 中继。P2P 让两个节点在 UDP 打洞成功后直接建立会话，数据面不再经过 relay；控制消息始终经 relay 的控制流到 agentserver；转发的对象不变，仍然是 TLS、SSH 和任务。协议层的名字、编号与报文格式在协议规范 2.6 预留，实现放在阶段 5。
+本节是阶段 5 的方案，尚未实现。v0.10 的草案写在控制面与数据面拆分之前，这里按现在的架构重写（节点只连 relay、控制消息由 workspace 密钥签名、成员证书随流出示），并把信令、探测与判定定到可以开工的程度。方案定稿后再改协议规范 2.1、2.6、4.1、12.10 与 `wire.proto`；与协议里现有预留不一致的地方列在本节末尾，待决的三点见第 10 节第 31 到 33 条。
 
-**加入与否是节点自己的选择。** 节点配置 `p2p.enabled`，默认关闭。开启意味着三件事：向 agentserver 上报自己的候选地址、接受别人的直连邀请、在需要时发起直连。两端都开启才会尝试直连；任一方关闭就永远走中继，对方感知不到差别。关闭的节点不向任何人暴露自己的 IP，也保留 agentserver 转发预检这道闸。
+**目标与边界。** 两个都开启 P2P 的节点在 UDP 打洞成功后直接建立一条直连会话，它们之间的 `tcp` 流（tls、ssh）与 `task` 流改走这条会话，不再经过 relay。中继路径一直在：它是默认路径，也是直连建不起来或断开时的回退；控制消息始终经 relay 的控制流到 agentserver。好处有三个：时延与吞吐（同一个局域网里的两台设备直接互通，不再绕到 relay）；relay 的带宽；relay 或 agentserver 不可用时，已建立的直连会话照常工作，直到成员证书过期（最长约 1 小时）。HTTP 服务不走直连，它的 TLS 由 relay 的边缘用 workspace 证书终结。
 
-**发现与信令**（agentserver 作会合点，不参与数据）：
+**在协议栈里的位置。** P2P 是第四种 transport，不是另一条协议路径。四种 transport 遵守同一个抽象（7.2），会话层及以上不因 transport 而变：
 
-- 候选地址三类：本机接口地址（host）；经 STUN 得到的反射地址（server-reflexive），STUN 服务器可配，默认用 relay 自带的 UDP 反射端口，relay 藏在 CDN 后面时换成公共 STUN；后续可加 NAT-PMP / PCP / UPnP 的映射地址。
-- 节点在开启 P2P、网络变化、映射刷新时发 `P2PCandidates`。agentserver 只保存，不进目录，不广播。
-- 触发：A 向 B 开流时若还没有直连会话且双方都开启，A 发 `P2PConnect{to: B}`。agentserver 校验双方都开启、A 对 B 至少有一条 allow（与转发预检同源），然后向双方发 `P2PInvite`：对方身份与候选地址、一次性 16 字节打洞 nonce、谁是会话发起方（固定规则：公钥字节序较小的一方作 Noise 发起方）。候选地址只在这一刻、只给通过了预检的对端。
-- 打洞：双方收到邀请后同时向对方全部候选地址发探测报文（魔数 + nonce + 自身公钥前 8 字节），每 100 毫秒一轮、持续 5 秒；收到带正确 nonce 的回应即选定地址对，发起方在该地址对上建 QUIC 连接。失败则发 `P2PResult{failed}`，退避后可重试，期间一直走中继。两侧都是对称 NAT 时基本失败，这是预期行为；端口预测不做。
+```
+角色与转发    ingress / egress / service / executor / submitter；relay 的 hub / forwarder / edge
+流            StreamOpen{Open(from, to = 会话对端), certs} / Ack；清单 A、清单 B
+会话          Noise_IK（ClientHello / ServerHello）+ yamux：认证过的对端，两侧都能开流
+              ──────────── 以上对四种 transport 是同一份实现 ────────────
+transport     ws / httpupgrade / xhttp                    |  p2p
+              Dial(relay 的 URL) → Conn                   |  Dial(对端节点的公钥) → Conn
+              TCP + TLS + HTTP 升级                       |  信令 + 打洞 + UDP 上的 QUIC
+```
 
-**直连会话**：
+- transport 的约定就是协议规范 2.1 的那一个，对四种都一样：拨号方用 `Dialer.Dial` 得到 `Conn`，接受方把拨入的 `Conn` 交给会话层；`Conn` 是一条可靠有序的双向字节流，不承担认证。每种 transport 给出自己的 `Dialer`：ws、httpupgrade、xhttp 的由 relay 证书里的 URL 构造，p2p 的由对端节点的公钥（`agentd://<公钥>`）构造。找到对端的地址并把路打通是 p2p transport 自己的事：候选地址、信令的内容、探测、QUIC 都封在 transport 里面，对上只交出 `Conn`。
+- p2p transport 向上层要一样东西：与 agentserver 交换信令的通道，也就是到 relay 的会话上的控制流。这与 ws 等 transport 要上层给出 relay 的 URL 是同一类依赖，以接口注入；transport 不接触会话、流与策略。
+- 会话层照旧：在 `Conn` 上跑同一个 Noise_IK 握手（只有 `session_kind` 不同）和同样参数的 yamux。握手之后，直连会话与到 relay 的会话是同一种东西：一个认证过的对端身份，加一条两侧都能开流的会话。
+- 流与角色只认「这条流所在会话的对端是谁」，不认 transport。`Open.to` 本来就定义为会话的对端（7.5）：对端是 relay，就是现在的中继路径；对端是成员节点，就是直连。开流、验流与拼接是同一份代码，清单 B 里随路径不同的几项按「会话对端是 relay 还是成员节点」写，不按 transport 写。
+- agentd 因此只多两件与 transport 无关的事：同时持有多条会话（一条到 relay，若干条到对端节点），以及为每条新流选一条会话（流的放置）。agentrelay 的会话与转发不变；它只需要把控制流上节点发来的消息由按类型挑着转交改为一律转交后端（只该由服务端发出的类型除外），以后新增控制消息不用再改 relay。
 
-- transport `p2p`：QUIC（quic-go），一条双向 QUIC 流作为字节流 `Conn`，与 WebSocket 等并列。QUIC 自带的 TLS 用临时自签证书且不校验，认证完全靠其上的 Noise_IK，分层与中继会话完全一致，代价是双重加密；QUIC 只负责可靠传输、拥塞控制和 NAT 映射保活。
-- Noise_IK：发起方用对端的派生 X25519 公钥（来自目录），prologue 同为 `agentd/1`，握手载荷用同样的 `ClientHello` / `ServerHello`，没有加入令牌和建议名字；yamux 参数相同，保活 25 秒以兼顾 NAT 映射；没有控制流，`KIND_CONTROL` 的 `Open` 回 `BAD_REQUEST`。
-- 流的放置：新流优先放到已就绪的直连会话。任务与 ssh 服务的目的节点发起方本来就知道（`task.executor`、服务表）；egress 流的出口由控制面选，发起方只从该域名上一次经中继的 `Ack.responder` 得知出口，之后同一域名的新流可以放到与该出口的直连会话上，分流表版本变化时清掉这份记忆；HTTP 服务始终经 relay 的边缘。直连失败或断开时新流回到中继，直连上已有的流 RST、由应用重连；流不在两条路径间迁移。直连时 `Open.to` 就是对端自己。
-- 验证与授权与中继路径完全相同：`Open` 的签名、成员证书、清单 B、策略；`RelayInfo` 缺席，接收方不得依赖它。这正是成员证书由成员自己携带的原因（6.8）。
+**加入与否是节点自己的选择。** 节点配置 `p2p.enabled`，默认关闭，随 `Advertise.p2p_enabled` 上报。开启意味着三件事：打开一个 UDP 套接字、应答别人的直连邀请、在需要时发起直连。两端都开启才会尝试；任一方关闭就永远走中继。关闭的节点不打开套接字，不向任何人给出自己的地址，也保留 relay 上的转发预检这道闸。
 
-**安全与隐私**：
+以下五段是 p2p transport 内部的事。
 
-- 候选地址只给预检通过的对端；关闭 P2P 的节点不暴露 IP。
-- 探测报文带邀请里的 nonce，第三方不能诱导节点向任意地址发包；真正的身份认证在 Noise 握手。
-- 直连绕过了 relay 的转发预检，接收节点是唯一判定点；不接受这一点的节点关闭 P2P 即可。
-- relay 与 agentserver 都看不到直连上的数据和元数据（域名、任务），agentserver 只知道两个节点建立了直连；该路径的审计只在两端节点上。
+**一个 UDP 套接字。** 每个开启 P2P 的实例只开一个 UDP 套接字（`p2p.listen`，默认随机端口），向 STUN 服务器的查询、与各对端的探测、所有直连的 QUIC 连接都走它。必须是同一个：打洞打通的是这个套接字在 NAT 上的映射，QUIC 要用的就是这条映射。QUIC 既拨出也接入，用 quic-go 的 `Transport` 挂在这个套接字上；它把首字节最高两位都是 0 的报文当作非 QUIC 报文交还给调用方，STUN 报文（首字节 0x00 或 0x01）正好落在这个区间，所以探测报文采用 STUN 的格式。TUN 模式下这个套接字与 agentd 其他出站连接一样绑定物理接口（5.2）；物理接口或本机地址变化时重建套接字，已有的直连会话全部断开，之后按需重新打洞。
 
-**可观测性**：`agentd status` 列出直连会话与选定的地址对；决策日志记录每条流走的路径（relay / direct）；`P2PResult` 让 agentserver 统计打洞成功率。
+**候选地址。** 每次尝试时现收集，最多 8 个，不常驻，也不上传保存：
 
-**不做的**：对称 NAT 的端口预测、第三方中转（agentserver 本身就是中继）、UDP 数据面、流迁移。
+| 种类 | 来源 | 说明 |
+| --- | --- | --- |
+| host | 本机各接口的单播地址，加套接字的端口 | 去掉回环、链路本地、TUN 设备与 fake-IP 段；含全球单播 IPv6。两台设备在同一个局域网、或一侧有公网地址时靠它直通 |
+| srflx（反射） | 向 STUN 服务器发 Binding 请求得到的映射地址 | STUN 服务器默认取当前候选 relay 的 `stun`，可用 `p2p.stun` 换成别的；relay 藏在 CDN 后面时 `stun` 要指向能直达它的地址，或改用公共 STUN。relay 没开 STUN 又没配 `p2p.stun` 时没有反射地址，只能在同一个局域网或有公网地址时直连 |
+| prflx（对端反射） | 探测过程中，带正确 MAC 的探测报文的来源地址 | 不事先交换；对称 NAT 一侧的真实映射靠它被对方学到 |
+
+NAT-PMP / PCP / UPnP 的端口映射地址放后续。
+
+**信令：agentserver 作会合点，按次交换候选地址。** 四个消息都走控制流：节点发出的由 relay 以 `NodeMessage` 转交，agentserver 发出的在 `Signed` 信封里。
+
+| 编号 | 消息 | 方向 | 内容 |
+| --- | --- | --- | --- |
+| 19 | `P2PConnect` | 节点 → agentserver | 对端公钥；自己刚收集的候选地址 |
+| 20 | `P2PInvite` | agentserver → 节点 | 邀请 ID（16 字节）、对端公钥、对端的候选地址、打洞密钥（16 字节）、谁是发起方、过期时间（签发后 30 秒） |
+| 18 | `P2PCandidates` | 节点 → agentserver | 邀请 ID；自己的候选地址。被邀请方对邀请的应答 |
+| 21 | `P2PResult` | 双向 | 节点 → agentserver：一次尝试的结果（邀请 ID、对端、状态码、选定地址对的种类、往返时延）；agentserver → 节点：回绝一条 `P2PConnect`（对端、状态码） |
+
+```
+A ── P2PConnect{对端 B, A 的候选地址} ──▶ relay ──▶ agentserver          校验：都开启、有 allow、限速
+B ◀── P2PInvite{对端 A, A 的候选地址, 打洞密钥, 发起方} ── relay ◀── agentserver
+B ── P2PCandidates{邀请 ID, B 的候选地址} ──▶ relay ──▶ agentserver      B 随即开始探测
+A ◀── P2PInvite{对端 B, B 的候选地址, 打洞密钥, 发起方} ── relay ◀── agentserver      A 开始探测
+A ◀══ UDP 探测：STUN 格式，带 MAC，双方同时向对方的全部候选地址发 ══▶ B
+A ═══ QUIC 连接，其中一条双向流作为 Conn 交给会话层 ═══ B
+```
+
+- A 要与 B 直连时发 `P2PConnect`。agentserver 校验：两者同属一个 workspace 且都在线（否则 `TARGET_OFFLINE`）；都上报了 `p2p_enabled`（否则 `P2P_DISABLED`）；至少一个方向上，请求方有对应的消费侧角色上限，且提供方的策略里有一条 allow 的 `public_key` 在请求方的身份集合里，判定与转发预检同源（否则 `P2P_NOT_ALLOWED`）；每对节点每 10 秒至多一次。通过后生成邀请 ID 与打洞密钥，把带 A 候选地址的 `P2PInvite` 发给 B；不通过就用 `P2PResult` 回绝 A。
+- B 收到邀请后现收集候选地址，回 `P2PCandidates`，随即开始探测；agentserver 再把带 B 候选地址的 `P2PInvite` 发给 A，A 收到后开始探测。B 比 A 早一个控制往返开始，正好先把自己这一侧的 NAT 打开。
+- 两边同时发 `P2PConnect`（撞车）时，agentserver 把后到的那条当作对已有邀请的应答，两边拿到的是同一个邀请。
+- agentserver 只在内存里把一次邀请保留到过期，不保存候选地址，不写目录，不广播。候选地址只在这一刻、只给通过了校验的对端。
+- 发起的时机是按需：第一次要向某个对端开流时（那条流本身照常走中继）。submitter 向某个 executor 提交任务；ingress 访问某个 ssh 服务所在的节点；ingress 的连接命中一条下发了目的节点的路由（见「流的放置」）。提供侧不主动发起，只应答邀请。
+- 被回绝、打洞失败、或发出 `P2PConnect` 后 10 秒没有任何应答（relay 或 agentserver 还不支持）时退避：5 分钟起，倍增到 1 小时；本机网络变化或对端重新上线时清零。
+
+**探测与选路。** 探测报文是 STUN 的 Binding 请求与成功响应（RFC 8489）：请求带 96 位随机事务 ID、`USERNAME`（邀请 ID）与 `MESSAGE-INTEGRITY-SHA256`（HMAC 的密钥是邀请里的打洞密钥）；响应带 `XOR-MAPPED-ADDRESS`（看到的请求来源地址）与同样的完整性属性。没有对应的有效邀请、或 MAC 不对的报文一律丢弃，不回应。
+
+1. 双方各自向对方的全部候选地址发请求，每 100 毫秒一轮，最多 5 秒。
+2. 收到带正确 MAC 的请求：向它的来源地址回响应；来源地址不在已知的候选里，就把它加进去一起探测（prflx）。
+3. 收到对自己某个请求的响应（事务 ID 对得上）：这个地址对的两个方向都通了，记为可用。
+4. 发起方（公钥字节序较小的一方，由邀请指明）在第一个地址对可用后再等 200 毫秒，从可用的地址对里按「host 优先于 IPv6 全球地址，再优先于反射地址，同类取时延低的」选一个，在它上面建 QUIC 连接。
+5. 5 秒内没有可用的地址对：双方报 `P2PResult{P2P_PUNCH_FAILED}` 并退避，期间一直走中继。
+
+| 两侧的网络 | 结果 |
+| --- | --- |
+| 同一个局域网，或一侧有公网地址 | 通，走 host 候选 |
+| 双方都有 IPv6 全球地址 | 通：有状态防火墙与 NAT 一样，靠双方同时外发打开 |
+| 两侧都是映射与目的地址无关的 NAT（常见的家用路由器） | 通，走反射地址 |
+| 一侧是对称 NAT，另一侧的 NAT 收包只看来源 IP、不看端口 | 通：对称一侧的真实映射由 prflx 学到 |
+| 一侧是对称 NAT、另一侧按端口过滤；两侧都是对称 NAT；网络封 UDP | 不通，走中继。这是预期行为，不做端口预测 |
+
+**QUIC。** 发起方在选定的地址对上拨 QUIC（ALPN `agentd-p2p/1`），开一条双向流，这条流就是交给会话层的 `Conn`。QUIC 自带的 TLS 用临时自签证书且不校验：与其他 transport 一样，认证不是 transport 的事。QUIC 负责可靠传输、拥塞控制、路径 MTU 与对端地址变化后的路径校验。接受方只接受来自「自己回过有效响应的地址」的连接，别的连握手都不触发。代价是双重加密，以及所有流共用一条 QUIC 流、仍有队头阻塞，这两点与经 relay 的 TCP 会话相当。
+
+**会话层。** 与到 relay 的会话是同一套实现，下面只列取值不同的地方：
+
+- 握手：Noise_IK，prologue 同为 `agentd/1`，载荷仍是 `ClientHello` / `ServerHello`；`session_kind = DIRECT`（新增），`workspace` 必填，没有加入令牌与建议名字。公钥字节序较小的一方是发起方，也就是 transport 的拨号方，它用对端公钥派生响应方的静态公钥。接受方的 transport 交出 `Conn` 时一并给出它属于哪个邀请的对端，响应方只接受静态公钥等于这个对端、且时间戳递增的握手，其余不回任何字节。
+- yamux 参数相同，发起方是 yamux client；保活 25 秒以兼顾 NAT 映射。直连会话上没有控制流，`KIND_CONTROL` 的 `Open` 回 `BAD_REQUEST`。两侧都可以开流，一条直连会话服务两个方向。
+- 每个对端至多一条直连会话，新的替换旧的。连续 5 分钟没有流就关闭，不为不用的直连维持保活流量，需要时重新打洞。
+- 失效要尽快发现，不能让新连接在一条已经断了的直连上等到 Ack 超时：直连会话超过 10 秒没有收到任何数据时，在它上面开新流之前先做一次 yamux ping（1 秒超时），不通就关闭该会话，这条流改走中继。保活失败、QUIC 空闲超时、本机网络变化也都关闭会话；其上的流 RST，由应用重连。
+- 对端从目录里消失、或它的 workspace 成员证书被吊销时，双方各自关闭与它的直连会话；`agentd` 退出或 `leave` 时关闭全部直连会话。
+
+**流的放置。** 发起方为每条新流选一条会话；流不在会话之间迁移。
+
+| 流 | 目的节点从哪里知道 | 能否放到直连会话上 |
+| --- | --- | --- |
+| 任务 | `task.executor` | 能 |
+| ssh 服务 | 服务表里该服务所在的节点 | 能 |
+| egress | 路由表项打开了 `reveal_to` 的，目的节点随分流表下发；没打开的，发起方不知道出口（三段式，2.2 #18） | 打开了的能；没打开的始终走中继 |
+| HTTP 服务 | — | 不能，始终经 relay 的边缘 |
+
+- egress 的出口要不要让 ingress 知道，由路由表项决定。路由表的每一条新增一个开关 `reveal_to`，默认关（6.5）。打开后，agentserver 给源里的 ingress 渲染分流表时把这一条的目的节点公钥一并写上；ingress 的连接命中这样的条目就知道出口是谁，与它有就绪的直连会话就把流放上去，没有就照常交给 relay，并在后台发起打洞。没打开的路由与现在完全一样，ingress 不知道出口。换出口仍然只在 agentserver 上改，新的分流表下发后 ingress 跟着走。
+- 任务与 ssh 服务不需要这个开关：executor 清单与服务表本来就带着节点的公钥。
+- 直连会话上开的流：`Open.to` 是会话对端，也就是目的节点自己；没有 `RelayInfo`；照常附上成员证书。
+- 回退。没有就绪的直连会话：走中继。在直连上开流失败或等不到 Ack（会话层面的故障）：同一条流改走中继重试一次，ingress 手里有首段数据的副本，任务靠 `(from, call_id)` 去重。目的节点以 `P2P_NOT_ALLOWED` 拒绝（成员证书缺失或无效，见下）：改走中继重试一次。其余的拒绝就是最终结果：目的节点是确定的，走中继遇到的也是同一个节点、同一份策略。
+- relay 不可用时，有直连会话的对端之间，任务、ssh 服务与命中已下发路由的 egress 流照常工作。
+
+**会话对端是成员节点时的判定。** 直连上没有清单 A，relay 与控制面原来替接收方把关的事要有着落：
+
+| 中继路径上的检查 | 由谁做 | 会话对端是成员节点时 |
+| --- | --- | --- |
+| `from` 等于会话身份 | relay | 接收方自己核对：`from` 等于 Noise 认证过的会话对端 |
+| 发起方仍是成员（被移除的节点连不上 relay） | relay 与控制面 | 流必须附带一份有效的 workspace 成员证书：有效期 1 小时，移除节点时吊销即时推送 |
+| 发起方有对应的角色上限 | 控制面 | 按这份证书里的角色上限核对；workspace 成员证书为此新增 `role_caps`，由 agentserver 签发时填入 |
+| 选路 | 控制面 | 发起方按 `task.executor`、服务表或下发了目的节点的路由放置，依据都来自控制面；目的节点仍按自己的策略判定 |
+| 用目的节点的策略预检 | 控制面 | 没有这一道；目的节点自己的策略本来就是最终判定 |
+
+清单 B 因此按会话对端分两种情形，其余各项（验签、时间窗、防重放、成员证书与策略的判定、执行）完全相同：
+
+- 对端是 relay（现状）：`from` 是 relay 自己时（edge 发起的流）要求 `to` 等于本节点，否则要求 `to` 等于该 relay。
+- 对端是成员节点：要求 `from` 等于对端、`to` 等于本节点；附带的证书里要有一份有效的 workspace 成员证书，不论策略里有没有写 workspace 公钥（它进不进身份集合，仍然只看有没有规则写了 workspace 公钥），缺失或无效回 `P2P_NOT_ALLOWED`，发起方改走中继；证书的角色上限要包含这条流需要的消费侧角色，`tcp` 要 ingress，`task` 要 submitter，不符回 `ROLE_NOT_ALLOWED`。
+
+角色上限调低之后，直连最长要等旧证书过期（1 小时）才生效，中继路径是立即的。判定所需的一切都随流出示、与路径无关，这正是成员证书由成员自己携带的原因（6.8）。
+
+**多 relay。** 信令经 agentserver，与两个节点连在哪个 relay 上无关：现在同一个 workspace 的成员都在同一个 relay 上，5.9 的 relay 池落地之后也不用改。节点默认用自己所连 relay 的 STUN。
+
+**安全与隐私。**
+
+- 地址给了谁：通过 agentserver 校验的那个对端；信令经过的 relay 与 agentserver（`Signed` 只签名不加密）；STUN 服务器看到节点的公网映射。关闭 P2P 的节点不给出任何地址。
+- 探测报文带 MAC，密钥只在签名的邀请里。第三方不能让节点对任意报文回应：公网扫描拿不到任何回应，响应与请求大小相当，没有放大。真正的身份认证在 Noise 握手。
+- 恶意对端可以把别人的地址写进自己的候选：一次邀请最多让对方向 8 个地址各发 50 个约 100 字节的报文，agentserver 对邀请限速。
+- QUIC 握手只对通过了探测的地址开放，Noise 握手的静态公钥必须等于邀请里的对端：没有邀请的人什么都触发不了。
+- relay 或 agentserver 被攻破：看得到候选地址与打洞密钥，可以让打洞失败（退回中继），进不了直连会话；agentserver 还可以借邀请收集开启了 P2P 的节点的地址。
+- 直连绕过了转发预检，接收节点是唯一的判定点；relay 与 agentserver 看不到直连上的数据和元数据（域名、任务），只知道两个节点建立了直连。这条路径的审计只在两端节点的决策日志里。不接受这些的节点不开启 P2P。
+
+**可观测性。** `agentd status` 与 `agentd peers` 列出每个对端的直连状态（就绪、打洞中、退避及原因）、选定的地址对及其种类、时延；决策日志的每条记录带上所走的会话（relay / direct）。agentserver 用 `P2PResult` 统计打洞的成功率与失败原因，节点详情里显示是否开启 P2P。
+
+**协议影响。** 不升次版本。新增的东西只在都上报 `p2p_enabled` 的节点之间出现：四个控制消息（旧实现忽略未知的控制消息）、会话种类 `SESSION_DIRECT`、状态码 60 到 63；`MembershipCertBody.role_caps` 与 `IngressRoute` 里的目的节点是新增字段，旧实现忽略它们（旧的 ingress 照常走中继）。agentserver 与 relay 先升级。
+
+**落地顺序。**
+
+1. 协议定稿：按本节改写协议规范 2.1（接受方不再限定为 HTTP 处理函数）、2.6、4.1（清单 B 的两种情形）、12.10 与 `wire.proto`。
+2. 把抽象理顺，行为不变：ws、httpupgrade、xhttp 的拨号与接入收拢到协议规范 2.1 的那组接口下（现在的代码是按种类分支的函数与各自的 HTTP 处理函数）；agentd 里会话与流的代码按「会话对端」写（现在写死的是 relay 的身份），清单 B 按对端种类分支；relay 一律转交节点的控制消息。这一步做完，加一种 transport 不需要动会话层以上的代码。
+3. p2p transport，实现同一组接口：套接字、STUN 编解码与查询、候选地址收集、探测、QUIC 与 `Conn` 适配。单元测试用进程内的 NAT 模拟器覆盖上表的各种组合。
+4. 信令与多会话：agentserver 的校验与转交，节点的状态机与会话表；先只用 host 候选，打通局域网与公网地址的情形；任务与 ssh 服务的放置；对端是成员节点时的判定与 `role_caps`。
+5. 反射地址与 prflx，穿过 NAT；退避与网络变化的处理。
+6. 路由表项的 `reveal_to`：状态库、admin API 与控制台；分流表渲染时带上目的节点；ingress 按它放置 egress 流。
+7. 可观测性与控制台里的统计。
+
+之后按需：端口映射协议；用两个 STUN 服务器判断 NAT 类型并在状态里提示。
+
+**与协议规范 2.6 现有预留的差异**（方案定稿后改写协议）：
+
+- 探测报文由 `agentd-punch/1` 加明文 nonce 改为带 `MESSAGE-INTEGRITY-SHA256` 的 STUN Binding。原格式有两个问题：首字节 `a`（0x61）在与 QUIC 共用的套接字上会被当成 QUIC 短首部报文；nonce 明文出现在报文里，路径上看到它的人就能伪造探测。
+- `P2PCandidates` 由「节点定期上报、agentserver 保存」改为「对一次邀请的应答」，agentserver 不保存候选地址。保存下来的反射地址只有在节点常年对 STUN 保活时才不过期，服务端还要长期留着成员的地址。
+- `P2PInvite` 增加邀请 ID 与过期时间，nonce 改作 MAC 的密钥；`P2PResult` 增加服务端回绝的方向。
+- 新增会话种类 `SESSION_DIRECT`；workspace 成员证书新增 `role_caps`；清单 B 写成按会话对端的两种情形。
+- egress 流的放置不再靠记住 `Ack.responder`：路由表项新增 `reveal_to`，打开后 `IngressRoute` 带上目的节点公钥。协议规范 2.6 与 4.2 里「按域名记住出口」的写法删除，`Ack.responder` 只用于决策日志。
+- 不变的：transport 名字 `p2p`、发起方规则、消息编号 18 到 21、状态码 60 到 63、`Advertise.p2p_enabled`、直连时 `Open.to` 是对端自己且没有 `RelayInfo`。
+
+**评估过但不采用的做法。**
+
+- 用 QUIC 自带的 TLS 与流取代 Noise 与 yamux：单层加密，流之间没有队头阻塞；但 transport 就不再只是一条字节流，认证与复用会按 transport 分成两套，上层要跟着分叉。四种 transport 用同一个抽象是前提（第 10 节第 22 条按此定）。
+- 完整的 ICE（如 pion/ice）：角色协商、提名与 TURN 都用不上，这里只取它的连通性检查。
+- 直接用 QUIC 拨号当探测（libp2p DCUtR 的做法）：没有显式的地址校验，对称 NAT 一侧必须当拨号方，也没法在几个可用的地址对里挑。
+- 打洞密钥由双方身份密钥做 X25519 导出、不经服务端：relay 与 agentserver 拿到密钥也只能让打洞失败，而这一点它们本来就做得到，不值得为此多引入一种密钥用法。
+- 靠 `Ack.responder` 记住出口（v0.10 按域名，v0.24 按分流表条目）：ingress 要先走一次中继才知道出口，记忆要随分流表失效，记错了还得靠被目的节点拒绝来纠正。改为由路由表项显式下发目的节点。
+- 对称 NAT 的端口预测、经第三方中转（relay 本身就是回退路径）、UDP 数据面、流迁移、多路径：不做。
+
 ---
 
 ## 8. 安全模型
 
 ### 8.1 信任边界
 
-- agentserver 是受信的管理平台与后端：它持有 DNS 凭据、路由表、目录、组与 workspace 密钥、中央策略、自管节点上报的策略和服务证书，能改受管节点的策略、签发成员证书与 relay 证书、指派 relay、决定每条流的出口和预检结果；它不在数据路径上，看不到任何流。它不能冒充任何节点，因为节点私钥只在节点上。
+- agentserver 是受信的管理平台与后端：它持有 DNS 凭据、路由表、目录、组与 workspace 密钥、中央策略、自管节点上报的策略和服务证书，能改受管节点的策略、签发成员证书与 relay 证书、管理 relay 候选池、决定每条流的出口和预检结果；它不在数据路径上，看不到任何流。它不能冒充任何节点，因为节点私钥只在节点上。
 - relay 是受信的接入点、转发者、粗粒度授权的执行点和 HTTP 服务边缘：它终结节点的会话与控制流，按后端的答案工作，能看到控制消息的内容（含加入令牌、`Advertise`）、每条流的头部、任务的请求与输出、被转发连接的字节（TLS / SSH 密文），能拒绝服务，能看到和篡改 HTTP 服务的明文。它不能冒充控制面：发给节点的控制消息都带 workspace 密钥的签名，relay 没有这把私钥，改不了策略、目录、证书和路由；它不能冒充任何节点，不能篡改 `Open` 和任务内容，不能把任务送给 `task.executor` 之外的 executor、把服务流送给别的节点，因为这些都由发起方和 executor 的签名保证；egress 流的出口由后端选，被攻破的 relay 能改的只是在愿意接受该发起方的出口之间换一个。它能伪造节点发给后端的消息（冒名注册服务、替自管节点上报更宽的策略），影响止于预检，节点自己的策略仍是最后一道闸。
 - Cloudflare（若使用）只看到节点与 relay 之间的 Noise 密文和连接元数据；对向 `*` 开放且走橙云的服务它处于与 relay 相同的位置。
 - 节点之间互不信任，提供侧只相信验签得到的对端身份，并用自己的策略决定是否服务；后端的预检是在它之前的一道闸，不是替代。
@@ -1071,24 +1331,42 @@ MVP 的数据面全部经 relay 中继。P2P 让两个节点在 UDP 打洞成功
 # /etc/agentserver/config.yaml（控制面，管理平台；只需对 relay 与管理员可达）
 apiVersion: agentd/v1
 kind: AgentserverConfiguration
-domain: agentsrv.example.com
+domains:
+  - name: agentsrv.example.com
+    default: true
+    dns_provider_id: <dns-provider-uuid>
+    certificate_issuer_id: <certificate-issuer-uuid>
+  - name: relay.example.net
+    default: false
+    dns_provider_id: <dns-provider-uuid>
+    certificate_issuer_id: <certificate-issuer-uuid>
 listen: ":443"                                      # relay 会话的端点；可以是内网地址
 key_file: /var/lib/agentserver/server.key          # 可选：agentserver 的 Ed25519 静态私钥，只用于 relay 会话；省略时密封保存在状态库
 tls: { mode: acme }                                 # 自身域名的证书；内网部署可用自签并让 relay 钉住
 transports: { ws: /ws, xhttp: /x, httpupgrade: /up }   # relay 会话的 transport 端点
-admin_listen: "127.0.0.1:7800"                      # admin API（docs/agentserver-openapi.yaml），CLI 经它操作；远程管理放 SSH 隧道或反向代理后
+admin_listen: "127.0.0.1:7800"                      # admin API（docs/agentserver-openapi.yaml）与 Web 控制台；远程管理放 SSH 隧道或反向代理后
 admin_token_env: AGENTSERVER_ADMIN_TOKEN             # admin API 的 Bearer 令牌所在环境变量
 database: { url_env: AGENTSERVER_DATABASE_URL }     # PostgreSQL：目录、路由表、策略、证书、令牌
 state_key_env: AGENTSERVER_STATE_KEY                # 私钥密封用的密钥（取 SHA-256），证书私钥与各类私钥加密存放
 relay_join_token_env: AGENTSERVER_RELAY_TOKEN       # 可选：relay 自注册的长期引导令牌（helm chart 用它）
-relay_cert_ttl: 720h                                # relay 证书有效期，到一半时续签；每个 (relay, workspace) 一张，用 workspace 密钥签
+relay_cert_ttl: 720h                                # relay 证书有效期；每个 (relay, workspace) 一张，用 workspace 密钥签。目前不按期续签，只在 relay 会话建立、新建或改派 workspace 时重签（5.9）
 dns_providers:
-  cf-main: { provider: cloudflare, token_env: CF_API_TOKEN, zones: [agentsrv.example.com, example.org] }   # 账号托管的 zone；workspace 的基础域名按最长匹配选提供方
-  dnspod: { provider: dnspod, secret_id_env: DNSPOD_SECRET_ID, secret_key_env: DNSPOD_SECRET_KEY, zones: [example.cn],   # 腾讯云 API 3.0 密钥
-            acme_directory: "https://dv.acme-v02.api.pki.goog/directory",                # 默认 Let's Encrypt；zone 的 CAA 只允许 pki.goog 时用 GTS
-            eab_key_id_env: GTS_EAB_KEY_ID, eab_hmac_key_env: GTS_EAB_HMAC_KEY }          # GTS 要求外部账号绑定（gcloud publicca external-account-keys create）；可选 account_key_env：PEM 账号私钥
-default_dns_provider: selfsigned                    # 基础域名不在任何 zones 里时用它（默认 selfsigned）
+  cf-main: { provider: cloudflare, credential_ref: secret://dns/cf-main, zones: [agentsrv.example.com, example.org] }
+  dnspod: { provider: dnspod, credential_ref: secret://dns/dnspod, zones: [example.cn] }
+certificate_issuers:
+  letsencrypt: { kind: lets_encrypt, directory: "https://acme-v02.api.letsencrypt.org/directory" }
+  gts: { kind: google_trust_services, directory: "https://dv.acme-v02.api.pki.goog/directory",
+         eab_key_ref: secret://acme/gts-eab-id, eab_hmac_ref: secret://acme/gts-eab-hmac }
+auth_providers:
+  corp: { kind: oidc, issuer: "https://login.example.com", client_id: agentserver,
+          client_secret_ref: secret://oidc/corp, scopes: [openid, profile, email] }
 ```
+
+`domains`、`dns_providers`、`certificate_issuers` 和 `auth_providers` 是 instance admin 可管理的
+独立资源。bootstrap 配置文件可以使用 secret manager 引用；API 写入时允许通过 TLS 提交 provider 的
+实际凭据，但读取响应、日志和普通备份都不返回这些 write-only 字段。运行中的变更分别经
+`/api/v1/admin/domains`、`/api/v1/admin/dns-providers`、`/api/v1/admin/certificate-issuers` 和
+`/api/v1/admin/auth-providers` 校验并生效。
 
 ```yaml
 # /etc/agentrelay/config.yaml（数据面，节点唯一直接连接的服务端；与控制面分开部署，可多实例）
@@ -1097,7 +1375,7 @@ kind: AgentrelayConfiguration
 name: relay-hk
 domain: relay-hk.agentsrv.example.com
 listen: ":443"
-key_file: /var/lib/agentrelay/relay.key              # relay 的 Ed25519 静态私钥，公钥用 agentserver relay add 注册
+key_file: /var/lib/agentrelay/relay.key              # relay 的 Ed25519 静态私钥；登记方式见 9.5
 control: { url: https://agentsrv.example.com, public_key: "Ws3kL…" }   # 控制面；public_key 可省略（经校验的 TLS 从 /.well-known/agentserver 取得）；它用各 workspace 的密钥签发并推送本 relay 的证书
 tls: { mode: acme }                                   # 自身域名的证书；服务域名的证书由控制面下发、只在内存
 transports: { ws: /ws, xhttp: /x, httpupgrade: /up }  # 节点会话的端点
@@ -1106,13 +1384,11 @@ stun: ":3478"                                         # P2P 反射地址（7.8�
 ```
 
 ```yaml
-# workspace home（也可用 agentserver CLI 逐条管理）
-apiVersion: agentd/v1
-kind: Workspace
+# workspace home 的内容。它存在 agentserver 的状态库里，在控制台或经 admin API 管理（9.3）；
+# 这里按 API 的字段把它写在一起，不是配置文件
 name: home
 base_domain: home.agentsrv.example.com     # 可自定义（如 home.example.org）；签发证书的 DNS 提供方由它所在的 zone 决定
-relay: relay-hk                            # 指派给该 workspace 的 relay，成员都连它
-publish_dns: false                         # true 时写入 *.home.agentsrv.example.com 指向 relay，供有 public_key "*" 规则的服务公开访问
+relay: relay-hk                            # 只读：创建时由 agentserver 选的 relay，成员都连它；迁移用 PATCH /workspaces/home
 routes:                                    # 路由表（6.5）：(源, 协议, 域名) → 目的；只在 agentserver 上，ingress 只收去掉目的的分流表
   - { from: group:pc,  proto: [tls, ssh], domains: [{ kind: suffix, value: ucas.edu.cn }, { kind: suffix, value: ucas.ac.cn }], to: dorm }
   - { from: workspace, proto: [tls],      domains: [{ kind: domain, value: login.ucas.edu.cn }],                to: direct }
@@ -1137,7 +1413,7 @@ policies:                                  # 中央策略，只对 policy_source
 
 ### 9.2 agentd
 
-agentd 的全部文件集中在 `~/.agentd/`（Windows 为 `%USERPROFILE%\.agentd\`），目录权限 0700。完整的参考配置（全部字段、默认值与说明）见 `docs/agentd-config.yaml`，下面只给四个典型节点的最小配置。所有配置文件都以 k8s 风格的 `apiVersion: agentd/v1` 和 `kind` 开头，四种 kind：`AgentdConfiguration`、`AgentserverConfiguration`、`AgentrelayConfiguration`、`Workspace`；字段像 kubelet / kubeadm 的组件配置一样直接放在顶层，不套 `spec`。一台设备可以跑多个实例：默认实例直接用 `~/.agentd/`，其他实例各用 `~/.agentd/instances/<实例名>/`，布局相同；`agentd -i <实例名>`（或 `AGENTD_INSTANCE`）选择实例，所有子命令都带这个选项；`AGENTD_HOME` 或 `--home` 可把某个实例的目录整个指到别处（系统服务等场景）。实例之间除了共享 elevator 没有任何共享状态：
+agentd 的全部文件集中在 `~/.agentd/`（Windows 为 `%USERPROFILE%\.agentd\`），目录权限 0700。完整的参考配置（全部字段、默认值与说明）见 `docs/agentd-config.yaml`，下面只给四个典型节点的最小配置。所有配置文件都以 k8s 风格的 `apiVersion: agentd/v1` 和 `kind` 开头，三种 kind：`AgentdConfiguration`、`AgentserverConfiguration`、`AgentrelayConfiguration`；字段像 kubelet / kubeadm 的组件配置一样直接放在顶层，不套 `spec`。一台设备可以跑多个实例：默认实例直接用 `~/.agentd/`，其他实例各用 `~/.agentd/instances/<实例名>/`，布局相同；`agentd -i <实例名>`（或 `AGENTD_INSTANCE`）选择实例，所有子命令都带这个选项；`AGENTD_HOME` 或 `--home` 可把某个实例的目录整个指到别处（系统服务等场景）。实例之间除了共享 elevator 没有任何共享状态：
 
 ```
 ~/.agentd/
@@ -1158,7 +1434,7 @@ metadata: { name: laptop }
 workspace:
   domain: home.agentsrv.example.com
   public_key: "Rt7aB…"                   # 本 workspace 的公钥：唯一信任根，来自加入链接；验 relay 证书、控制消息与 workspace 成员证书
-  relay:                                 # 归属 workspace，由 agentserver 指派
+  relay_candidates:                       # agentd 从候选池选择，不在 workspace 上 pin
     url: https://relay-hk.agentsrv.example.com   # 当前 relay 的 transport 端点；其余候选来自 Welcome.relays，缓存在 state/
     transport: { type: ws }              # ws（默认）/ xhttp / httpupgrade / auto
 roles:
@@ -1233,7 +1509,7 @@ Host *.home.agentsrv.example.com
   ProxyCommand agentd connect %h %p
 ```
 
-### 9.3 CLI
+### 9.3 CLI 与管理入口
 
 ```
 agentd [-i <实例名>] <子命令>                   选择实例：省略即默认实例 ~/.agentd/，否则 ~/.agentd/instances/<实例名>/
@@ -1252,26 +1528,115 @@ agentd task exec <executor> -- <cmd>           exec_command
 agentd task stdin <executor> <session_id> …    write_stdin
 agentd mcp                                     stdio MCP server
 
-agentserver run                                控制面
-agentrelay run                                 数据面，配置见 9.1
-agentserver key show                           显示 agentserver 公钥
-agentserver workspace create|list|delete|set-relay|key <ws> [--base-domain …] [--publish-dns] [--relay <name>]   key 显示 workspace 公钥（加入链接的 key、成员配置的 workspace.public_key）
-agentserver relay add|remove|list <name> --public-key … --url … [--stun …]   注册 relay、签发 relay 证书并供 workspace 指派
-agentserver token create --workspace <ws> [--name <node>] [--roles …] [--ttl 24h]   输出加入链接
-agentserver token list|revoke --workspace <ws>
-agentserver node list|remove|rename|set-roles --workspace <ws>
-agentserver group create|delete|add|remove|list --workspace <ws>   组及其密钥；add / remove 管理成员
-agentserver route add|remove|list --workspace <ws>   路由表（源、协议、域名、目的）
-agentserver policy add|remove|list|replace --workspace <ws>   中央策略语句
-agentserver service list --workspace <ws>      已注册的服务及状态
-agentserver status                             relay 与节点的在线统计
-agentserver cert list|renew --workspace <ws>
-agentserver backup <file>
+agentserver run [-c config.yaml]               控制面：relay 会话、admin API 与 Web 控制台
+agentserver backup <file> [-c config.yaml]     导出状态库（直接读状态库，不经 admin API）
+agentserver version
+agentrelay run [-c config.yaml]                数据面，配置见 9.1
+agentrelay key show [-c config.yaml]           显示 relay 公钥（密钥文件不存在时先生成），供预先登记 relay（9.6）
+agentrelay version
 ```
 
-agentd 的 CLI 通过实例目录下的 `agentd.sock`（默认 `~/.agentd/agentd.sock`；Windows 用命名管道）和该实例的守护进程通信。agentserver 的 CLI 是 admin API 的封装，每个子命令对应一个操作，接口定义见 `docs/agentserver-openapi.yaml`（`agentserver backup` 例外，直接读状态库）。
+agentd 的 CLI 通过实例目录下的 `agentd.sock`（默认 `~/.agentd/agentd.sock`；Windows 用命名管道）和该实例的守护进程通信。
 
-### 9.4 技术选型（建议）
+agentserver 与 agentrelay 是服务端程序，只有上面这几个子命令。instance admin 的管理入口是 admin API（`docs/agentserver-openapi.yaml`；路径前缀 `/api/v1/admin`，每个请求带 instance-admin bearer）；普通用户使用独立的 user API（`docs/agentserver-user-openapi.yaml`；路径前缀 `/api/v1`，每个请求带 OIDC bearer）。Web 管理控制台只生成 admin API，不把全局管理 operation 暴露给普通用户；用户界面使用 user API。
+
+| 资源（控制台里的页） | 操作 |
+| --- | --- |
+| admin workspaces | instance admin API 列出全部并负责创建、删除；relay 选择由 agentd 和候选池完成；签证书的 DNS 提供方与公网解析是 agentserver 的 instance 配置，不在这里（6.1、6.2） |
+| user workspaces | user API 只列出当前用户有 membership 的 workspace，并按 owner / maintainer / member 操作 |
+| tokens | 签发加入令牌并得到加入链接、列出未用的、作废 |
+| nodes | 列出、查看、改名、调整角色上限、移除 |
+| groups | 创建（生成组密钥）、删除、增删成员 |
+| routes | 查看、追加、删除、整体替换 |
+| policies | 列出、追加、删除、整体替换 |
+| services | 已注册的服务及状态 |
+| relays、relay tokens | 按公钥登记、列出、注销、查看 relay 证书；签发与作废一次性注册令牌（9.6） |
+| domains | 独立管理 instance 域名、用途、默认域名和 provider 绑定（仅 instance admin） |
+| dns providers | 独立管理 DNSPod / Cloudflare 凭据、zones 和公网解析开关（仅 instance admin） |
+| cert issuers | 独立管理 Let's Encrypt / GTS 账号、EAB 和签发配置（仅 instance admin） |
+| auth providers | 独立管理可扩展认证 provider；第一期 `kind: oidc`（仅 instance admin） |
+| users | 管理 instance 级用户目录和外部 identities；workspace members 只引用 user_id（仅 instance admin） |
+| audit | instance admin 查询全局审计；workspace owner/maintainer 在 user API 按 workspace 查询审计（只读） |
+| workspace members | 维护 用户的 `owner`、`maintainer`、`member` 角色；workspace 至少保留一个 owner |
+| overview | agentserver 的公钥，relay 与节点的在线统计 |
+
+### 9.4 管理面 RBAC 与接口访问者
+
+agentserver 的管理面分成 instance scope 与 workspace scope。instance 是一套
+agentserver 配置和状态库；它有自己的 `instance_admin`。instance admin 管理以下 instance
+级列表：
+
+- **domains**：instance 可服务的域名集合；每个域名有 agentserver 维护的 `pending`、`active`、
+  `disabled`、`failed` 状态，其中一个作为 workspace 未指定 `base_domain` 时的默认父域名；
+- **DNS providers**：第一期支持 DNSPod 和 Cloudflare。每个 provider 都允许 agentserver 管理
+  workspace/service 的公网 DNS 记录，并声明它能操作的 zones 和 write-only 凭据；域名按最长 zone 后缀选择 provider；
+- **cert issuers**：第一期支持 Let's Encrypt 和 Google Trust Services（GTS）。每个 provider
+  声明 ACME directory、ACME account key、邮箱以及需要时的 EAB secret 引用。account key 是 issuer 账户私钥，
+  不是证书私钥；省略时由 agentserver 生成并加密保存；
+- **auth providers**：这是可扩展的认证 provider 集合，第一期只实现 `kind: oidc`，可以配置多个 issuer、client、scope 和 claim mapping；
+  API 写入时接收 client secret，读取响应不返回；bootstrap 配置可使用 secret 引用。
+
+instance admin 还管理全局 users、workspaces、nodes、routes、policies 和 relay，并对任意
+workspace 拥有 break-glass 管理权限。默认域名属于 instance，不属于任何 workspace；workspace
+workspace 创建时可选择 instance domain 的 `domain_id`；省略时使用默认 domain。`base_domain` 始终由 agentserver 根据 domain 与 workspace name 生成，不能由请求直接填写。
+因此 nodes、routes、policies 等资源在 admin API 中仍以 workspace 作为资源路径的一部分，
+但只接受 instance admin；普通 workspace 用户使用独立的 user API，不复用这些 admin operation。
+
+用户以 instance 级 `User` entity 存在，唯一归并键是经过验证的 canonical email；用户资料中的 `name` 和 `picture`
+从 OIDC claims 同步。不同 provider 的 `(provider_id, subject)` 保存为独立的 `UserIdentity`，通过 email 归并到同一个 user。
+workspace 成员持久化为 `(user_id, role)`，角色固定为：
+
+workspace 的用户成员和 agentd 节点是两类不同 entity：`members` 统计用户 membership，
+`nodes` 和 `nodes_online` 统计 agentd 节点及其在线会话。
+
+| 角色 | 权限 |
+| --- | --- |
+| `owner` | 管理 workspace 成员和角色、workspace 设置，以及全部运行配置；workspace 至少保留一个 owner |
+| `maintainer` | 管理路由、中央策略、组、节点角色上限、加入令牌和证书等运行配置；不能管理 workspace 成员 |
+| `member` | 读取 workspace 的目录、服务、路由、策略和证书状态 |
+
+`AdminToken` 是部署初始的 instance-admin bootstrap 凭据，不代表某个 workspace 用户。
+接入身份提供方后，HTTP bearer principal 先通过 `UserIdentity` 的 `(provider_id, subject)` 找到 user，再从
+`workspace_members` 取得 workspace role；instance admin 始终可以作为 break-glass principal。
+两个 Web API surface 的所有 operation 都必须显式带 `x-audience` 和 `x-authorization`：
+
+- **instance admin API**：`/api/v1/admin`，文档为 `docs/agentserver-openapi.yaml`，所有 operation 只接受 `instance_admin`，
+  管理 instance 配置、全局 users 以及所有 workspace / relay 资源；
+- **user API**：`/api/v1`，文档为 `docs/agentserver-user-openapi.yaml`，只接受 OIDC bearer principal，
+  返回和操作当前用户有 membership 的 workspace；
+- `web_user`：上述两个 Web surface 的浏览器和自动化调用者；
+- `agentd`：节点守护进程，只通过 relay 的 Noise/transport 会话收发控制消息，不调用 admin API；
+- `relay`：中继，通过 transport 会话与 agentserver 交换控制消息，也不使用 用户角色。
+
+两个 Web surface 不共享 operation：admin API 的 `GET /workspaces` 返回全量 workspace，user API 的
+`GET /workspaces` 只返回当前用户的 membership。这样普通用户不会通过调用 admin operation
+进入全局资源视图，instance admin 也不需要伪装成 workspace member。
+
+所有持久化 entity 都有稳定的 UUID `id`。资源的 `name`、`subject` 和 URL path 参数只是人类可读的
+索引或查找键，不能作为跨系统引用的主键；创建请求不带 `id`，由 agentserver 生成并在响应中返回。
+这条规则适用于 workspace、node、group、route、policy、service、relay、token、user、instance
+domain/provider、certificate 和 membership。
+创建和更新请求都不提交 `id`；创建由服务生成 UUID，更新通过 collection item 的 path 参数定位实体。
+
+每个 entity 都有自己的 `status` 状态机，不使用一个跨资源复用的泛化状态枚举。状态只出现在资源
+响应中，写请求通过专用 action 或生命周期 operation 触发转换；完整的初始态、终态和允许转换见
+OpenAPI 顶层的 `x-state-machines`。例如 certificate 使用 `pending → ready → renewing → expired/revoked`，
+workspace 使用 `provisioning → active → deleting → deleted`，join token 使用 `active → used/expired/revoked`。
+所有 entity 都采用软删除，`deleted` 是统一的删除终态；删除后保留 UUID、审计元数据和必要的关联引用，
+不再出现在默认 list 结果中。
+
+所有写事件都生成不可变的 `AuditEvent`：包括 admin/user API 的 POST、PUT、PATCH、DELETE，
+join token 的原子消费，agentd 加入/退出，节点和 relay 状态变化，证书签发、续期、吊销，以及后台 DNS/ACME 任务。
+事件记录 actor、action、resource_type、resource_id、workspace_id、request_id、结果和脱敏 metadata；
+凭据、token、私钥、证书正文等敏感内容永不进入审计记录。后台任务沿用触发它的 request_id 和 actor 关联。
+
+instance admin 可以查询全局审计事件；workspace owner 和 maintainer 通过 user API 按 workspace_id 查询自己有权限的 workspace 事件，
+member 没有审计读取权限。审计表只追加、不提供客户端写入 operation，默认查询过滤 `deleted` 资源但保留历史事件。
+
+机器接口的路径、握手身份和消息权限在协议文档中维护，不能因为 用户拥有 workspace
+角色就直接复用或绕过节点/relay 的密码学身份。
+
+### 9.5 技术选型（建议）
 
 - 语言：Go，三个二进制 `agentd`、`agentserver`（控制面）与 `agentrelay`（数据面），共享内部包。
 - 密码学：Noise 用 `github.com/flynn/noise` v1.1.0（`HandshakeIK`、`DH25519`、`CipherChaChaPoly`、`HashBLAKE2s`、`CipherState.Rekey()`、`MaxMsgLen = 65535`；更新慢，但 go-libp2p 在生产使用）。签名用标准库 `crypto/ed25519` 的 Ed25519ctx（`ed25519.Options{Context: …}`）；Ed25519 到 X25519 的派生用 `filippo.io/edwards25519`（公钥 `BytesMontgomery()`）加 SHA-512 clamp（私钥），与 libsodium 一致。密钥编码 base64url 无填充。
@@ -1306,7 +1671,7 @@ proto/agentd/v1        wire.proto：握手载荷、Open / Ack、任务结果、�
 docs/                  design.md、protocol.md
 ```
 
-### 9.5 运维
+### 9.6 运维
 
 - 日志：阶段 1 起每条连接和每次 tool call 都有结构化决策日志（域名来源、协议、分流表判定、实际服务的节点、动作、错误码、耗时），这是调试「为什么这条连接直连了」的唯一手段；指标接口阶段 4。
 - 多实例：每个实例一个服务单元、一份日志和一个 socket，`agentd -i <名> status` 分别查看；升级二进制对所有实例同时生效。
@@ -1315,7 +1680,14 @@ docs/                  design.md、protocol.md
 - 协议演进：版本取交集，prologue 含大版本；未知控制消息忽略，未知流类型失败安全；protobuf 字段只增不改。
 - 状态机：节点在 workspace 中的生命周期、会话与控制流、transport、流、任务、服务、成员证书、受管策略、relay 会话与缓存、P2P 的状态机在协议规范第 12 节，实现按它写显式的状态变量。
 - 状态备份：`agentserver backup` 定期导出；状态库含服务器私钥、组与 workspace 私钥、证书私钥、ACME 账户密钥和目录，备份要加密。relay 没有持久状态，不需要备份。
-- 密钥轮换：节点换密钥等于重新 join；agentserver 换密钥只需 relay 更新 `control.public_key`；workspace 换密钥需要全部成员更新 `workspace.public_key`（等于重新 join），提供一段双密钥并行期；relay 换密钥只需重新注册并续签证书，节点随 `Welcome.relays` 更新。
+- 新增 relay：relay 要有自己的名字、域名与证书（`tls`），并能连到 agentserver 的 relay 端点（`control.url`；证书照常校验，私有 CA 用 `control.ca_file`；`control.public_key` 可省略，经校验过的 TLS 从 `/.well-known/agentserver` 取得）。登记有三种方式，任选其一：
+  - 一次性令牌：在控制台的 relay tokens 页或用 `POST /relays/tokens` 签发（默认 24 小时内有效），放进 relay 的 `control.join_token_env` 所指的环境变量（默认 `AGENTRELAY_JOIN_TOKEN`）。relay 首次启动时生成密钥、自报名字与 URL 完成登记，令牌随即作废，之后只凭密钥认证。
+  - 预先登记公钥：在 relay 上 `agentrelay key show`，再在控制台的 relays 页或用 `POST /relays`（名字、公钥、URL）登记，relay 上不放任何令牌。
+  - 长期引导令牌：agentserver 配了 `relay_join_token_env` 时，持有这个令牌的 relay 都能自注册；helm chart 的 `relays` 列表用的是这种。
+
+  登记后 relays 页（`GET /relays`）显示它已连接，并加入 relay 候选池。workspace 创建不选择 relay；agentd 从候选池选择当前 relay。密钥未登记又没有令牌的 relay 会被拒绝（`NOT_A_MEMBER`）并退避重试。helm chart 目前只部署与 agentserver 同一个 release 的 relay；在别处运行 relay 要自己写配置，并让它连得到 agentserver 的 relay 端点（chart 里是集群内的 Service，证书由 chart 的 CA 签发）。
+- relay 故障：agentd 从 Welcome 候选列表切换 relay；relay 没有持久状态，用同一把密钥、同一个域名在别的机器上起来也可以，不需要改 workspace 配置。
+- 密钥轮换：节点换密钥等于重新 join；agentserver 换密钥只需 relay 更新 `control.public_key`；workspace 换密钥需要全部成员更新 `workspace.public_key`（等于重新 join），提供一段双密钥并行期；relay 的密钥要持久保存，换密钥目前等于换一个 relay：已登记的名字不能换公钥，没有 workspace 的 relay 先注销（`DELETE /relays/{relay}`）再登记；还指派着 workspace 的要用新名字登记、把 workspace 逐个改派过去，再注销旧的。
 - 升级：agentserver 先升级并兼容旧版本区间，再升级 relay，最后升级节点。relay 会话断开期间控制流上没有新消息、数据流按缓存继续。
 
 ---
@@ -1331,7 +1703,7 @@ docs/                  design.md、protocol.md
 5. `policy_source` 默认 `local`，是否合适？建议是：新节点先自管，确认中央策略渲染无误后再切 `server`。
 6. 成员证书有效期默认 1 小时、过半续发，成员离组后最多 1 小时残留（有吊销推送兜底），是否接受？建议接受。
 7. HTTP 服务由 relay 的边缘终结 TLS，意味着 relay 能看到这些服务的明文，是否接受？建议接受（这是本轮反馈的决定），需要保密的用 `proto: ssh`。
-8. `public_key: "*"` 的服务规则与 `publish_dns` 是否进 MVP？建议进阶段 1，实现成本很低。
+8. `public_key: "*"` 的服务规则与公网解析是否进 MVP？`*` 规则已实现；公网解析改为 `dns_providers` 上的实例级开关 公网 DNS 记录管理（6.1），尚未实现，在此之前手动添加 DNS 记录。建议放进阶段 4。
 9. 身份头的名字 `X-Agentd-Peer` / `X-Agentd-Peer-Key` 是否合适？建议先用，阶段 4 前定稿。
 10. ingress DNS 剥离 HTTPS/SVCB 记录、对金丝雀域名返回 NXDOMAIN、RST 已知 DoH 端点，这三项是否接受？建议接受，均可配置关闭。
 11. executor 不经 shell、`shell: true` 只对特定调用方显式开启，是否接受？AI agent 写的 `cd x && ls`、重定向、`$(…)` 会被拒绝。建议接受。
@@ -1345,12 +1717,19 @@ docs/                  design.md、protocol.md
 19. executor 对输出签名是否进 MVP？建议进，否则被攻破的 agentserver 能向 AI agent 伪造工具输出。
 20. `server` 模式下保留本地 deny 作为刹车、忽略本地 allow，是否接受？建议接受。
 21. 主体种类里的 `user:` 与 `usergroup:`（边缘登录）放到阶段 5，MVP 只实现 node、group、workspace、public，是否接受？建议接受。
-22. P2P 直连的 transport 用 QUIC 只作字节流、其上照跑 Noise 与 yamux（双重加密），还是用 QUIC 自带的 TLS 与流取代它们？建议前者，认证与复用只有一套代码。
-23. MVP 每个 workspace 指派一个 relay、成员都连同一个，多 relay 与 relay 间转发放后续，是否接受？建议接受。
+22. P2P 直连的 transport 用 QUIC 只作字节流、其上照跑 Noise 与 yamux（双重加密），还是用 QUIC 自带的 TLS 与流取代它们？已按前者定：四种 transport 用同一个抽象，只交出一条字节流，认证与复用只有会话层一套，上层不因 transport 而变（7.8）。
+23. MVP 每个 workspace 指派一个 relay、成员都连同一个，多 relay 与 relay 间转发放后续（方案见 5.9），是否接受？建议接受。
 24. 服务证书的私钥下发到 relay 内存以便边缘终结 TLS，是否接受？建议接受，relay 与控制面同属运营方且不落盘。
 25. relay 缓存控制面答案的默认 TTL 为 60 秒，控制面不可达时缓存不过期、未命中的请求退避重试，是否接受？建议接受；要更快生效的变更走 `RelayInvalidate`。
 26. 控制流在 relay 终结、agentserver 作为后端并对发给节点的控制消息签名（而不是在控制流里再套一层到 agentserver 的隧道），已按此定；代价是 relay 看得到加入令牌与 `Advertise`，是否接受？建议接受，relay 与 agentserver 同属运营方；介意的话后续把令牌改成封给 workspace 公钥的密文。
 27. 路由表的源维度（节点 / 组 / workspace）是否进 MVP？建议进：分流表本来就要按节点渲染，多一个维度几乎不增加成本。
+28. 多 relay（5.9）默认让池里所有 relay 服务所有 workspace，例外用标签限定。代价是任何一个 relay 都取得到任一 workspace 的服务证书私钥、接得进任一 workspace 的节点，而现在只限指派给它的 workspace。是否接受？建议接受：relay 与控制面同属运营方；relay 的可信程度不一时，用标签把 workspace 限定在一组 relay 上。
+29. relay 间转发时，目的节点的主 relay 采信对端 relay 给出的目的节点，不再向控制面查询（5.9），是否接受？建议接受：最终判定在目的节点，省一次查询，控制面不可达时已缓存的跨 relay 组合照常工作。要每个 relay 独立核对就改成再查一次，首次连接多一个来回。
+30. 多 relay 需要协议次版本 2（5.9），协商到次版本 1 的节点只能与同一个 relay 上的节点互通，是否接受？建议接受：目前仍是 rc，节点随版本一起升级。
+31. P2P 的探测报文用带 MAC 的 STUN Binding，取代协议规范 2.6 预留的 `agentd-punch/1`（7.8），是否接受？建议接受：预留的格式在与 QUIC 共用的套接字上分不出来，nonce 也是明文；STUN 的编解码在 relay 的反射端口里已经有一半。
+32. P2P 的候选地址按次交换、agentserver 不保存（7.8），取代「节点定期上报、服务端保存」，是否接受？建议接受。代价是每次打洞多一个经控制流的往返，期间的流照常走中继。
+33. 会话对端是成员节点时，流必须附带有效的 workspace 成员证书，角色上限写进这份证书由接收方核对（7.8）；角色上限调低后直连最长 1 小时才生效，是否接受？建议接受。备选是接收方查目录，但目录按设计不参与判定，接收方与控制面失联时它也不会更新。
+34. egress 流怎么放到直连会话上：已定为路由表项上的开关 `reveal_to`，打开后目的节点随分流表下发给 ingress（6.5、7.8）；不采用靠 `Ack.responder` 记住出口的做法。开关的名字待定。
 
 ---
 
@@ -1363,7 +1742,7 @@ docs/                  design.md、protocol.md
 | 2 TUN | elevator 与 fd 传递；netstack TCP 与 UDP 直通；QUIC 嗅探阻断；fake-IP DNS（服务域名与 via 域名）与 HTTPS 记录剥离；DoH 对策；系统 DNS 接管与恢复；自身流量绑定物理接口；macOS 与 Linux；Private Relay 等兼容测试 | 浏览器和 ssh 不做任何配置即可访问两个站点和 homepc；NTP、其他 VPN 在 TUN 开启时照常工作 |
 | 3 任务 MVP（可与阶段 2 并行） | `task` 流；`exec_command` / `write_stdin`；命令解析与 argv 前缀策略；去重；submitter 的 MCP 动态工具与 CLI；审计日志 | Claude Code 或 Codex 调用 `office__exec_command` 运行 lark-cli |
 | 4 打磨 | XHTTP packet-up 回退与 HTTP Upgrade 在 Cloudflare 后分别实测；系统服务与 elevator 安装包；Windows；指标；Web 控制台；多会话 | 四台设备经 Cloudflare 长期运行一周无人工干预 |
-| 5 后续 | P2P 直连（7.8：候选地址、打洞、QUIC 直连会话）、多 relay 与就近指派、relay 间转发、域名集合（`set:`）、节点间端到端加密（新的协议次版本）、更多 Codex 工具与 executor 侧 MCP、规则签名、边缘登录与 `user:` 主体、签名的成员与分组声明、egress 故障切换、edge 与会话分进程、多 agentserver 实例 | 按需 |
+| 5 后续 | P2P 直连（7.8：候选地址、打洞、QUIC 直连会话）、多 relay（5.9：relay 池、节点就近接入、relay 间转发）、域名集合（`set:`）、节点间端到端加密（新的协议次版本）、更多 Codex 工具与 executor 侧 MCP、规则签名、边缘登录与 `user:` 主体、签名的成员与分组声明、egress 故障切换、edge 与会话分进程、多 agentserver 实例 | 按需 |
 
 阶段 0、1、3 构成不含 TUN 的完整 MVP，覆盖第 1 节的四条典型链路（代理模式与 ProxyCommand）；阶段 2 让它在浏览器和 ssh 零配置下工作。
 
@@ -1391,7 +1770,7 @@ docs/                  design.md、protocol.md
 | F14 | 时钟、早期日志、热更新、协议演进、备份、多 workspace、Private Relay | 采纳：新增运维小节；待决问题补多 workspace；Private Relay 列入阶段 2 测试 | 2.3、9.5、10 |
 | F15 | 阶段 2 过重；service 可在代理模式先演示；任务可并行；缺集成测试 | 采纳：路线图重排，阶段 0 加单进程集成测试框架 | 11 |
 
-### 12.2 第二轮及补充：v0.3 之后的反馈（27 条）
+### 12.2 第二轮及补充：v0.3 之后的反馈（30 条）
 
 | 编号 | 反馈 | 处理 | 章节 |
 | --- | --- | --- | --- |
@@ -1422,6 +1801,9 @@ docs/                  design.md、protocol.md
 | R25 | 流 1 的控制隧道为什么要 agentserver 参与，控制通道应该是 agentrelay 的事；决定：relay 终结控制通道，agentserver 做后端 | 采纳：去掉隧道与隧道内握手；节点消息由 relay 以会话身份转交（`NodeMessage`），后端发给节点的消息一律签名（`Signed`）由 relay 送达（`Deliver`）；握手与加入由 relay 向后端查询（`node` / `join`）；删除 `NodeAdmitted` 与 `SESSION_CONTROL` | 2.2#4-5、#19、#21、3、4、5.1、5.7、5.8、7、8、协议 0、3、5.1、5.8、11、12 |
 | R26 | 配置评审：顶层字段太乱要分组；地址写成 address / port 对象、同类条目用对象数组；本地不需要 peers，规则里直接写 public_key，支持合法公钥和 `*`；规则列表叫 `policies`；egress 规则的 `proto` 是单个协议；只有 policy 控制权限，服务的 `access` 也要写成 policy；policy 没有 who 只有 public_key；`policy.source` 下放到每个需要 policies 的角色 | 采纳：配置参考 `docs/agentd-config.yaml` 按 identity / workspace / relay / roles / p2p / log 分组并结构化；删除 `peers` 与 `--pin`，规则只有 `public_key`（一把公钥或 `*`，`*` 对 HTTP 服务含公网访问者）；`roles.*.policies` 与按角色的 `policy_source`；`EgressRule.proto` 单值；删除服务的 `access` 与 `allow_from`；9.2 与 5.4、5.6 示例按此重写 | 2.2#3、3、3.1、4.5、5.3、5.4、5.6、6.6 到 6.8、8.2、8.3、8.6、8.7、9.2、9.3、协议 4.1、5.3、5.6、5.7、6.3、9 |
 | R27 | 节点配置里为什么钉 agentserver 公钥而不是 workspace 公钥；决定：节点只钉 workspace 公钥，注册流程同步改 | 采纳：加入链接的 `key` 与配置的 `workspace.public_key` 都是 workspace 公钥；发给成员的控制消息、relay 证书（按 relay × workspace 签发，well-known 按 workspace 返回）与 workspace 成员证书都由 workspace 密钥签（agentserver 代签）；agentserver 密钥只用于 relay 会话 | 1、2.2#3、#20、#21、3、3.1、4.3 到 4.5、5.7、5.8、6.8、7.1、7.3、7.4、8.1、8.2、8.6、9.1、9.2、9.5、协议 0.5、1、2.5、3.1、5.1、5.8、8.2、12.1 |
+| R28 | P2P 要按协议栈的思路设计：不论底层的 transport 是 WebSocket、HTTP Upgrade、XHTTP 还是 p2p，都用同一个 transport 抽象，上层的 agentd 与 agentrelay 不因底层 transport 的变化而改实现 | 采纳：p2p 是第四种 transport，对上只交出一条字节流 `Conn`，候选地址、信令内容、探测与 QUIC 都封在 transport 内，信令通道由上层以接口注入；会话层（Noise_IK 加 yamux）与流的格式不变；上层只认会话的对端，清单 B 随路径不同的几项按对端种类而不是按 transport 写；agentd 只多出多会话与流的放置，agentrelay 的会话与转发不变；落地顺序里先把现有三种 transport 与会话代码收拢到同一组接口下；第 10 节第 22 条按此定 | 7.2、7.8、10 |
+| R29 | 靠记住 `Ack.responder` 来放置 egress 流的设计不好；应在 agentserver 的路由表项上加一个配置：是否把这条路由下发给 ingress / submitter，让它们提前知道下一跳，能 P2P 就直连 | 采纳：路由表项新增 `reveal_to`（默认关），打开后目的节点公钥随分流表下发给源里的 ingress，命中即知道出口，有直连会话就直接放上去；删掉出口记忆及其失效与纠错规则，`Ack.responder` 只用于日志；submitter 与 ssh 服务不需要它，executor 清单与服务表本来就带着节点公钥；三段式仍是默认 | 3、5.2、6.5、7.8、10 |
+| R30 | workspace 的 `dns_provider` 与 公网 DNS 记录管理 是 agentserver 实例级的配置，不应该放在 workspace 级别处理 | 采纳：admin API 的 workspace 去掉这两个字段，`PATCH /workspaces/{ws}` 只剩改派 relay，状态库删列；签发方由基础域名所在的 zone 决定（本来就是实例配置），每张证书由谁签看 `cert.issuer`；公网解析改为 `dns_providers` 每一项上的 公网 DNS 记录管理（未实现） | 5.7、6.1、9.1、9.3、10 |
 
 ---
 

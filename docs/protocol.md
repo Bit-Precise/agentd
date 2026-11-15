@@ -141,7 +141,7 @@ relay，一个 TLS 监听器按 SNI 分流：
 
 relay 另监听 UDP 3478 作 STUN 反射（2.6）；80 端口回 301 到 https。
 
-agentserver 监听 relay 会话的 transport 端点（同样的 `/ws`、`/up`、`/x/…` 路径，SNI 等于控制面域名，证书可以是 ACME 的也可以是 relay 通过 `control.ca_file` 信任的私有 CA 签的）与 `GET /.well-known/agentserver`（JSON `{"identity":"<agentserver 公钥>","protocol":{"major":1,"min":1,"max":1},"transports":{…}}`，relay 的 `control.public_key` 为空时据此取得公钥，信任来自 TLS 校验）和一个只对本机或内网开放的 admin API（CLI 经它操作）。它没有面向节点的端点：节点的控制流在 relay 终结，relay 把需要后端处理的消息转给它。transport 路径可配，节点从加入链接得知 relay 的，从 `Welcome.relays` 得知其他 relay 的。
+agentserver 监听 relay 会话的 transport 端点（同样的 `/ws`、`/up`、`/x/…` 路径，SNI 等于控制面域名，证书可以是 ACME 的也可以是 relay 通过 `control.ca_file` 信任的私有 CA 签的）与 `GET /.well-known/agentserver`（JSON `{"identity":"<agentserver 公钥>","protocol":{"major":1,"min":1,"max":1},"transports":{…}}`，relay 的 `control.public_key` 为空时据此取得公钥，信任来自 TLS 校验）和一个只对本机或内网开放的 admin API（管理的唯一入口，Web 控制台与它同一个监听地址；agentserver 没有管理命令）。它没有面向节点的端点：节点的控制流在 relay 终结，relay 把需要后端处理的消息转给它。transport 路径可配，节点从加入链接得知 relay 的，从 `Welcome.relays` 得知其他 relay 的。
 
 ---
 
@@ -534,11 +534,11 @@ sig = Ed25519ctx(issuer 的私钥, ctx = "agentd/membership/v1", body)
 - 接收方（清单 B 第 7 步）：只检查签发者出现在自己生效策略里的证书，其余忽略。每份证书要求：`sig` 对得上 `issuer`；`body.member == OpenBody.from`；`body.workspace` 等于自己的 workspace；`issued_at ≤ now + 300`；`expires_at > now`；`(member, issuer)` 不在吊销记录里。通过的证书的 `issuer` 加入请求方的身份集合，与 `from` 一起参与策略判定。
 - relay 转发时原样保留 `StreamOpen.certs`；控制面的预检按目录里的成员关系算请求方的身份集合，不依赖证书。
 - `Directory` 里带组列表（组名、组公钥、成员）和 workspace 公钥，供 `agentd peers` 显示、复制进规则；节点判定不读目录。
-- 组的管理：`agentserver group create|delete|add|remove|list --workspace <ws>`。新建组时生成密钥对；删除组时向全部节点推送该组公钥的吊销（`issuer` 维度，`member` 为空表示全部成员）。
+- 组的管理经 admin API 的 `/workspaces/{ws}/groups`（创建、删除、增删成员）。新建组时生成密钥对；删除组时向全部节点推送该组公钥的吊销（`issuer` 维度，`member` 为空表示全部成员）。
 
 ### 5.8 relay 与后端
 
-relay 以自己的 Ed25519 身份作 Noise_IK 发起方连到 agentserver（`control.url`），`ClientHello.session_kind = RELAY`，后端按 relay 注册表（`agentserver relay add`）认公钥。relay 每次连接都在 `ClientHello.relay`（`RelayRegistration`）里报告名字、对节点公布的 https URL、各 transport 路径与 STUN 地址，后端据此更新注册表与 relay 证书；公钥尚未登记时，`ClientHello.join_token` 是 relay 注册令牌（admin API `POST /relays/tokens` 签发的一次性令牌，或 `relay_join_token_env` 的长期引导令牌），校验通过且名字未占用则登记，否则回 `TOKEN_INVALID`、`BAD_NAME` 或 `NAME_TAKEN`。relay 会话上 relay 是 yamux client，只开一条流（`StreamOpen{kind: CONTROL, from: relay, to: agentserver}`），承载下表的 LP `ControlMessage`。
+relay 以自己的 Ed25519 身份作 Noise_IK 发起方连到 agentserver（`control.url`），`ClientHello.session_kind = RELAY`，后端按 relay 注册表（admin API `POST /relays` 登记，或下述令牌自注册）认公钥。relay 每次连接都在 `ClientHello.relay`（`RelayRegistration`）里报告名字、对节点公布的 https URL、各 transport 路径与 STUN 地址，后端据此更新注册表与 relay 证书；公钥尚未登记时，`ClientHello.join_token` 是 relay 注册令牌（admin API `POST /relays/tokens` 签发的一次性令牌，或 `relay_join_token_env` 的长期引导令牌），校验通过且名字未占用则登记，否则回 `TOKEN_INVALID`、`BAD_NAME` 或 `NAME_TAKEN`。relay 会话上 relay 是 yamux client，只开一条流（`StreamOpen{kind: CONTROL, from: relay, to: agentserver}`），承载下表的 LP `ControlMessage`。
 
 | 方向 | 消息 | 内容 |
 | --- | --- | --- |
@@ -555,6 +555,8 @@ relay 以自己的 Ed25519 身份作 Noise_IK 发起方连到 agentserver（`con
 - 后端不可达：已有会话与已缓存的答案继续工作；缓存未命中的握手回 `ServerHello{CONTROL_NOT_READY}`，未命中的流回 `Ack{CONTROL_NOT_READY}`，发起方退避重试；控制流上收到的节点消息最多排队 `RELAY_LOOKUP_TIMEOUT` 后丢弃；证书到期不再续。relay 会话重新就绪时 relay 清空全部缓存，重报在线节点（`RelayPresence`），后端随后推各 workspace 的证书，并为在线节点重新送达 `Welcome`。
 - 查询超时 `RELAY_LOOKUP_TIMEOUT`，超时按后端不可达处理；同一键的并发查询合并为一次。
 - `Welcome.relays` 列出该 workspace 可用 relay 的证书（名字、公钥、各 transport 的 URL、STUN 地址、有效期），`Welcome.assigned_relay` 是当前指派；节点只连指派的那一个，`Update.assigned_relay` 变化时关闭当前会话、连新的。节点连续 3 次连不上当前 relay 时换列表里的下一个，并在就绪后发 `RelayReport`；后端据此改派并在 `Update.assigned_relay` 里通知。
+
+实现状态：本节与 2.5、5.4、12.2、12.9 里关于 relay 列表与改派的规定还没有全部实现，现状与限制见设计文档 5.9。目前 `Welcome.relays` 只含当前指派的 relay；`RelayReport` 只记日志，后端不据此改派，relay 会话断开后也没有宽限期后的改派，`RELAY_UNAVAILABLE` 没有用到；改派由管理员发起，后端不发 `Update.assigned_relay`，而是用 `RelayInvalidate.removed` 让旧 relay 关闭成员的会话，成员重连时凭 `ServerHello{WRONG_RELAY}` 附带的证书换 relay；relay 证书不在剩余一半有效期时续签，只在 relay 会话建立、新建或改派 workspace 时重签；relay 会话重新就绪后，后端不为在线节点重新送达 `Welcome`。
 
 ---
 
@@ -723,7 +725,7 @@ base64url     = ALPHA / DIGIT / "-" / "_"
 
 ### 8.2 加入链接
 
-`agentserver token create` 输出的链接形如：
+admin API `POST /workspaces/{ws}/tokens` 返回的加入链接（`join_link`）形如：
 
 ```
 agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.com&key=Ws3kL…&token=Qm9…
@@ -740,7 +742,7 @@ agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.
 
 - 16 字节随机数，文本为 base64url 22 字符；服务端只保存 `SHA-256(令牌)`，以及绑定的 workspace、可选名字、角色上限、过期时间、创建者、使用时间。
 - 一次性：加入成功时原子地标记已用；并发的第二次使用得到 `TOKEN_USED`。
-- 默认 TTL 24 小时；`agentserver token revoke` 可提前作废。
+- 默认 TTL 24 小时；admin API `DELETE /workspaces/{ws}/tokens/{id}` 可提前作废。
 - 服务端处理加入的顺序：令牌存在且 workspace 与 `ClientHello.workspace` 一致（`TOKEN_INVALID` / `WORKSPACE_MISMATCH`）→ 未用（`TOKEN_USED`）→ 未过期（`TOKEN_EXPIRED`）→ `identity` 不在任何目录（`IDENTITY_IN_USE`）→ 名字 = 令牌的名字或 `proposed_name`，合法（`BAD_NAME`）且未被节点或服务占用（`NAME_TAKEN`）→ 写入目录、标记令牌 → `ServerHello{OK}`。
 - 令牌只出现在加入链接、Noise 消息 1 的加密载荷和 relay 转给后端的加入请求里，CDN 读不到，relay 读得到；不进入任何日志。
 
@@ -877,8 +879,8 @@ agentserver 侧（目录里每个成员）：
 | （无） | relay 转来的加入请求通过 | 写目录；令牌作废；答复 relay（节点信息与签名的 `Welcome`）；向其他成员推 `Update`；重渲染受管节点的策略 | `Registered/Offline` |
 | `Registered/Offline` | relay 的 `node` 查询（握手）或 `RelayPresence` 上线 | 答复节点信息与签名的 `Welcome`；推在线状态 | `Registered/Online` |
 | `Registered/Online` | `RelayPresence` 下线，或 relay 会话断开 | 推离线状态；受管策略与证书续发暂停 | `Registered/Offline` |
-| `Registered/*` | `agentserver node rename / set-roles` | 改目录；推 `Update`；对该节点发 `Notice{RENAMED / ROLES_CHANGED}`；推 `RelayInvalidate`（relay 重新查询） | 不变 |
-| `Registered/*` | `agentserver node remove` 或节点 `leave` | 发 `Notice{REMOVED}`（若在线）并关闭会话；目录移除；推 `Update.removed_members`；停止续发证书并推吊销；向 relay 推 `RelayInvalidate{removed}`；重渲染 | `Removed`（历史记录） |
+| `Registered/*` | 管理员改名或调整角色上限（admin API `PATCH /workspaces/{ws}/nodes/{node}`） | 改目录；推 `Update`；对该节点发 `Notice{RENAMED / ROLES_CHANGED}`；推 `RelayInvalidate`（relay 重新查询） | 不变 |
+| `Registered/*` | 管理员移除节点（admin API `DELETE /workspaces/{ws}/nodes/{node}`）或节点 `leave` | 发 `Notice{REMOVED}`（若在线）并关闭会话；目录移除；推 `Update.removed_members`；停止续发证书并推吊销；向 relay 推 `RelayInvalidate{removed}`；重渲染 | `Removed`（历史记录） |
 
 ### 12.2 会话（节点侧，一条到 relay 的会话）
 

@@ -83,7 +83,7 @@ func TestJoinWelcomeIsSignedForTheNode(t *testing.T) {
 		t.Fatalf("welcome signature: %v", err)
 	}
 	w := msg.GetWelcome()
-	if w.Self.Name != "laptop" || len(w.Directory.Members) != 4 || w.Routes == nil || len(w.Memberships) != 1 || len(w.Relays) != 1 {
+	if w.Self.Name != "laptop" || len(w.Directory.Members) != 4 || w.Routes == nil || len(w.Memberships) != 1 || len(w.Relays) < 2 {
 		t.Fatalf("welcome: self=%v members=%d routes=%v certs=%d relays=%d", w.Self, len(w.Directory.Members), w.Routes, len(w.Memberships), len(w.Relays))
 	}
 	if _, err := wire.VerifyRelayCert(f.ws.PublicKey, w.Relays[0], "home.example.com", time.Now()); err != nil {
@@ -94,11 +94,11 @@ func TestJoinWelcomeIsSignedForTheNode(t *testing.T) {
 	}
 }
 
-func TestWrongRelayAndUnknownKey(t *testing.T) {
+func TestRelayPoolAndUnknownKey(t *testing.T) {
 	f := setup(t)
 	a := f.c.Lookup(context.Background(), "relay-sg", &pb.RelayLookup{Query: &pb.RelayLookup_Node{Node: &pb.NodeLookup{Identity: f.keys["laptop"]}}})
-	if a.Status != pb.Status_WRONG_RELAY || a.GetAssignedRelay() == nil {
-		t.Fatalf("wrong relay: %v", a)
+	if a.Status != pb.Status_OK || a.GetNode() == nil {
+		t.Fatalf("relay pool lookup: %v", a)
 	}
 	stranger, _ := identity.GenerateKey()
 	a = f.c.Lookup(context.Background(), "relay-hk", &pb.RelayLookup{Query: &pb.RelayLookup_Node{Node: &pb.NodeLookup{Identity: identity.Public(stranger)}}})

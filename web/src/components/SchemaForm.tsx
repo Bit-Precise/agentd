@@ -3,6 +3,10 @@
 // objects, with a raw JSON mode for anything else.
 import { useState } from "react";
 import type { Schema } from "../api/meta";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Select } from "./ui/select";
 
 type Value = unknown;
 
@@ -65,9 +69,9 @@ export function Field({ name, schema, value, onChange, required }: { name: strin
   if (s.readOnly) return null;
   if (s.enum && s.type !== "array") {
     return (
-      <label className="field">
+      <Label className="field">
         {title}
-        <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>
+        <Select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>
           {!required && <option value="">—</option>}
           {required && value === "" && <option value="">choose…</option>}
           {s.enum.map((o) => (
@@ -75,9 +79,9 @@ export function Field({ name, schema, value, onChange, required }: { name: strin
               {o}
             </option>
           ))}
-        </select>
+        </Select>
         <Help s={s} />
-      </label>
+      </Label>
     );
   }
   if (s.type === "boolean") {
@@ -91,12 +95,12 @@ export function Field({ name, schema, value, onChange, required }: { name: strin
   }
   if (s.type === "integer" || s.type === "number") {
     return (
-      <label className="field">
+      <Label className="field">
         {title}
-        <input type="number" value={value === undefined || value === "" ? "" : String(value)} min={s.minimum} max={s.maximum}
+        <Input type="number" value={value === undefined || value === "" ? "" : String(value)} min={s.minimum} max={s.maximum}
           onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} />
         <Help s={s} />
-      </label>
+      </Label>
     );
   }
   if (s.type === "array") {
@@ -121,15 +125,15 @@ export function Field({ name, schema, value, onChange, required }: { name: strin
     }
     if (isScalar(it)) {
       return (
-        <label className="field">
+        <Label className="field">
           {title}
-          <input type="text" placeholder="comma separated" value={items.join(", ")}
+          <Input type="text" placeholder="comma separated" value={items.join(", ")}
             onChange={(e) => {
               const parts = e.target.value.split(",").map((x) => x.trim());
               onChange(it.type === "integer" || it.type === "number" ? parts.filter(Boolean).map(Number) : parts.filter((x, i) => x !== "" || i === parts.length - 1));
             }} />
           <Help s={s} />
-        </label>
+        </Label>
       );
     }
     return (
@@ -139,14 +143,14 @@ export function Field({ name, schema, value, onChange, required }: { name: strin
         {items.map((x, i) => (
           <div key={i} className="list-item">
             <ObjectFields schema={it} value={x} onChange={(nv) => onChange(items.map((y, j) => (j === i ? nv : y)))} />
-            <button type="button" className="link danger" onClick={() => onChange(items.filter((_, j) => j !== i))}>
+            <Button type="button" variant="link" className="danger" onClick={() => onChange(items.filter((_, j) => j !== i))}>
               remove
-            </button>
+            </Button>
           </div>
         ))}
-        <button type="button" className="link" onClick={() => onChange([...items, emptyValue(it)])}>
+        <Button type="button" variant="link" onClick={() => onChange([...items, emptyValue(it)])}>
           + add {it.$name || "item"}
-        </button>
+        </Button>
       </fieldset>
     );
   }
@@ -161,12 +165,12 @@ export function Field({ name, schema, value, onChange, required }: { name: strin
     );
   }
   return (
-    <label className="field">
+    <Label className="field">
       {title}
-      <input type="text" value={String(value ?? "")} pattern={s.pattern} placeholder={s.example !== undefined ? String(s.example) : ""}
+      <Input type="text" value={String(value ?? "")} pattern={s.pattern} placeholder={s.example !== undefined ? String(s.example) : ""}
         onChange={(e) => onChange(e.target.value)} />
       <Help s={s} />
-    </label>
+    </Label>
   );
 }
 
@@ -210,8 +214,8 @@ export function SchemaForm({ schema, value, onChange }: { schema: Schema; value:
   return (
     <div className="schema-form">
       <div className="form-mode">
-        <button type="button" className={raw ? "link" : "link active"} onClick={() => setRaw(false)}>form</button>
-        <button type="button" className={raw ? "link active" : "link"} onClick={() => { setText(JSON.stringify(prune(schema, value) ?? value, null, 2)); setRaw(true); }}>JSON</button>
+        <Button type="button" variant="link" className={raw ? "" : "active"} onClick={() => setRaw(false)}>form</Button>
+        <Button type="button" variant="link" className={raw ? "active" : ""} onClick={() => { setText(JSON.stringify(prune(schema, value) ?? value, null, 2)); setRaw(true); }}>JSON</Button>
       </div>
       {raw ? (
         <>

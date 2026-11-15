@@ -1,30 +1,173 @@
 openapi: 3.0.3
 info:
-  title: agentserver admin API
+  title: agentserver instance admin API
   version: v1
   description: |
-    agentserver（控制面，管理平台）对管理员、CLI 与 Web 控制台提供的 HTTP API。
+    agentserver（控制面，管理平台）的 instance admin 接口。Web 管理控制台由本文档生成，普通用户使用独立的
+    `docs/agentserver-user-openapi.yaml`，不与本 API 共用 operation。
 
     agentserver 对外只有两个接口：relay 会话（Noise_IK 跑在 WebSocket / XHTTP / HTTP Upgrade 上，见 docs/protocol.md 5.8）
     和本文定义的 admin API。节点不连 agentserver，所以这里没有任何面向 agentd 的端点。
 
     - 监听地址是 AgentserverConfiguration 的 `admin_listen`（默认 127.0.0.1:7800）。要从别的机器管理就把它放在
       SSH 隧道或自己的反向代理后面；每个请求带 `Authorization: Bearer <admin token>`，令牌来自 `admin_token_env` 指定的环境变量。
-    - `agentserver` CLI 的每个子命令都对应这里的一个操作（设计文档 9.3）；`agentserver backup` 例外，它直接读状态库，不经 HTTP。
+    - `agentserver` 是服务端程序，没有管理子命令（只有 `run`、`backup`、`version`，设计文档 9.3）：workspace、relay、令牌、路由表与策略
+      都经这里管理。`agentserver backup` 直接读状态库，不经 HTTP。
     - 所有名字（workspace、节点、组、服务、relay）都是 RFC 1123 label；公钥一律是 base64url 无填充的 43 字符。
     - 写操作都是幂等或带明确冲突语义的；变更立即生效：相关节点收到签名的 Update / PolicyUpdate / Notice，relay 收到 RelayInvalidate。
     - 错误统一返回 `Error`，`code` 与协议状态码同名时含义相同（如 NAME_TAKEN、TOKEN_USED）。
-    - 对应设计文档 v0.20、协议规范 v0.7。
+    - 本文档只描述 instance admin surface；普通用户 surface 见 `docs/agentserver-user-openapi.yaml`，两者使用不同的 URL 前缀、凭据和 operation。
+    - 每个 operation 的 `x-audience` 与 `x-authorization` 都明确标记访问者。agentd 与 relay 的 Noise/transport 接口不走任一 Web API，
+      在协议文档中分别标记为机器访问者。
+    - instance admin 是实例级管理员，可管理 instance 配置、全局 users、workspace 生命周期、nodes、routes、policies 与 relay。
+    - 对应设计文档 v0.27、协议规范 v0.7。
 servers:
-  - url: http://127.0.0.1:7800/api/v1
-    description: 本机 admin 端点（默认）
+  - url: http://127.0.0.1:7800/api/v1/admin
+    description: 本机 instance admin 端点（默认）
 security:
   - AdminToken: []
+x-api-surfaces:
+  admin:
+    base_path: /api/v1/admin
+    auth: AdminToken
+    document: docs/agentserver-openapi.yaml
+  user:
+    base_path: /api/v1
+    auth: UserBearer
+    document: docs/agentserver-user-openapi.yaml
+x-rbac:
+  audiences:
+    web_user: 浏览器或自动化调用 admin API 的人类用户
+    agentd: 节点守护进程，通过 relay 的 Noise/transport 会话收发目录、策略与流量控制消息
+    relay: 中继，通过 transport 会话接入节点并与 agentserver 交换控制消息
+  instance_roles:
+    instance_admin: >-
+      管理 instance 的域名、DNS provider、certificate issuer、OIDC provider；管理全局 users、workspaces、nodes、routes、policies、relay，
+      并可对任意 workspace 执行 break-glass 管理。
+  workspace_roles:
+    owner: 管理 workspace 成员、角色、workspace 设置与全部运行配置
+    maintainer: 管理路由、策略、组、节点角色上限、加入令牌和证书等运行配置
+    member: 读取 workspace 目录、服务、路由、策略和证书状态
+  enforcement: >-
+    本文档的每个 operation 都要求 instance_admin。普通用户的 workspace role 只在 user API 文档中出现；当前部署的静态
+    AdminToken 是 instance_admin，UserBearer 在接入 OIDC 后映射到 users 与 workspace_members。
+x-instance-admin:
+  managed_resources: [domains, dns_providers, certificate_issuers, auth_providers, users, workspaces, nodes, routes, policies, relays]
+  provider_support:
+    dns: [dnspod, cloudflare]
+    certificate_issuer: [lets_encrypt, google_trust_services]
+    auth:
+      supported_first_phase: [oidc]
+      extensible: true
+  secret_handling: >-
+    provider credentials are accepted as write-only request fields over the authenticated TLS API and are omitted from every response;
+    they must never be logged or echoed by the service.
+x-state-machines:
+  instance_domain:
+    initial: pending
+    terminal: [deleted]
+    transitions: {pending: [active, failed, disabled, deleted], active: [disabled, failed, deleted], disabled: [pending, active, deleted], failed: [pending, disabled, deleted], deleted: []}
+  dns_provider:
+    initial: pending
+    terminal: [deleted]
+    transitions: {pending: [active, failed, disabled, deleted], active: [disabled, failed, deleted], disabled: [pending, active, deleted], failed: [pending, active, disabled, deleted], deleted: []}
+  certificate_issuer:
+    initial: pending
+    terminal: [deleted]
+    transitions: {pending: [active, failed, disabled, deleted], active: [disabled, failed, deleted], disabled: [pending, active, deleted], failed: [pending, active, disabled, deleted], deleted: []}
+  auth_provider:
+    initial: pending
+    terminal: [deleted]
+    transitions: {pending: [active, failed, disabled, deleted], active: [disabled, failed, deleted], disabled: [pending, active, deleted], failed: [pending, active, disabled, deleted], deleted: []}
+  user:
+    initial: pending
+    terminal: [deleted]
+    transitions: {pending: [active, disabled], active: [disabled, deleted], disabled: [active, deleted]}
+  user_identity:
+    initial: active
+    terminal: [deleted]
+    transitions: {active: [disabled, deleted], disabled: [active, deleted], deleted: []}
+  workspace:
+    initial: provisioning
+    terminal: [deleted]
+    transitions: {provisioning: [active, failed, deleted], active: [disabled, deleting, failed], disabled: [active, deleting], failed: [provisioning, deleted], deleting: [deleted, failed]}
+  workspace_member:
+    initial: active
+    terminal: [deleted]
+    transitions: {active: [suspended, revoked, deleted], suspended: [active, revoked, deleted], revoked: [deleted], deleted: []}
+  join_token:
+    initial: active
+    terminal: [used, expired, revoked, deleted]
+    transitions: {active: [used, expired, revoked, deleted], used: [deleted], expired: [deleted], revoked: [deleted], deleted: []}
+  node:
+    initial: joining
+    terminal: [deleted]
+    transitions: {joining: [active, failed, removed, deleted], active: [disabled, removed, deleted], disabled: [active, removed, deleted], failed: [joining, removed, deleted], removed: [deleted], deleted: []}
+  group:
+    initial: active
+    terminal: [deleted]
+    transitions: {active: [disabled, deleted], disabled: [active, deleted], deleted: []}
+  route:
+    initial: active
+    terminal: [deleted]
+    transitions: {active: [disabled, deleted], disabled: [active, deleted], deleted: []}
+  policy:
+    initial: active
+    terminal: [deleted]
+    transitions: {active: [disabled, deleted], disabled: [active, deleted], deleted: []}
+  service:
+    initial: pending
+    terminal: [deleted]
+    transitions: {pending: [ready, failed, disabled, deleted], ready: [disabled, failed, deleted], failed: [pending, disabled, deleted], disabled: [pending, ready, deleted], deleted: []}
+  certificate:
+    initial: pending
+    terminal: [deleted]
+    transitions: {pending: [ready, failed, revoked, deleted], ready: [renewing, expired, revoked, deleted], renewing: [ready, failed, expired, revoked, deleted], expired: [renewing, revoked, deleted], failed: [pending, renewing, revoked, deleted], revoked: [deleted], deleted: []}
+  relay:
+    initial: registering
+    terminal: [deleted]
+    transitions: {registering: [active, failed, deleted], active: [draining, disabled, failed], draining: [active, disabled, deleted], disabled: [active, deleted], failed: [registering, active, deleted], deleted: []}
+  relay_token:
+    initial: active
+    terminal: [used, expired, revoked, deleted]
+    transitions: {active: [used, expired, revoked, deleted], used: [deleted], expired: [deleted], revoked: [deleted], deleted: []}
+x-join-token-invariant:
+  probe_is_non_consuming: true
+  consume_is_atomic: true
+  single_relay_winner: >-
+    agentd may submit the same token to only one selected relay. Agentserver atomically marks the token used;
+    concurrent or retried submissions through another relay return TOKEN_USED and never create another membership.
+x-audit:
+  write_operations: required
+  storage: append_only
+  retention: configurable instance policy
+  redaction: tokens, passwords, provider credentials, account keys, private keys and certificate bodies are never stored in event metadata
+x-machine-interfaces:
+  - audience: relay
+    transport: TLS + WebSocket / HTTP Upgrade / XHTTP
+    endpoints: [/ws, /up, /x/<session>, /.well-known/agentserver]
+    description: relay 与 agentserver 的 Noise 会话和控制消息，不是 admin API。
+  - audience: agentd
+    transport: TLS + WebSocket / HTTP Upgrade / XHTTP
+    endpoints: [/api/v1/join/candidates, /ws, /up, /x/<session>, /.well-known/agentd]
+    description: agentd 先调用 join discovery 查询 relay candidates，再连接选中的 relay；不调用 admin API。
 tags:
+  - name: domains
+    description: instance 级域名配置（仅 instance admin）
+  - name: dns-providers
+    description: instance 级 DNS provider 配置（仅 instance admin）
+  - name: certificate-issuers
+    description: instance 级证书签发方配置（仅 instance admin）
+  - name: auth-providers
+    description: instance 级认证服务配置（仅 instance admin）
+  - name: users
+    description: instance 级 用户目录（仅 instance admin）
   - name: server
     description: 服务端自身
   - name: workspaces
-    description: workspace 的创建、域名、relay 指派与密钥
+    description: workspace 的创建、域名与密钥；relay 由 agentd 动态选择
+  - name: members
+    description: workspace 成员与 owner / maintainer / member 角色
   - name: tokens
     description: 加入令牌与加入链接
   - name: nodes
@@ -39,16 +182,621 @@ tags:
     description: 已注册的服务
   - name: certs
     description: workspace 的通配证书
+  - name: certificates
+    description: instance 级全部证书及其签发、续期、吊销生命周期（仅 instance admin）
+  - name: audit
+    description: 不可变写入审计记录（instance admin 全局可见）
   - name: relays
-    description: relay 注册、证书与指派
+    description: relay 注册、候选池、证书与状态
 
 paths:
+  /domains:
+    get:
+      tags: [domains]
+      operationId: listInstanceDomains
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 列出 instance 域名
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/InstanceDomain" }
+    post:
+      tags: [domains]
+      operationId: createInstanceDomain
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 添加 instance 域名
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InstanceDomainWrite" }
+      responses:
+        "201":
+          description: 已添加
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstanceDomain" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /domains/{domainId}:
+    parameters:
+      - name: domainId
+        in: path
+        required: true
+        description: 域名实体 UUID
+        schema: { $ref: "#/components/schemas/Uuid" }
+    get:
+      tags: [domains]
+      operationId: getInstanceDomain
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 查看 instance 域名
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstanceDomain" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [domains]
+      operationId: updateInstanceDomain
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 更新 instance 域名
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InstanceDomainWrite" }
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstanceDomain" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [domains]
+      operationId: deleteInstanceDomain
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 删除 instance 域名
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /dns-providers:
+    get:
+      tags: [dns-providers]
+      operationId: listDNSProviders
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 列出 DNS providers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DNSProvider" }
+    post:
+      tags: [dns-providers]
+      operationId: createDNSProvider
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 创建 DNS provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DNSProviderWrite" }
+      responses:
+        "200":
+          description: 已保存
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DNSProvider" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /dns-providers/{providerId}:
+    parameters:
+      - name: providerId
+        in: path
+        required: true
+        schema: { $ref: "#/components/schemas/Uuid" }
+    get:
+      tags: [dns-providers]
+      operationId: getDNSProvider
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 查看 DNS provider
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DNSProvider" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [dns-providers]
+      operationId: updateDNSProvider
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 更新 DNS provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DNSProviderWrite" }
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DNSProvider" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [dns-providers]
+      operationId: deleteDNSProvider
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 删除 DNS provider
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /certificate-issuers:
+    get:
+      tags: [certificate-issuers]
+      operationId: listCertificateIssuers
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 列出 certificate issuers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CertificateIssuer" }
+    post:
+      tags: [certificate-issuers]
+      operationId: createCertificateIssuer
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 创建 certificate issuer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CertificateIssuerWrite" }
+      responses:
+        "200":
+          description: 已保存
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CertificateIssuer" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /certificate-issuers/{issuerId}:
+    parameters:
+      - name: issuerId
+        in: path
+        required: true
+        schema: { $ref: "#/components/schemas/Uuid" }
+    get:
+      tags: [certificate-issuers]
+      operationId: getCertificateIssuer
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 查看 certificate issuer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CertificateIssuer" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [certificate-issuers]
+      operationId: updateCertificateIssuer
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 更新 certificate issuer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CertificateIssuerWrite" }
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CertificateIssuer" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [certificate-issuers]
+      operationId: deleteCertificateIssuer
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 删除 certificate issuer
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /auth-providers:
+    get:
+      tags: [auth-providers]
+      operationId: listAuthProviders
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 列出认证 providers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuthProvider" }
+    post:
+      tags: [auth-providers]
+      operationId: createAuthProvider
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 创建认证 provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthProviderWrite" }
+      responses:
+        "200":
+          description: 已保存
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthProvider" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /auth-providers/{providerId}:
+    parameters:
+      - name: providerId
+        in: path
+        required: true
+        schema: { $ref: "#/components/schemas/Uuid" }
+    get:
+      tags: [auth-providers]
+      operationId: getAuthProvider
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 查看认证 provider
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthProvider" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [auth-providers]
+      operationId: updateAuthProvider
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 更新认证 provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthProviderWrite" }
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthProvider" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [auth-providers]
+      operationId: deleteAuthProvider
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 删除认证 provider
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /users:
+    get:
+      tags: [users]
+      operationId: listUsers
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 列出全局用户
+      description: 用户目录是 instance 级资源；workspace 成员关系只保存角色，不复制用户资料。
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/User" }
+    post:
+      tags: [users]
+      operationId: upsertUser
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 创建或更新全局用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserWrite" }
+      responses:
+        "200":
+          description: 已保存
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: email 已存在或用户归并冲突
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: 全局用户实体 UUID
+        schema: { $ref: "#/components/schemas/Uuid" }
+    get:
+      tags: [users]
+      operationId: getUser
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 查看全局用户
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [users]
+      operationId: deleteUser
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 删除全局用户
+      description: 删除用户目录记录，同时移除其所有 workspace membership；审计记录保留 subject 的不可逆摘要。
+      responses:
+        "204": { description: 已删除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 用户仍是某个 workspace 的最后一个 owner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /users/{userId}/instance-admin:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: 全局用户实体 UUID
+        schema: { $ref: "#/components/schemas/Uuid" }
+    post:
+      tags: [users]
+      operationId: setUserInstanceAdmin
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 授予或撤销 instance admin
+      description: 修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InstanceAdminGrant" }
+      responses:
+        "200":
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /users/{userId}/identities:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: 全局用户实体 UUID
+        schema: { $ref: "#/components/schemas/Uuid" }
+    get:
+      tags: [users]
+      operationId: listUserIdentities
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 列出用户的外部认证 identity
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/UserIdentity" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [users]
+      operationId: linkUserIdentity
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 将外部认证 identity 关联到用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserIdentityWrite" }
+      responses:
+        "201":
+          description: 已关联
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserIdentity" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /users/{userId}/identities/{identityId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { $ref: "#/components/schemas/Uuid" }
+      - name: identityId
+        in: path
+        required: true
+        schema: { $ref: "#/components/schemas/Uuid" }
+    delete:
+      tags: [users]
+      operationId: unlinkUserIdentity
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 解除外部认证 identity
+      responses:
+        "204": { description: 已解除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /audit/events:
+    get:
+      tags: [audit]
+      operationId: listAuditEvents
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 查询全局审计记录
+      description: instance admin 可查询整个 instance 的所有写入事件；响应不包含 token、凭据、私钥或其他敏感正文。
+      parameters:
+        - name: actor_id
+          in: query
+          schema: { type: string }
+        - name: resource_type
+          in: query
+          schema: { type: string }
+        - name: resource_id
+          in: query
+          schema: { $ref: "#/components/schemas/Uuid" }
+        - name: workspace_id
+          in: query
+          schema: { $ref: "#/components/schemas/Uuid" }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: outcome
+          in: query
+          schema: { $ref: "#/components/schemas/AuditOutcome" }
+        - name: since
+          in: query
+          schema: { type: string, format: date-time }
+        - name: until
+          in: query
+          schema: { type: string, format: date-time }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditEventPage" }
+
+  /audit/events/{eventId}:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: { $ref: "#/components/schemas/Uuid" }
+    get:
+      tags: [audit]
+      operationId: getAuditEvent
+      x-audience: [web_user]
+      x-authorization: { scope: instance, roles: [instance_admin] }
+      summary: 查看审计事件
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditEvent" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /server:
     get:
       tags: [server]
       operationId: getServer
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 服务端信息
-      description: 对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。
+      description: agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。
       responses:
         "200":
           description: OK
@@ -60,6 +808,10 @@ paths:
     get:
       tags: [server]
       operationId: getStatus
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 运行状态
       responses:
         "200":
@@ -68,11 +820,144 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Status" }
 
+  /certificates:
+    get:
+      tags: [certificates]
+      operationId: listCertificates
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 列出 instance 的全部证书
+      description: >-
+        返回 workspace wildcard、relay 和 agentserver 自身证书的统一生命周期视图。私钥和证书链正文不在此接口返回。
+      parameters:
+        - name: workspace
+          in: query
+          schema: { $ref: "#/components/schemas/Label" }
+        - name: state
+          in: query
+          schema: { $ref: "#/components/schemas/CertificateState" }
+        - name: kind
+          in: query
+          schema: { $ref: "#/components/schemas/CertificateKind" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Certificate" }
+    post:
+      tags: [certificates]
+      operationId: issueCertificate
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 签发或重新签发证书
+      description: >-
+        为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发，
+        生成新的 certificateId；已有 ready 证书不会被隐式覆盖。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CertificateIssue" }
+      responses:
+        "202":
+          description: 已开始签发
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Certificate" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /certificates/{certificateId}:
+    parameters:
+      - $ref: "#/components/parameters/CertificateId"
+    get:
+      tags: [certificates]
+      operationId: getCertificate
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 查看证书生命周期状态
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Certificate" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /certificates/{certificateId}/renew:
+    parameters:
+      - $ref: "#/components/parameters/CertificateId"
+    post:
+      tags: [certificates]
+      operationId: renewCertificate
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 立即续期证书
+      description: >-
+        异步触发续期；证书进入 renewing，成功后回到 ready，失败保留旧证书并记录 last_error。
+        已 revoked 的证书不能自动续期，需先重新签发。
+      responses:
+        "202":
+          description: 已开始续期
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Certificate" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /certificates/{certificateId}/revoke:
+    parameters:
+      - $ref: "#/components/parameters/CertificateId"
+    post:
+      tags: [certificates]
+      operationId: revokeCertificate
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 吊销证书
+      description: >-
+        立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。
+        吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CertificateRevoke" }
+      responses:
+        "200":
+          description: 已吊销
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Certificate" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /workspaces:
     get:
       tags: [workspaces]
       operationId: listWorkspaces
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出 workspace
+      description: 返回 instance 中的全部 workspace。普通用户的 membership 列表使用普通用户 API 的 `GET /api/v1/workspaces`，不调用此 admin operation。
       responses:
         "200":
           description: OK
@@ -84,10 +969,15 @@ paths:
     post:
       tags: [workspaces]
       operationId: createWorkspace
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 创建 workspace
       description: |
-        对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，
-        完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。
+        生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。
+        workspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。
       requestBody:
         required: true
         content:
@@ -106,45 +996,36 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /workspaces/{ws}:
+  /workspaces/{workspaceId}:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [workspaces]
       operationId: getWorkspace
-      summary: 查看 workspace（含公钥、证书状态、指派的 relay）
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 查看 workspace（公钥、基础域名、状态和证书）
       description: >-
-        `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。
+        `public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`。
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Workspace" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    patch:
-      tags: [workspaces]
-      operationId: updateWorkspace
-      summary: 修改 relay 指派、公网 DNS 发布或 DNS 凭据
-      description: 对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/WorkspacePatch" }
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Workspace" }
-        "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [workspaces]
       operationId: deleteWorkspace
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 删除 workspace
-      description: 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。
+      description: 向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书；成员的密钥文件不受影响。
       parameters:
         - name: force
           in: query
@@ -159,14 +1040,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /workspaces/{ws}/tokens:
+  /workspaces/{workspaceId}/tokens:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [tokens]
       operationId: listTokens
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出未使用的加入令牌
-      description: 对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。
+      description: 服务端只存令牌的 SHA-256，列表里没有令牌本身。
       responses:
         "200":
           description: OK
@@ -178,10 +1063,16 @@ paths:
     post:
       tags: [tokens]
       operationId: createToken
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 签发加入令牌并返回加入链接
       description: |
-        对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
-        返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，
+        令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。
+        agentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，
+        再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。
         令牌明文只在这次响应里出现一次。
       requestBody:
         required: true
@@ -201,30 +1092,112 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /workspaces/{ws}/tokens/{tokenId}:
+  /workspaces/{workspaceId}/tokens/{tokenId}:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
       - name: tokenId
         in: path
         required: true
-        schema: { type: string }
+        schema: { $ref: "#/components/schemas/Uuid" }
     delete:
       tags: [tokens]
       operationId: revokeToken
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 作废未使用的令牌
-      description: 对应 `agentserver token revoke`。
       responses:
         "204": { description: 已作废 }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /workspaces/{ws}/nodes:
+  /workspaces/{workspaceId}/members:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      tags: [members]
+      operationId: listWorkspaceMembers
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 列出 workspace 成员
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceMember" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [members]
+      operationId: upsertWorkspaceMember
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 添加或调整 用户角色
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceMemberWrite" }
+      responses:
+        "200":
+          description: 已保存
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceMember" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 会破坏 workspace 的 owner 约束
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /workspaces/{workspaceId}/members/{memberId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - name: memberId
+        in: path
+        required: true
+        description: workspace membership 实体 UUID
+        schema: { $ref: "#/components/schemas/Uuid" }
+    delete:
+      tags: [members]
+      operationId: removeWorkspaceMember
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 移除 workspace 成员
+      responses:
+        "204": { description: 已移除 }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: workspace 必须至少保留一个 owner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /workspaces/{workspaceId}/nodes:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [nodes]
       operationId: listNodes
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出成员
-      description: 对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。
+      description: 在线状态与所连 relay 来自 relay 的 `RelayPresence`。
       parameters:
         - name: online
           in: query
@@ -239,13 +1212,17 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/Node" }
 
-  /workspaces/{ws}/nodes/{node}:
+  /workspaces/{workspaceId}/nodes/{nodeId}:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
-      - $ref: "#/components/parameters/NodeName"
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/NodeId"
     get:
       tags: [nodes]
       operationId: getNode
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 查看成员
       responses:
         "200":
@@ -257,9 +1234,14 @@ paths:
     patch:
       tags: [nodes]
       operationId: updateNode
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 改名或调整角色上限
       description: |
-        对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；
+        改名只改目录，其他节点规则里写的是公钥，不受影响；
         调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。
       requestBody:
         required: true
@@ -282,21 +1264,30 @@ paths:
     delete:
       tags: [nodes]
       operationId: removeNode
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 移除成员
       description: |
-        对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
+        目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，
         向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。
         换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。
       responses:
         "204": { description: 已移除 }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /workspaces/{ws}/groups:
+  /workspaces/{workspaceId}/groups:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [groups]
       operationId: listGroups
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出组
       responses:
         "200":
@@ -309,8 +1300,13 @@ paths:
     post:
       tags: [groups]
       operationId: createGroup
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 创建组
-      description: 对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
+      description: 生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。
       requestBody:
         required: true
         content:
@@ -329,13 +1325,17 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /workspaces/{ws}/groups/{group}:
+  /workspaces/{workspaceId}/groups/{groupId}:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
-      - $ref: "#/components/parameters/GroupName"
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/GroupId"
     get:
       tags: [groups]
       operationId: getGroup
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 查看组
       responses:
         "200":
@@ -347,40 +1347,59 @@ paths:
     delete:
       tags: [groups]
       operationId: deleteGroup
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 删除组
-      description: 对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。
+      description: 向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。
       responses:
         "204": { description: 已删除 }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /workspaces/{ws}/groups/{group}/members/{node}:
+  /workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId}:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
-      - $ref: "#/components/parameters/GroupName"
-      - $ref: "#/components/parameters/NodeName"
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/GroupId"
+      - $ref: "#/components/parameters/NodeId"
     put:
       tags: [groups]
-      operationId: addGroupMember
-      summary: 把成员加入组
-      description: 对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
+      operationId: addGroupNode
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 把 node 加入组
+      description: 给该 node 签发 group-node membership 证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。
       responses:
         "204": { description: 已加入（重复加入也是 204） }
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [groups]
-      operationId: removeGroupMember
-      summary: 把成员移出组
-      description: 对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。
+      operationId: removeGroupNode
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 把 node 移出组
+      description: 停止续发并推送吊销记录 `(member, issuer, until)`。
       responses:
         "204": { description: 已移出 }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /workspaces/{ws}/routes:
+  /workspaces/{workspaceId}/routes:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [routes]
       operationId: getRouteTable
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 查看路由表
       description: 路由表只在 agentserver 上；节点收到的是按节点渲染、去掉目的的分流表。
       responses:
@@ -392,6 +1411,11 @@ paths:
     put:
       tags: [routes]
       operationId: replaceRouteTable
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 整体替换路由表
       description: 版本号加一，重新渲染并推送所有 ingress 节点的分流表，向 relay 推 `RelayInvalidate`。
       requestBody:
@@ -409,8 +1433,13 @@ paths:
     post:
       tags: [routes]
       operationId: addRoute
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 追加一条路由
-      description: 对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。
+      description: 追加到末尾；同等具体时书写顺序靠前的优先。
       requestBody:
         required: true
         content:
@@ -424,28 +1453,36 @@ paths:
               schema: { $ref: "#/components/schemas/Route" }
         "400": { $ref: "#/components/responses/BadRequest" }
 
-  /workspaces/{ws}/routes/{routeId}:
+  /workspaces/{workspaceId}/routes/{routeId}:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
       - name: routeId
         in: path
         required: true
-        schema: { type: string }
+        schema: { $ref: "#/components/schemas/Uuid" }
     delete:
       tags: [routes]
       operationId: deleteRoute
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 删除一条路由
-      description: 对应 `agentserver route remove`。
       responses:
         "204": { description: 已删除 }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /workspaces/{ws}/policies:
+  /workspaces/{workspaceId}/policies:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [policies]
       operationId: listPolicies
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出中央策略语句
       responses:
         "200":
@@ -458,6 +1495,11 @@ paths:
     put:
       tags: [policies]
       operationId: replacePolicies
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 整体替换中央策略
       description: >-
         按设计文档 6.8 重新渲染：每个 `policy_source: server` 的提供侧角色得到一份 (public_key, action, target) 列表，经签名的 `PolicyUpdate` 下发并等待 `PolicyApplied`；向 relay 推 `RelayInvalidate`。
@@ -480,6 +1522,11 @@ paths:
     post:
       tags: [policies]
       operationId: addPolicy
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 追加一条策略语句
       requestBody:
         required: true
@@ -494,27 +1541,36 @@ paths:
               schema: { $ref: "#/components/schemas/PolicyStatement" }
         "400": { $ref: "#/components/responses/BadRequest" }
 
-  /workspaces/{ws}/policies/{policyId}:
+  /workspaces/{workspaceId}/policies/{policyId}:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
       - name: policyId
         in: path
         required: true
-        schema: { type: string }
+        schema: { $ref: "#/components/schemas/Uuid" }
     delete:
       tags: [policies]
       operationId: deletePolicy
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 删除一条策略语句
       responses:
         "204": { description: 已删除 }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /workspaces/{ws}/services:
+  /workspaces/{workspaceId}/services:
     parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
+      - $ref: "#/components/parameters/WorkspaceId"
     get:
       tags: [services]
       operationId: listServices
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出已注册的服务
       description: 服务由节点在 `Advertise` 里注册，这里只读；状态 `cert_pending` 表示 workspace 的通配证书还没签下来。
       responses:
@@ -526,45 +1582,16 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/Service" }
 
-  /workspaces/{ws}/certs:
-    parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
-    get:
-      tags: [certs]
-      operationId: listCerts
-      summary: 查看通配证书
-      description: 对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/Cert" }
-
-  /workspaces/{ws}/certs/renew:
-    parameters:
-      - $ref: "#/components/parameters/WorkspaceName"
-    post:
-      tags: [certs]
-      operationId: renewCert
-      summary: 立即续期
-      description: 对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。
-      responses:
-        "202":
-          description: 已开始续期
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Cert" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
   /relays:
     get:
       tags: [relays]
       operationId: listRelays
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出 relay
-      description: 对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。
+      description: "`connected` 表示 relay 会话当前在线。"
       responses:
         "200":
           description: OK
@@ -576,10 +1603,15 @@ paths:
     post:
       tags: [relays]
       operationId: registerRelay
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 注册 relay
       description: |
-        对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
-        relay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。
+        登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。
+        relay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。
       requestBody:
         required: true
         content:
@@ -602,6 +1634,10 @@ paths:
     get:
       tags: [relays]
       operationId: listRelayTokens
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 列出未使用的 relay 注册令牌
       responses:
         "200":
@@ -614,9 +1650,14 @@ paths:
     post:
       tags: [relays]
       operationId: createRelayToken
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 签发 relay 注册令牌
       description: >-
-        对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址，
+        relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址，
         agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。
         AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。
       requestBody:
@@ -636,21 +1677,30 @@ paths:
       - name: tokenId
         in: path
         required: true
-        schema: { type: string }
+        schema: { $ref: "#/components/schemas/Uuid" }
     delete:
       tags: [relays]
       operationId: revokeRelayToken
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 作废 relay 注册令牌
       responses:
         "204": { description: 已作废 }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /relays/{relay}:
+  /relays/{relayId}:
     parameters:
-      - $ref: "#/components/parameters/RelayName"
+      - $ref: "#/components/parameters/RelayId"
     get:
       tags: [relays]
       operationId: getRelay
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 查看 relay
       responses:
         "200":
@@ -662,25 +1712,34 @@ paths:
     delete:
       tags: [relays]
       operationId: removeRelay
+      x-audit: required
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
       summary: 注销 relay
-      description: 对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。
+      description: relay 进入 deleted 后不再作为 agentd 候选，关闭 relay 会话；已存在证书按生命周期处理。
       responses:
         "204": { description: 已注销 }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: 仍被 workspace 指派（code RELAY_IN_USE）
+          description: relay 仍有活动会话或证书引用（code RELAY_IN_USE）
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /relays/{relay}/certs:
+  /relays/{relayId}/certs:
     parameters:
-      - $ref: "#/components/parameters/RelayName"
+      - $ref: "#/components/parameters/RelayId"
     get:
       tags: [relays]
       operationId: listRelayCerts
-      summary: 查看该 relay 在各 workspace 的 relay 证书
-      description: 每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。
+      x-audience: [web_user]
+      x-authorization:
+        scope: instance
+        roles: [instance_admin]
+      summary: 查看该 relay 持有的 relay 证书
+      description: relay 按需缓存 workspace 证书；证书由 workspace 密钥签发，与 `/.well-known/agentd?workspace=…` 公布的内容一致。
       responses:
         "200":
           description: OK
@@ -696,37 +1755,55 @@ components:
     AdminToken:
       type: http
       scheme: bearer
-      description: 静态管理令牌，来自 AgentserverConfiguration 的 `admin_token_env` 指定的环境变量
+      description: >-
+        bootstrap instance-admin 令牌，来自 AgentserverConfiguration 的 `admin_token_env` 指定的环境变量。
+        它不代表某个 workspace 用户；接入身份提供方后，Web 请求应携带能映射到 workspace role 的 bearer principal。
 
   parameters:
-    WorkspaceName:
-      name: ws
+    WorkspaceId:
+      name: workspaceId
       in: path
       required: true
-      description: workspace 名（如 `home`）
-      schema: { $ref: "#/components/schemas/Label" }
-    NodeName:
-      name: node
+      description: workspace 实体 UUID
+      schema: { $ref: "#/components/schemas/Uuid" }
+    NodeId:
+      name: nodeId
       in: path
       required: true
-      description: 实例名
-      schema: { $ref: "#/components/schemas/Label" }
-    GroupName:
-      name: group
+      description: node 实体 UUID
+      schema: { $ref: "#/components/schemas/Uuid" }
+    GroupId:
+      name: groupId
       in: path
       required: true
-      description: 组名
-      schema: { $ref: "#/components/schemas/Label" }
-    RelayName:
-      name: relay
+      description: group 实体 UUID
+      schema: { $ref: "#/components/schemas/Uuid" }
+    RelayId:
+      name: relayId
       in: path
       required: true
-      description: relay 名
-      schema: { $ref: "#/components/schemas/Label" }
+      description: relay 实体 UUID
+      schema: { $ref: "#/components/schemas/Uuid" }
+    CertificateId:
+      name: certificateId
+      in: path
+      required: true
+      description: 证书的稳定 UUID；name/path 参数只用于资源查找，不是实体主键。
+      schema: { $ref: "#/components/schemas/Uuid" }
 
   responses:
     BadRequest:
       description: 请求不合法（code BAD_REQUEST / BAD_NAME / INVALID_ARGUMENTS）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: 当前用户没有该 workspace 或 operation 的权限（code FORBIDDEN）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: 操作违反资源约束（code CONFLICT）
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -737,6 +1814,345 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    InstanceRole:
+      type: string
+      enum: [instance_admin]
+      description: 实例级管理员，可管理 instance 配置、workspace 生命周期与 relay。
+    WorkspaceRole:
+      type: string
+      enum: [owner, maintainer, member]
+      description: workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。
+    Audience:
+      type: string
+      enum: [web_user, agentd, relay]
+      description: 预期访问者。agentd 与 relay 的机器接口是 Noise/transport，不走本 admin API。
+    InstanceDomain:
+      type: object
+      required: [id, domain, default]
+      properties:
+        id: { allOf: [{ $ref: "#/components/schemas/Uuid" }], readOnly: true }
+        domain:
+          type: string
+          format: hostname
+          description: instance 管理的域名或域名后缀，统一小写且不带末尾点。
+        default:
+          type: boolean
+          description: 是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。
+        status:
+          allOf: [{ $ref: "#/components/schemas/DomainStatus" }]
+          readOnly: true
+          description: agentserver 对该域名配置和证书/DNS 准备情况的状态。
+        last_error:
+          type: string
+          readOnly: true
+          description: status=failed 时的最近错误。
+        verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: 域名最近一次验证或成功配置的时间。
+        dns_provider_id:
+          allOf: [{ $ref: "#/components/schemas/Uuid" }]
+          description: 负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。
+        certificate_issuer_id:
+          allOf: [{ $ref: "#/components/schemas/Uuid" }]
+          description: 为该域名签发证书的 CertificateIssuer.id。
+    DNSProvider:
+      type: object
+      required: [id, name, kind, zones]
+      properties:
+        id: { allOf: [{ $ref: "#/components/schemas/Uuid" }], readOnly: true }
+        name: { $ref: "#/components/schemas/Label" }
+        kind:
+          type: string
+          enum: [dnspod, cloudflare]
+        zones:
+          type: array
+          minItems: 1
+          items: { type: string, format: hostname }
+          description: 该账号允许操作的 DNS zone；域名按最长后缀匹配。
+        credentials:
+          type: object
+          writeOnly: true
+          additionalProperties: { type: string }
+          description: 写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。
+        status: { $ref: "#/components/schemas/DNSProviderStatus", readOnly: true }
+    CertificateIssuer:
+      type: object
+      required: [id, name, kind, directory]
+      properties:
+        id: { allOf: [{ $ref: "#/components/schemas/Uuid" }], readOnly: true }
+        name: { $ref: "#/components/schemas/Label" }
+        kind:
+          type: string
+          enum: [lets_encrypt, google_trust_services]
+        directory:
+          type: string
+          format: uri
+          description: ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。
+        eab_key_id:
+          type: string
+          writeOnly: true
+          description: 写入时提交的 EAB key id，不返回。
+        eab_hmac_key:
+          type: string
+          writeOnly: true
+          description: 写入时提交的 EAB HMAC secret，不返回。
+        email: { type: string, format: email }
+        account_status: { allOf: [{ $ref: "#/components/schemas/IssuerAccountStatus" }], readOnly: true }
+        account_created_at: { type: string, format: date-time, readOnly: true }
+        status: { $ref: "#/components/schemas/CertificateIssuerStatus", readOnly: true }
+    AuthProvider:
+      type: object
+      description: >-
+        可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段，
+        不改变 auth_providers 集合的资源模型。
+      required: [id, name, kind, issuer, client_id]
+      properties:
+        kind:
+          type: string
+          enum: [oidc]
+          description: 第一期开启的认证类型；保留为可扩展 discriminator。
+        id: { allOf: [{ $ref: "#/components/schemas/Uuid" }], readOnly: true }
+        name: { $ref: "#/components/schemas/Label" }
+        issuer:
+          type: string
+          format: uri
+          description: OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。
+        client_id: { type: string }
+        client_secret:
+          type: string
+          writeOnly: true
+          description: 写入时提交的 OIDC client secret，不返回明文。
+        scopes:
+          type: array
+          items: { type: string }
+          default: [openid, profile, email]
+        claim_mapping:
+          type: object
+          description: 将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。
+          additionalProperties: { type: string }
+        status: { $ref: "#/components/schemas/AuthProviderStatus", readOnly: true }
+    InstanceDomainWrite:
+      type: object
+      required: [domain, default]
+      properties:
+        domain:
+          type: string
+          format: hostname
+        default: { type: boolean }
+        dns_provider_id: { $ref: "#/components/schemas/Uuid" }
+        certificate_issuer_id: { $ref: "#/components/schemas/Uuid" }
+    DNSProviderWrite:
+      type: object
+      required: [name, kind, zones]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        kind:
+          type: string
+          enum: [dnspod, cloudflare]
+        zones:
+          type: array
+          minItems: 1
+          items: { type: string, format: hostname }
+        credentials:
+          type: object
+          writeOnly: true
+          additionalProperties: { type: string }
+    CertificateIssuerWrite:
+      type: object
+      required: [name, kind, directory]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        kind:
+          type: string
+          enum: [lets_encrypt, google_trust_services]
+        directory: { type: string, format: uri }
+        eab_key_id: { type: string, writeOnly: true }
+        eab_hmac_key: { type: string, writeOnly: true }
+        email: { type: string, format: email }
+    AuthProviderWrite:
+      type: object
+      required: [name, kind, issuer, client_id]
+      properties:
+        name: { $ref: "#/components/schemas/Label" }
+        kind: { type: string, enum: [oidc] }
+        issuer: { type: string, format: uri }
+        client_id: { type: string }
+        client_secret: { type: string, writeOnly: true }
+        scopes:
+          type: array
+          items: { type: string }
+        claim_mapping:
+          type: object
+          additionalProperties: { type: string }
+    User:
+      type: object
+      required: [id, email, status, created_at, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        email:
+          type: string
+          format: email
+          description: 归并用户的 canonical email；来自已验证的外部 identity。
+        name:
+          type: string
+          readOnly: true
+          description: 与 OIDC name claim 同步的用户名称。
+        picture:
+          type: string
+          format: uri
+          readOnly: true
+          description: 与 OIDC picture claim 同步的头像 URL。
+        instance_admin:
+          type: boolean
+          readOnly: true
+          description: 是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。
+        status: { $ref: "#/components/schemas/UserStatus" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    UserWrite:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, disabled], default: active }
+    InstanceAdminGrant:
+      type: object
+      required: [instance_admin]
+      properties:
+        instance_admin: { type: boolean }
+    UserIdentity:
+      type: object
+      required: [id, user_id, provider_id, subject, status, created_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        user_id: { $ref: "#/components/schemas/Uuid" }
+        provider_id: { $ref: "#/components/schemas/Uuid" }
+        subject: { type: string, description: 该认证 provider 返回的稳定 subject }
+        status: { $ref: "#/components/schemas/UserIdentityStatus" }
+        email_verified: { type: boolean }
+        last_login_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    UserIdentityWrite:
+      type: object
+      required: [provider_id, subject]
+      properties:
+        provider_id: { $ref: "#/components/schemas/Uuid" }
+        subject: { type: string }
+        email_verified: { type: boolean }
+    WorkspaceMember:
+      type: object
+      required: [id, user_id, role, created_at, updated_at]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        user_id: { $ref: "#/components/schemas/Uuid" }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/WorkspaceMemberStatus" }
+    WorkspaceMemberWrite:
+      type: object
+      required: [user_id, role]
+      properties:
+        user_id: { $ref: "#/components/schemas/Uuid" }
+        role: { $ref: "#/components/schemas/WorkspaceRole" }
+    Uuid:
+      type: string
+      format: uuid
+      description: 持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。
+      pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    AuditOutcome:
+      type: string
+      enum: [success, failure]
+    AuditActor:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [instance_admin, user, agentd, relay, system]
+        id: { type: string, description: actor UUID、external identity 或机器公钥标识 }
+        auth_provider_id: { $ref: "#/components/schemas/Uuid" }
+    AuditEvent:
+      type: object
+      required: [id, occurred_at, actor, action, resource_type, outcome, request_id]
+      properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        occurred_at: { type: string, format: date-time }
+        actor: { $ref: "#/components/schemas/AuditActor" }
+        action: { type: string, description: 例如 workspace.create、certificate.renew、node.remove }
+        resource_type: { type: string }
+        resource_id: { $ref: "#/components/schemas/Uuid" }
+        workspace_id: { $ref: "#/components/schemas/Uuid" }
+        request_id: { type: string, description: 同一个 HTTP/协议请求及其后台任务的关联 ID }
+        outcome: { $ref: "#/components/schemas/AuditOutcome" }
+        error_code: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+          description: 已脱敏上下文；不会包含 token、密码、凭据、私钥或证书正文。
+    AuditEventPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEvent" }
+        next_cursor: { type: string }
+    DomainStatus:
+      type: string
+      enum: [pending, active, disabled, failed, deleted]
+      description: 域名配置状态；pending 表示等待 DNS/证书等准备，active 表示可用，disabled 表示管理员停用。
+    DNSProviderStatus:
+      type: string
+      enum: [pending, active, disabled, failed, deleted]
+    CertificateIssuerStatus:
+      type: string
+      enum: [pending, active, disabled, failed, deleted]
+    IssuerAccountStatus:
+      type: string
+      enum: [not_created, creating, ready, failed]
+      description: ACME account 由 agentserver 生成和持久化的状态。
+    AuthProviderStatus:
+      type: string
+      enum: [pending, active, disabled, failed, deleted]
+    UserStatus:
+      type: string
+      enum: [pending, active, disabled, deleted]
+    UserIdentityStatus:
+      type: string
+      enum: [active, disabled, deleted]
+    WorkspaceStatus:
+      type: string
+      enum: [provisioning, active, disabled, failed, deleting, deleted]
+    WorkspaceMemberStatus:
+      type: string
+      enum: [active, suspended, revoked, deleted]
+    JoinTokenStatus:
+      type: string
+      enum: [active, used, expired, revoked, deleted]
+    NodeStatus:
+      type: string
+      enum: [joining, active, disabled, failed, removed, deleted]
+    GroupStatus:
+      type: string
+      enum: [active, disabled, deleted]
+    RouteStatus:
+      type: string
+      enum: [active, disabled, deleted]
+    PolicyStatus:
+      type: string
+      enum: [active, disabled, deleted]
+    ServiceStatus:
+      type: string
+      enum: [pending, ready, failed, disabled, deleted]
+    RelayStatus:
+      type: string
+      enum: [registering, active, draining, disabled, failed, deleted]
+    RelayTokenStatus:
+      type: string
+      enum: [active, used, expired, revoked, deleted]
     Label:
       type: string
       description: RFC 1123 label，小写，≤ 63 字符
@@ -801,7 +2217,12 @@ components:
             major: { type: integer }
             min: { type: integer }
             max: { type: integer }
-        domain: { type: string, description: agentserver 的域名，也是 workspace 基础域名的默认父域 }
+        domain: { type: string, deprecated: true, description: 兼容字段；instance 的完整域名配置见 GET /instance.domains }
+        domains:
+          type: array
+          readOnly: true
+          items: { $ref: "#/components/schemas/InstanceDomain" }
+          description: instance 当前管理的全部域名。
 
     Status:
       type: object
@@ -816,44 +2237,40 @@ components:
 
     Workspace:
       type: object
-      required: [name, base_domain, public_key, relay, created_at]
+      required: [id, name, domain_id, base_domain, public_key, status, created_at]
       properties:
+        id: { $ref: "#/components/schemas/Uuid" }
         name: { $ref: "#/components/schemas/Label" }
+        domain_id:
+          allOf: [{ $ref: "#/components/schemas/Uuid" }]
+          description: 创建 workspace 时选择的 instance domain。
         base_domain:
           type: string
-          description: 基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`
+          readOnly: true
+          description: agentserver 根据 workspace name 和 domain_id 生成的最终基础域名；服务域名是 `<服务名>.<base_domain>`。
         public_key:
           allOf: [{ $ref: "#/components/schemas/PublicKey" }]
           description: workspace 公钥，成员唯一钉住的信任根；加入链接的 `key`
-        uri: { type: string, description: 名字形式 `agentd://<base_domain>/`，代表这把公钥 }
-        relay: { type: string, description: 指派的 relay 名；MVP 每个 workspace 一个 }
-        dns_provider: { type: string, readOnly: true, description: 签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider }
-        publish_dns: { type: boolean, description: 是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问 }
-        cert: { $ref: "#/components/schemas/Cert" }
-        members: { type: integer }
-        members_online: { type: integer }
+        status: { $ref: "#/components/schemas/WorkspaceStatus" }
+        members: { type: integer, description: workspace 用户成员数，来自 workspace_members }
+        nodes: { type: integer, description: workspace 中 agentd 节点总数 }
+        nodes_online: { type: integer, description: 当前与 relay 保持在线会话的 agentd 节点数 }
         routes_version: { type: integer }
         directory_version: { type: integer }
         created_at: { type: string, format: date-time }
     WorkspaceCreate:
       type: object
-      required: [name, relay]
+      required: [name]
       properties:
         name: { $ref: "#/components/schemas/Label" }
-        base_domain: { type: string, description: 省略则用 `<name>.<agentserver 域名>`；通配证书由基础域名所在 zone 的 DNS 提供方签发 }
-        publish_dns: { type: boolean, default: false }
-        relay: { type: string, description: 指派的 relay 名 }
-    WorkspacePatch:
-      type: object
-      properties:
-        relay: { type: string }
-        publish_dns: { type: boolean }
-
+        domain_id:
+          allOf: [{ $ref: "#/components/schemas/Uuid" }]
+          description: 可选的 instance domain；省略使用 instance 的默认 domain。不能直接提交 base_domain。
     Token:
       type: object
-      required: [id, roles, expires_at, created_at]
+      required: [id, roles, status, expires_at, created_at]
       properties:
-        id: { type: string, description: 令牌记录的标识，不是令牌本身 }
+        id: { $ref: "#/components/schemas/Uuid" }
         name:
           allOf: [{ $ref: "#/components/schemas/Label" }]
           description: 绑定的实例名；为空表示由加入的设备提出
@@ -863,6 +2280,7 @@ components:
           description: 角色上限
         expires_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/JoinTokenStatus" }
     TokenCreate:
       type: object
       properties:
@@ -876,26 +2294,30 @@ components:
       allOf:
         - $ref: "#/components/schemas/Token"
         - type: object
-          required: [join_link]
+          required: [join_token]
           properties:
+            join_token:
+              type: string
+              description: 一次性 join token；只返回这一次，agentd 用它向 machine join API 查询 candidates 并完成加入。
             join_link:
               type: string
-              description: 完整的加入链接，带 relay、key（workspace 公钥）、token；只返回这一次
-              example: "agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.com&key=Rt7aB…&token=Qm9…"
+              deprecated: true
+              description: 完整的加入链接，带 bootstrap relay、key（workspace 公钥）、token；只返回这一次
+              example: "agentd://home.agentsrv.example.com/dorm?key=Rt7aB…&token=Qm9…"
 
     Node:
       type: object
-      required: [name, public_key, role_caps, online, joined_at]
+      required: [id, name, public_key, role_caps, status, online, joined_at]
       properties:
+        id: { $ref: "#/components/schemas/Uuid" }
         name: { $ref: "#/components/schemas/Label" }
         public_key: { $ref: "#/components/schemas/PublicKey" }
-        uri_key: { type: string, description: "`agentd://<公钥>`" }
-        uri_name: { type: string, description: "`agentd://<base_domain>/<name>`" }
         role_caps:
           type: array
           items: { $ref: "#/components/schemas/Role" }
         online: { type: boolean }
-        relay: { type: string, description: 当前所连 relay 名；离线时为空 }
+        status: { $ref: "#/components/schemas/NodeStatus" }
+        relay_id: { $ref: "#/components/schemas/Uuid", description: 当前所连 relay 实体 UUID；离线时为空 }
         last_seen: { type: string, format: date-time }
         joined_at: { type: string, format: date-time }
         policy_sources:
@@ -929,12 +2351,14 @@ components:
 
     Group:
       type: object
-      required: [name, public_key, members]
+      required: [id, name, public_key, status, members]
       properties:
+        id: { $ref: "#/components/schemas/Uuid" }
         name: { $ref: "#/components/schemas/Label" }
         public_key:
           allOf: [{ $ref: "#/components/schemas/PublicKey" }]
-          description: 组公钥；节点规则里写它，持有该组成员证书的节点即命中
+          description: 组公钥；节点规则里写它，持有该组 membership 证书的 node 即命中
+        status: { $ref: "#/components/schemas/GroupStatus" }
         uri: { type: string, description: "`agentd://<base_domain>/group/<name>`" }
         members:
           type: array
@@ -950,9 +2374,10 @@ components:
 
     Route:
       type: object
-      required: [id, from, proto, domains, to]
+      required: [id, from, proto, domains, to, status]
       properties:
-        id: { type: string }
+        id: { $ref: "#/components/schemas/Uuid" }
+        status: { $ref: "#/components/schemas/RouteStatus" }
         from:
           allOf: [{ $ref: "#/components/schemas/Subject" }]
           description: 源：`node:`、`group:` 或 `workspace`
@@ -1063,20 +2488,23 @@ components:
       allOf:
         - $ref: "#/components/schemas/PolicyStatementWrite"
         - type: object
-          required: [id]
+          required: [id, status]
           properties:
-            id: { type: string }
+            id: { $ref: "#/components/schemas/Uuid" }
+            status: { $ref: "#/components/schemas/PolicyStatus" }
 
     Service:
       type: object
-      required: [name, fqdn, proto, node, state]
+      required: [id, name, fqdn, proto, node, state, status]
       properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        status: { $ref: "#/components/schemas/ServiceStatus" }
         name: { $ref: "#/components/schemas/Label" }
         fqdn: { type: string }
         proto:
           type: string
           enum: [http, ssh]
-        node: { allOf: [{ $ref: "#/components/schemas/Label" }], description: 所在节点 }
+        node_id: { $ref: "#/components/schemas/Uuid", description: 所在节点实体 UUID }
         node_online: { type: boolean }
         state:
           type: string
@@ -1087,28 +2515,57 @@ components:
           description: >-
             该服务节点的生效策略里是否有 `public_key: "*"` 的 allow（只对 http 有意义）
 
-    Cert:
+    CertificateKind:
+      type: string
+      enum: [workspace_wildcard, relay, agentserver]
+    CertificateState:
+      type: string
+      enum: [pending, ready, renewing, expired, revoked, failed, deleted]
+    Certificate:
       type: object
-      required: [workspace, domain, state]
+      required: [id, kind, state, issuer]
       properties:
-        workspace: { $ref: "#/components/schemas/Label" }
-        domain: { type: string, description: 通配名，如 `*.home.agentsrv.example.com` }
-        state:
-          type: string
-          enum: [pending, ready, renewing, failed]
+        id: { $ref: "#/components/schemas/Uuid" }
+        kind: { $ref: "#/components/schemas/CertificateKind" }
+        workspace_id: { $ref: "#/components/schemas/Uuid" }
+        relay_id: { $ref: "#/components/schemas/Uuid" }
+        subject: { type: string, description: 证书的 DNS names 或控制面身份 }
+        issuer: { $ref: "#/components/schemas/Uuid" }
+        state: { $ref: "#/components/schemas/CertificateState" }
         not_before: { type: string, format: date-time }
         not_after: { type: string, format: date-time }
-        issuer: { type: string, description: CA 名 }
-        last_error: { type: string, description: state 为 failed 时的 ACME 错误 }
-        relays:
-          type: array
-          items: { type: string }
-          description: 已持有该证书的 relay 名
+        renew_before: { type: string, description: 剩余多久进入自动续期窗口 }
+        revoked_at: { type: string, format: date-time }
+        revocation_reason: { type: string }
+        last_error: { type: string }
+        updated_at: { type: string, format: date-time }
+    CertificateRevoke:
+      type: object
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 512 }
+    CertificateIssue:
+      type: object
+      required: [kind, workspace_id]
+      properties:
+        kind: { $ref: "#/components/schemas/CertificateKind" }
+        workspace_id: { $ref: "#/components/schemas/Uuid" }
+
+    RelayCandidate:
+      type: object
+      required: [relay_id, url, status]
+      properties:
+        relay_id: { $ref: "#/components/schemas/Uuid" }
+        url: { type: string, format: uri }
+        status: { $ref: "#/components/schemas/RelayStatus" }
+        connected: { type: boolean }
+        preference: { type: integer, description: agentserver 给出的候选顺序，agentd 可结合本地连接质量调整 }
 
     Relay:
       type: object
-      required: [name, public_key, url, connected]
+      required: [id, name, public_key, url, status, connected]
       properties:
+        id: { $ref: "#/components/schemas/Uuid" }
+        status: { $ref: "#/components/schemas/RelayStatus" }
         name: { $ref: "#/components/schemas/Label" }
         public_key: { $ref: "#/components/schemas/PublicKey" }
         url: { type: string, description: 基础 URL，如 `https://relay-hk.agentsrv.example.com` }
@@ -1120,10 +2577,6 @@ components:
         stun: { type: string, description: "host:port" }
         connected: { type: boolean, description: relay 会话是否在线 }
         connected_since: { type: string, format: date-time }
-        workspaces:
-          type: array
-          items: { $ref: "#/components/schemas/Label" }
-          description: 指派给它的 workspace
         nodes_online: { type: integer }
     RelayCreate:
       type: object
@@ -1139,9 +2592,10 @@ components:
         stun: { type: string }
     RelayToken:
       type: object
-      required: [id, expires_at, created_at]
+      required: [id, status, expires_at, created_at]
       properties:
-        id: { type: string }
+        id: { $ref: "#/components/schemas/Uuid" }
+        status: { $ref: "#/components/schemas/RelayTokenStatus" }
         expires_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
     RelayTokenCreate:
@@ -1157,10 +2611,12 @@ components:
             token: { type: string, description: 令牌明文，只返回这一次；写进 relay 配置的 control.join_token }
     RelayCert:
       type: object
-      required: [workspace, relay, issued_at, expires_at, cert]
+      required: [id, workspace_id, relay_id, state, issued_at, expires_at, cert]
       properties:
-        workspace: { $ref: "#/components/schemas/Label" }
-        relay: { $ref: "#/components/schemas/Label" }
+        id: { $ref: "#/components/schemas/Uuid" }
+        state: { $ref: "#/components/schemas/CertificateState" }
+        workspace_id: { $ref: "#/components/schemas/Uuid" }
+        relay_id: { $ref: "#/components/schemas/Uuid" }
         issued_at: { type: string, format: date-time }
         expires_at: { type: string, format: date-time }
         cert:

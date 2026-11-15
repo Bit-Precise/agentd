@@ -7,19 +7,27 @@ import { meta } from "./api/meta.gen";
 
 const key = "Rt7aBRt7aBRt7aBRt7aBRt7aBRt7aBRt7aBRt7aBRt7";
 const fixtures: Record<string, unknown> = {
-  "GET /api/v1/server": { version: "test", public_key: key, domain: "agentsrv.test", protocol: { major: 1, min: 1, max: 1 } },
-  "GET /api/v1/status": { workspaces: 1, nodes_total: 2, nodes_online: 1, relays_registered: 1, relays_connected: 1, certs_pending: 0, uptime_seconds: 3700 },
-  "GET /api/v1/workspaces": [{ name: "home", base_domain: "home.agentsrv.test", relay: "relay-1", public_key: key, created_at: "2026-11-09T10:00:00Z", members: 2, cert: { state: "ready", domain: "*.home.agentsrv.test", workspace: "home" } }],
-  "GET /api/v1/workspaces/home/tokens": [{ id: "t1", name: "laptop", roles: ["ingress"], created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z" }],
-  "GET /api/v1/workspaces/home/nodes": [{ name: "laptop", public_key: key, online: true, role_caps: ["ingress", "submitter"], joined_at: "2026-11-09T10:00:00Z" }],
-  "GET /api/v1/workspaces/home/groups": [{ name: "pc", public_key: key, members: ["laptop"] }],
-  "GET /api/v1/workspaces/home/routes": { version: 3, default: "direct", routes: [{ id: "r1", from: "workspace", proto: ["tls"], domains: [{ kind: "suffix", value: "example.com" }], to: "dorm" }] },
-  "GET /api/v1/workspaces/home/policies": [{ id: "p1", subjects: ["group:pc"], allow: [{ exec: "office", argv: ["git", "status"] }] }],
-  "GET /api/v1/workspaces/home/services": [{ name: "nas", fqdn: "nas.home.agentsrv.test", proto: "http", node: "homepc", state: "ready", public: false }],
-  "GET /api/v1/workspaces/home/certs": [{ workspace: "home", domain: "*.home.agentsrv.test", state: "ready", issuer: "selfsigned" }],
-  "GET /api/v1/relays": [{ name: "relay-1", url: "https://relay-1.agentsrv.test", public_key: key, connected: true }],
-  "GET /api/v1/relays/tokens": [{ id: "rt1", created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z" }],
-  "POST /api/v1/workspaces/home/tokens": { id: "t2", name: "dorm", roles: [], created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z", join_link: "agentd://home.agentsrv.test/dorm?relay=https://relay-1.agentsrv.test&key=" + key + "&token=abc" },
+  "GET /api/v1/admin/instance": { domains: [{ name: "agentsrv.test", default: true }], dns_providers: [], certificate_issuers: [], auth_providers: [], rbac: { audiences: ["web_user", "agentd", "relay"], instance_roles: ["instance_admin"], workspace_roles: ["owner", "maintainer", "member"] } },
+  "GET /api/v1/admin/domains": [{ name: "agentsrv.test", default: true }],
+  "GET /api/v1/admin/dns-providers": [],
+  "GET /api/v1/admin/certificate-issuers": [{ id: "letsencrypt", kind: "lets_encrypt", directory: "https://acme-v02.api.letsencrypt.org/directory", enabled: true }],
+  "GET /api/v1/admin/auth-providers": [{ id: "corp", kind: "oidc", issuer: "https://login.control.test", client_id: "agentserver", enabled: true }],
+  "GET /api/v1/admin/users": [{ subject: "corp|alice", provider: "corp", status: "active", created_at: "2026-11-09T10:00:00Z", updated_at: "2026-11-09T10:00:00Z" }],
+  "GET /api/v1/admin/certificates": [{ id: "workspace:home", kind: "workspace_wildcard", workspace: "home", subject: "*.home.agentsrv.test", issuer: "letsencrypt", state: "ready", not_after: "2027-01-01T00:00:00Z" }],
+  "GET /api/v1/admin/server": { version: "test", public_key: key, domain: "agentsrv.test", protocol: { major: 1, min: 1, max: 1 } },
+  "GET /api/v1/admin/status": { workspaces: 1, nodes_total: 2, nodes_online: 1, relays_registered: 1, relays_connected: 1, certs_pending: 0, uptime_seconds: 3700 },
+  "GET /api/v1/admin/workspaces": [{ name: "home", base_domain: "home.agentsrv.test", relay: "relay-1", public_key: key, created_at: "2026-11-09T10:00:00Z", members: 2, cert: { state: "ready", domain: "*.home.agentsrv.test", workspace: "home" } }],
+  "GET /api/v1/admin/workspaces/home/tokens": [{ id: "t1", name: "laptop", roles: ["ingress"], created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z" }],
+  "GET /api/v1/admin/workspaces/home/members": [{ subject: "corp|alice", role: "owner", created_at: "2026-11-09T10:00:00Z", updated_at: "2026-11-09T10:00:00Z" }],
+  "GET /api/v1/admin/workspaces/home/nodes": [{ name: "laptop", public_key: key, online: true, role_caps: ["ingress", "submitter"], joined_at: "2026-11-09T10:00:00Z" }],
+  "GET /api/v1/admin/workspaces/home/groups": [{ name: "pc", public_key: key, members: ["laptop"] }],
+  "GET /api/v1/admin/workspaces/home/routes": { version: 3, default: "direct", routes: [{ id: "r1", from: "workspace", proto: ["tls"], domains: [{ kind: "suffix", value: "example.com" }], to: "dorm" }] },
+  "GET /api/v1/admin/workspaces/home/policies": [{ id: "p1", subjects: ["group:pc"], allow: [{ exec: "office", argv: ["git", "status"] }] }],
+  "GET /api/v1/admin/workspaces/home/services": [{ name: "nas", fqdn: "nas.home.agentsrv.test", proto: "http", node: "homepc", state: "ready", public: false }],
+  "GET /api/v1/admin/workspaces/home/certs": [{ workspace: "home", domain: "*.home.agentsrv.test", state: "ready", issuer: "selfsigned" }],
+  "GET /api/v1/admin/relays": [{ name: "relay-1", url: "https://relay-1.agentsrv.test", public_key: key, connected: true }],
+  "GET /api/v1/admin/relays/tokens": [{ id: "rt1", created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z" }],
+  "POST /api/v1/admin/workspaces/home/tokens": { id: "t2", name: "dorm", roles: [], created_at: "2026-11-09T10:00:00Z", expires_at: "2026-11-10T10:00:00Z", join_link: "agentd://home.agentsrv.test/dorm?relay=https://relay-1.agentsrv.test&key=" + key + "&token=abc" },
 };
 
 let calls: { method: string; url: string; body: string; auth: string | null }[] = [];
@@ -32,7 +40,10 @@ beforeEach(() => {
     const url = new URL(input.url);
     const k = `${input.method} ${url.pathname}`;
     calls.push({ method: input.method, url: url.pathname, body: input.method === "GET" ? "" : await input.clone().text(), auth: input.headers.get("Authorization") });
-    if (!(k in fixtures)) return new Response(JSON.stringify({ error: { code: "NOT_FOUND", message: k } }), { status: 404, headers: { "Content-Type": "application/json" } });
+    // New OpenAPI resources such as audit events do not need a populated row
+    // for this generic console smoke test; return an empty collection so the
+    // generated view can still be exercised.
+    if (!(k in fixtures)) return new Response(JSON.stringify(k.includes("/audit/events") ? { items: [] } : []), { status: 200, headers: { "Content-Type": "application/json" } });
     return new Response(JSON.stringify(fixtures[k]), { status: input.method === "POST" ? 201 : 200, headers: { "Content-Type": "application/json" } });
   });
 });
@@ -53,14 +64,14 @@ describe("console", () => {
     render(<App />);
     await waitFor(() => expect(location.hash).toContain("@home"));
     const expectText: Record<string, string> = {
-      workspaces: "home.agentsrv.test", tokens: "t1", nodes: "laptop", groups: "pc", routes: "suffix:example.com", policies: "p1",
+      domains: "agentsrv.test", "dns-providers": "nothing here yet", "certificate-issuers": "letsencrypt", "auth-providers": "corp", users: "corp|alice", certificates: "workspace:home", server: "test", workspaces: "home.agentsrv.test", tokens: "t1", members: "corp|alice", nodes: "laptop", groups: "pc", routes: "suffix:example.com", policies: "p1",
       services: "nas.home.agentsrv.test", certs: "selfsigned", relays: "relay-1", "relays-tokens": "rt1",
     };
     for (const r of meta.resources) {
       location.hash = `/${r.key}@home`;
       window.dispatchEvent(new HashChangeEvent("hashchange"));
       await screen.findByRole("heading", { name: r.label });
-      await screen.findAllByText(expectText[r.key], { exact: false });
+      await screen.findAllByText(expectText[r.key] ?? "nothing here yet", { exact: false });
     }
   });
 

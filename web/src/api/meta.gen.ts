@@ -2,16 +2,2563 @@
 import type { Meta } from "./meta";
 
 export const meta: Meta = {
-  "title": "agentserver admin API",
+  "title": "agentserver instance admin API",
   "version": "v1",
   "operations": {
+    "listInstanceDomains": {
+      "id": "listInstanceDomains",
+      "method": "GET",
+      "path": "/domains",
+      "tag": "domains",
+      "summary": "列出 instance 域名",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "domain",
+            "default"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid",
+              "readOnly": true
+            },
+            "domain": {
+              "type": "string",
+              "format": "hostname",
+              "description": "instance 管理的域名或域名后缀，统一小写且不带末尾点。"
+            },
+            "default": {
+              "type": "boolean",
+              "description": "是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "disabled",
+                "failed",
+                "deleted"
+              ],
+              "description": "agentserver 对该域名配置和证书/DNS 准备情况的状态。",
+              "$name": "DomainStatus",
+              "readOnly": true
+            },
+            "last_error": {
+              "type": "string",
+              "readOnly": true,
+              "description": "status=failed 时的最近错误。"
+            },
+            "verified_at": {
+              "type": "string",
+              "format": "date-time",
+              "readOnly": true,
+              "description": "域名最近一次验证或成功配置的时间。"
+            },
+            "dns_provider_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "certificate_issuer_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "为该域名签发证书的 CertificateIssuer.id。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            }
+          },
+          "$name": "InstanceDomain"
+        }
+      }
+    },
+    "createInstanceDomain": {
+      "id": "createInstanceDomain",
+      "method": "POST",
+      "path": "/domains",
+      "tag": "domains",
+      "summary": "添加 instance 域名",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "domain",
+          "default"
+        ],
+        "properties": {
+          "domain": {
+            "type": "string",
+            "format": "hostname"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "dns_provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "certificate_issuer_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "InstanceDomainWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "domain",
+          "default"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "domain": {
+            "type": "string",
+            "format": "hostname",
+            "description": "instance 管理的域名或域名后缀，统一小写且不带末尾点。"
+          },
+          "default": {
+            "type": "boolean",
+            "description": "是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "description": "agentserver 对该域名配置和证书/DNS 准备情况的状态。",
+            "$name": "DomainStatus",
+            "readOnly": true
+          },
+          "last_error": {
+            "type": "string",
+            "readOnly": true,
+            "description": "status=failed 时的最近错误。"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true,
+            "description": "域名最近一次验证或成功配置的时间。"
+          },
+          "dns_provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "certificate_issuer_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "为该域名签发证书的 CertificateIssuer.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "InstanceDomain"
+      }
+    },
+    "getInstanceDomain": {
+      "id": "getInstanceDomain",
+      "method": "GET",
+      "path": "/domains/{domainId}",
+      "tag": "domains",
+      "summary": "查看 instance 域名",
+      "description": "",
+      "pathParams": [
+        "domainId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "domain",
+          "default"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "domain": {
+            "type": "string",
+            "format": "hostname",
+            "description": "instance 管理的域名或域名后缀，统一小写且不带末尾点。"
+          },
+          "default": {
+            "type": "boolean",
+            "description": "是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "description": "agentserver 对该域名配置和证书/DNS 准备情况的状态。",
+            "$name": "DomainStatus",
+            "readOnly": true
+          },
+          "last_error": {
+            "type": "string",
+            "readOnly": true,
+            "description": "status=failed 时的最近错误。"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true,
+            "description": "域名最近一次验证或成功配置的时间。"
+          },
+          "dns_provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "certificate_issuer_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "为该域名签发证书的 CertificateIssuer.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "InstanceDomain"
+      }
+    },
+    "updateInstanceDomain": {
+      "id": "updateInstanceDomain",
+      "method": "PUT",
+      "path": "/domains/{domainId}",
+      "tag": "domains",
+      "summary": "更新 instance 域名",
+      "description": "",
+      "pathParams": [
+        "domainId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "domain",
+          "default"
+        ],
+        "properties": {
+          "domain": {
+            "type": "string",
+            "format": "hostname"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "dns_provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "certificate_issuer_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "InstanceDomainWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "domain",
+          "default"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "domain": {
+            "type": "string",
+            "format": "hostname",
+            "description": "instance 管理的域名或域名后缀，统一小写且不带末尾点。"
+          },
+          "default": {
+            "type": "boolean",
+            "description": "是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "description": "agentserver 对该域名配置和证书/DNS 准备情况的状态。",
+            "$name": "DomainStatus",
+            "readOnly": true
+          },
+          "last_error": {
+            "type": "string",
+            "readOnly": true,
+            "description": "status=failed 时的最近错误。"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true,
+            "description": "域名最近一次验证或成功配置的时间。"
+          },
+          "dns_provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "certificate_issuer_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "为该域名签发证书的 CertificateIssuer.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "InstanceDomain"
+      }
+    },
+    "deleteInstanceDomain": {
+      "id": "deleteInstanceDomain",
+      "method": "DELETE",
+      "path": "/domains/{domainId}",
+      "tag": "domains",
+      "summary": "删除 instance 域名",
+      "description": "",
+      "pathParams": [
+        "domainId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "listDNSProviders": {
+      "id": "listDNSProviders",
+      "method": "GET",
+      "path": "/dns-providers",
+      "tag": "dns-providers",
+      "summary": "列出 DNS providers",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "name",
+            "kind",
+            "zones"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid",
+              "readOnly": true
+            },
+            "name": {
+              "type": "string",
+              "description": "RFC 1123 label，小写，≤ 63 字符",
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+              "$name": "Label"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "dnspod",
+                "cloudflare"
+              ]
+            },
+            "zones": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "format": "hostname"
+              },
+              "description": "该账号允许操作的 DNS zone；域名按最长后缀匹配。"
+            },
+            "credentials": {
+              "type": "object",
+              "writeOnly": true,
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "disabled",
+                "failed",
+                "deleted"
+              ],
+              "$name": "DNSProviderStatus"
+            }
+          },
+          "$name": "DNSProvider"
+        }
+      }
+    },
+    "createDNSProvider": {
+      "id": "createDNSProvider",
+      "method": "POST",
+      "path": "/dns-providers",
+      "tag": "dns-providers",
+      "summary": "创建 DNS provider",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "zones"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dnspod",
+              "cloudflare"
+            ]
+          },
+          "zones": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "format": "hostname"
+            }
+          },
+          "credentials": {
+            "type": "object",
+            "writeOnly": true,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "$name": "DNSProviderWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "zones"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dnspod",
+              "cloudflare"
+            ]
+          },
+          "zones": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "format": "hostname"
+            },
+            "description": "该账号允许操作的 DNS zone；域名按最长后缀匹配。"
+          },
+          "credentials": {
+            "type": "object",
+            "writeOnly": true,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "DNSProviderStatus"
+          }
+        },
+        "$name": "DNSProvider"
+      }
+    },
+    "getDNSProvider": {
+      "id": "getDNSProvider",
+      "method": "GET",
+      "path": "/dns-providers/{providerId}",
+      "tag": "dns-providers",
+      "summary": "查看 DNS provider",
+      "description": "",
+      "pathParams": [
+        "providerId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "zones"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dnspod",
+              "cloudflare"
+            ]
+          },
+          "zones": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "format": "hostname"
+            },
+            "description": "该账号允许操作的 DNS zone；域名按最长后缀匹配。"
+          },
+          "credentials": {
+            "type": "object",
+            "writeOnly": true,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "DNSProviderStatus"
+          }
+        },
+        "$name": "DNSProvider"
+      }
+    },
+    "updateDNSProvider": {
+      "id": "updateDNSProvider",
+      "method": "PUT",
+      "path": "/dns-providers/{providerId}",
+      "tag": "dns-providers",
+      "summary": "更新 DNS provider",
+      "description": "",
+      "pathParams": [
+        "providerId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "zones"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dnspod",
+              "cloudflare"
+            ]
+          },
+          "zones": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "format": "hostname"
+            }
+          },
+          "credentials": {
+            "type": "object",
+            "writeOnly": true,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "$name": "DNSProviderWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "zones"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dnspod",
+              "cloudflare"
+            ]
+          },
+          "zones": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "format": "hostname"
+            },
+            "description": "该账号允许操作的 DNS zone；域名按最长后缀匹配。"
+          },
+          "credentials": {
+            "type": "object",
+            "writeOnly": true,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "DNSProviderStatus"
+          }
+        },
+        "$name": "DNSProvider"
+      }
+    },
+    "deleteDNSProvider": {
+      "id": "deleteDNSProvider",
+      "method": "DELETE",
+      "path": "/dns-providers/{providerId}",
+      "tag": "dns-providers",
+      "summary": "删除 DNS provider",
+      "description": "",
+      "pathParams": [
+        "providerId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "listCertificateIssuers": {
+      "id": "listCertificateIssuers",
+      "method": "GET",
+      "path": "/certificate-issuers",
+      "tag": "certificate-issuers",
+      "summary": "列出 certificate issuers",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "name",
+            "kind",
+            "directory"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid",
+              "readOnly": true
+            },
+            "name": {
+              "type": "string",
+              "description": "RFC 1123 label，小写，≤ 63 字符",
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+              "$name": "Label"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "lets_encrypt",
+                "google_trust_services"
+              ]
+            },
+            "directory": {
+              "type": "string",
+              "format": "uri",
+              "description": "ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。"
+            },
+            "eab_key_id": {
+              "type": "string",
+              "writeOnly": true,
+              "description": "写入时提交的 EAB key id，不返回。"
+            },
+            "eab_hmac_key": {
+              "type": "string",
+              "writeOnly": true,
+              "description": "写入时提交的 EAB HMAC secret，不返回。"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "account_status": {
+              "type": "string",
+              "enum": [
+                "not_created",
+                "creating",
+                "ready",
+                "failed"
+              ],
+              "description": "ACME account 由 agentserver 生成和持久化的状态。",
+              "$name": "IssuerAccountStatus",
+              "readOnly": true
+            },
+            "account_created_at": {
+              "type": "string",
+              "format": "date-time",
+              "readOnly": true
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "disabled",
+                "failed",
+                "deleted"
+              ],
+              "$name": "CertificateIssuerStatus"
+            }
+          },
+          "$name": "CertificateIssuer"
+        }
+      }
+    },
+    "createCertificateIssuer": {
+      "id": "createCertificateIssuer",
+      "method": "POST",
+      "path": "/certificate-issuers",
+      "tag": "certificate-issuers",
+      "summary": "创建 certificate issuer",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "directory"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "lets_encrypt",
+              "google_trust_services"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "format": "uri"
+          },
+          "eab_key_id": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "eab_hmac_key": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "$name": "CertificateIssuerWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "directory"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "lets_encrypt",
+              "google_trust_services"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "format": "uri",
+            "description": "ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。"
+          },
+          "eab_key_id": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB key id，不返回。"
+          },
+          "eab_hmac_key": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB HMAC secret，不返回。"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "account_status": {
+            "type": "string",
+            "enum": [
+              "not_created",
+              "creating",
+              "ready",
+              "failed"
+            ],
+            "description": "ACME account 由 agentserver 生成和持久化的状态。",
+            "$name": "IssuerAccountStatus",
+            "readOnly": true
+          },
+          "account_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateIssuerStatus"
+          }
+        },
+        "$name": "CertificateIssuer"
+      }
+    },
+    "getCertificateIssuer": {
+      "id": "getCertificateIssuer",
+      "method": "GET",
+      "path": "/certificate-issuers/{issuerId}",
+      "tag": "certificate-issuers",
+      "summary": "查看 certificate issuer",
+      "description": "",
+      "pathParams": [
+        "issuerId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "directory"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "lets_encrypt",
+              "google_trust_services"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "format": "uri",
+            "description": "ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。"
+          },
+          "eab_key_id": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB key id，不返回。"
+          },
+          "eab_hmac_key": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB HMAC secret，不返回。"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "account_status": {
+            "type": "string",
+            "enum": [
+              "not_created",
+              "creating",
+              "ready",
+              "failed"
+            ],
+            "description": "ACME account 由 agentserver 生成和持久化的状态。",
+            "$name": "IssuerAccountStatus",
+            "readOnly": true
+          },
+          "account_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateIssuerStatus"
+          }
+        },
+        "$name": "CertificateIssuer"
+      }
+    },
+    "updateCertificateIssuer": {
+      "id": "updateCertificateIssuer",
+      "method": "PUT",
+      "path": "/certificate-issuers/{issuerId}",
+      "tag": "certificate-issuers",
+      "summary": "更新 certificate issuer",
+      "description": "",
+      "pathParams": [
+        "issuerId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "directory"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "lets_encrypt",
+              "google_trust_services"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "format": "uri"
+          },
+          "eab_key_id": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "eab_hmac_key": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "$name": "CertificateIssuerWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "directory"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "lets_encrypt",
+              "google_trust_services"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "format": "uri",
+            "description": "ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。"
+          },
+          "eab_key_id": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB key id，不返回。"
+          },
+          "eab_hmac_key": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB HMAC secret，不返回。"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "account_status": {
+            "type": "string",
+            "enum": [
+              "not_created",
+              "creating",
+              "ready",
+              "failed"
+            ],
+            "description": "ACME account 由 agentserver 生成和持久化的状态。",
+            "$name": "IssuerAccountStatus",
+            "readOnly": true
+          },
+          "account_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateIssuerStatus"
+          }
+        },
+        "$name": "CertificateIssuer"
+      }
+    },
+    "deleteCertificateIssuer": {
+      "id": "deleteCertificateIssuer",
+      "method": "DELETE",
+      "path": "/certificate-issuers/{issuerId}",
+      "tag": "certificate-issuers",
+      "summary": "删除 certificate issuer",
+      "description": "",
+      "pathParams": [
+        "issuerId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "listAuthProviders": {
+      "id": "listAuthProviders",
+      "method": "GET",
+      "path": "/auth-providers",
+      "tag": "auth-providers",
+      "summary": "列出认证 providers",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "description": "可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段， 不改变 auth_providers 集合的资源模型。",
+          "required": [
+            "id",
+            "name",
+            "kind",
+            "issuer",
+            "client_id"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "oidc"
+              ],
+              "description": "第一期开启的认证类型；保留为可扩展 discriminator。"
+            },
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid",
+              "readOnly": true
+            },
+            "name": {
+              "type": "string",
+              "description": "RFC 1123 label，小写，≤ 63 字符",
+              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+              "$name": "Label"
+            },
+            "issuer": {
+              "type": "string",
+              "format": "uri",
+              "description": "OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。"
+            },
+            "client_id": {
+              "type": "string"
+            },
+            "client_secret": {
+              "type": "string",
+              "writeOnly": true,
+              "description": "写入时提交的 OIDC client secret，不返回明文。"
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "openid",
+                "profile",
+                "email"
+              ]
+            },
+            "claim_mapping": {
+              "type": "object",
+              "description": "将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "disabled",
+                "failed",
+                "deleted"
+              ],
+              "$name": "AuthProviderStatus"
+            }
+          },
+          "$name": "AuthProvider"
+        }
+      }
+    },
+    "createAuthProvider": {
+      "id": "createAuthProvider",
+      "method": "POST",
+      "path": "/auth-providers",
+      "tag": "auth-providers",
+      "summary": "创建认证 provider",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "issuer",
+          "client_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "oidc"
+            ]
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "claim_mapping": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "$name": "AuthProviderWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "description": "可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段， 不改变 auth_providers 集合的资源模型。",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "issuer",
+          "client_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "oidc"
+            ],
+            "description": "第一期开启的认证类型；保留为可扩展 discriminator。"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri",
+            "description": "OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 OIDC client secret，不返回明文。"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "openid",
+              "profile",
+              "email"
+            ]
+          },
+          "claim_mapping": {
+            "type": "object",
+            "description": "将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "AuthProviderStatus"
+          }
+        },
+        "$name": "AuthProvider"
+      }
+    },
+    "getAuthProvider": {
+      "id": "getAuthProvider",
+      "method": "GET",
+      "path": "/auth-providers/{providerId}",
+      "tag": "auth-providers",
+      "summary": "查看认证 provider",
+      "description": "",
+      "pathParams": [
+        "providerId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "description": "可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段， 不改变 auth_providers 集合的资源模型。",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "issuer",
+          "client_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "oidc"
+            ],
+            "description": "第一期开启的认证类型；保留为可扩展 discriminator。"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri",
+            "description": "OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 OIDC client secret，不返回明文。"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "openid",
+              "profile",
+              "email"
+            ]
+          },
+          "claim_mapping": {
+            "type": "object",
+            "description": "将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "AuthProviderStatus"
+          }
+        },
+        "$name": "AuthProvider"
+      }
+    },
+    "updateAuthProvider": {
+      "id": "updateAuthProvider",
+      "method": "PUT",
+      "path": "/auth-providers/{providerId}",
+      "tag": "auth-providers",
+      "summary": "更新认证 provider",
+      "description": "",
+      "pathParams": [
+        "providerId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "issuer",
+          "client_id"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "oidc"
+            ]
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "claim_mapping": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "$name": "AuthProviderWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "description": "可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段， 不改变 auth_providers 集合的资源模型。",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "issuer",
+          "client_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "oidc"
+            ],
+            "description": "第一期开启的认证类型；保留为可扩展 discriminator。"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri",
+            "description": "OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 OIDC client secret，不返回明文。"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "openid",
+              "profile",
+              "email"
+            ]
+          },
+          "claim_mapping": {
+            "type": "object",
+            "description": "将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "AuthProviderStatus"
+          }
+        },
+        "$name": "AuthProvider"
+      }
+    },
+    "deleteAuthProvider": {
+      "id": "deleteAuthProvider",
+      "method": "DELETE",
+      "path": "/auth-providers/{providerId}",
+      "tag": "auth-providers",
+      "summary": "删除认证 provider",
+      "description": "",
+      "pathParams": [
+        "providerId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "listUsers": {
+      "id": "listUsers",
+      "method": "GET",
+      "path": "/users",
+      "tag": "users",
+      "summary": "列出全局用户",
+      "description": "用户目录是 instance 级资源；workspace 成员关系只保存角色，不复制用户资料。",
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "email",
+            "status",
+            "created_at",
+            "updated_at"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "归并用户的 canonical email；来自已验证的外部 identity。"
+            },
+            "name": {
+              "type": "string",
+              "readOnly": true,
+              "description": "与 OIDC name claim 同步的用户名称。"
+            },
+            "picture": {
+              "type": "string",
+              "format": "uri",
+              "readOnly": true,
+              "description": "与 OIDC picture claim 同步的头像 URL。"
+            },
+            "instance_admin": {
+              "type": "boolean",
+              "readOnly": true,
+              "description": "是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "disabled",
+                "deleted"
+              ],
+              "$name": "UserStatus"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "$name": "User"
+        }
+      }
+    },
+    "upsertUser": {
+      "id": "upsertUser",
+      "method": "POST",
+      "path": "/users",
+      "tag": "users",
+      "summary": "创建或更新全局用户",
+      "description": "",
+      "pathParams": [],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled"
+            ],
+            "default": "active"
+          }
+        },
+        "$name": "UserWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "归并用户的 canonical email；来自已验证的外部 identity。"
+          },
+          "name": {
+            "type": "string",
+            "readOnly": true,
+            "description": "与 OIDC name claim 同步的用户名称。"
+          },
+          "picture": {
+            "type": "string",
+            "format": "uri",
+            "readOnly": true,
+            "description": "与 OIDC picture claim 同步的头像 URL。"
+          },
+          "instance_admin": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "User"
+      }
+    },
+    "getUser": {
+      "id": "getUser",
+      "method": "GET",
+      "path": "/users/{userId}",
+      "tag": "users",
+      "summary": "查看全局用户",
+      "description": "",
+      "pathParams": [
+        "userId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "归并用户的 canonical email；来自已验证的外部 identity。"
+          },
+          "name": {
+            "type": "string",
+            "readOnly": true,
+            "description": "与 OIDC name claim 同步的用户名称。"
+          },
+          "picture": {
+            "type": "string",
+            "format": "uri",
+            "readOnly": true,
+            "description": "与 OIDC picture claim 同步的头像 URL。"
+          },
+          "instance_admin": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "User"
+      }
+    },
+    "deleteUser": {
+      "id": "deleteUser",
+      "method": "DELETE",
+      "path": "/users/{userId}",
+      "tag": "users",
+      "summary": "删除全局用户",
+      "description": "删除用户目录记录，同时移除其所有 workspace membership；审计记录保留 subject 的不可逆摘要。",
+      "pathParams": [
+        "userId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "setUserInstanceAdmin": {
+      "id": "setUserInstanceAdmin",
+      "method": "POST",
+      "path": "/users/{userId}/instance-admin",
+      "tag": "users",
+      "summary": "授予或撤销 instance admin",
+      "description": "修改用户的 instance_admin 属性；操作必须写入审计日志，调用者不能通过此 operation 授权自己。",
+      "pathParams": [
+        "userId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "instance_admin"
+        ],
+        "properties": {
+          "instance_admin": {
+            "type": "boolean"
+          }
+        },
+        "$name": "InstanceAdminGrant"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "归并用户的 canonical email；来自已验证的外部 identity。"
+          },
+          "name": {
+            "type": "string",
+            "readOnly": true,
+            "description": "与 OIDC name claim 同步的用户名称。"
+          },
+          "picture": {
+            "type": "string",
+            "format": "uri",
+            "readOnly": true,
+            "description": "与 OIDC picture claim 同步的头像 URL。"
+          },
+          "instance_admin": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "User"
+      }
+    },
+    "listUserIdentities": {
+      "id": "listUserIdentities",
+      "method": "GET",
+      "path": "/users/{userId}/identities",
+      "tag": "users",
+      "summary": "列出用户的外部认证 identity",
+      "description": "",
+      "pathParams": [
+        "userId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "user_id",
+            "provider_id",
+            "subject",
+            "status",
+            "created_at"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "user_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "provider_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "subject": {
+              "type": "string",
+              "description": "该认证 provider 返回的稳定 subject"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "disabled",
+                "deleted"
+              ],
+              "$name": "UserIdentityStatus"
+            },
+            "email_verified": {
+              "type": "boolean"
+            },
+            "last_login_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "$name": "UserIdentity"
+        }
+      }
+    },
+    "linkUserIdentity": {
+      "id": "linkUserIdentity",
+      "method": "POST",
+      "path": "/users/{userId}/identities",
+      "tag": "users",
+      "summary": "将外部认证 identity 关联到用户",
+      "description": "",
+      "pathParams": [
+        "userId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "provider_id",
+          "subject"
+        ],
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "email_verified": {
+            "type": "boolean"
+          }
+        },
+        "$name": "UserIdentityWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "provider_id",
+          "subject",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "subject": {
+            "type": "string",
+            "description": "该认证 provider 返回的稳定 subject"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "UserIdentityStatus"
+          },
+          "email_verified": {
+            "type": "boolean"
+          },
+          "last_login_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "UserIdentity"
+      }
+    },
+    "unlinkUserIdentity": {
+      "id": "unlinkUserIdentity",
+      "method": "DELETE",
+      "path": "/users/{userId}/identities/{identityId}",
+      "tag": "users",
+      "summary": "解除外部认证 identity",
+      "description": "",
+      "pathParams": [
+        "userId",
+        "identityId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "listAuditEvents": {
+      "id": "listAuditEvents",
+      "method": "GET",
+      "path": "/audit/events",
+      "tag": "audit",
+      "summary": "查询全局审计记录",
+      "description": "instance admin 可查询整个 instance 的所有写入事件；响应不包含 token、凭据、私钥或其他敏感正文。",
+      "pathParams": [],
+      "query": [
+        {
+          "name": "actor_id",
+          "description": "",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "resource_type",
+          "description": "",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "resource_id",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        {
+          "name": "workspace_id",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        {
+          "name": "action",
+          "description": "",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "outcome",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure"
+            ],
+            "$name": "AuditOutcome"
+          }
+        },
+        {
+          "name": "since",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        {
+          "name": "until",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        {
+          "name": "cursor",
+          "description": "",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "description": "",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "occurred_at",
+                "actor",
+                "action",
+                "resource_type",
+                "outcome",
+                "request_id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid"
+                },
+                "occurred_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "actor": {
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "instance_admin",
+                        "user",
+                        "agentd",
+                        "relay",
+                        "system"
+                      ]
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "actor UUID、external identity 或机器公钥标识"
+                    },
+                    "auth_provider_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                      "$name": "Uuid"
+                    }
+                  },
+                  "$name": "AuditActor"
+                },
+                "action": {
+                  "type": "string",
+                  "description": "例如 workspace.create、certificate.renew、node.remove"
+                },
+                "resource_type": {
+                  "type": "string"
+                },
+                "resource_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid"
+                },
+                "workspace_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid"
+                },
+                "request_id": {
+                  "type": "string",
+                  "description": "同一个 HTTP/协议请求及其后台任务的关联 ID"
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "success",
+                    "failure"
+                  ],
+                  "$name": "AuditOutcome"
+                },
+                "error_code": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "已脱敏上下文；不会包含 token、密码、凭据、私钥或证书正文。"
+                }
+              },
+              "$name": "AuditEvent"
+            }
+          },
+          "next_cursor": {
+            "type": "string"
+          }
+        },
+        "$name": "AuditEventPage"
+      }
+    },
+    "getAuditEvent": {
+      "id": "getAuditEvent",
+      "method": "GET",
+      "path": "/audit/events/{eventId}",
+      "tag": "audit",
+      "summary": "查看审计事件",
+      "description": "",
+      "pathParams": [
+        "eventId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "occurred_at",
+          "actor",
+          "action",
+          "resource_type",
+          "outcome",
+          "request_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actor": {
+            "type": "object",
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "instance_admin",
+                  "user",
+                  "agentd",
+                  "relay",
+                  "system"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "description": "actor UUID、external identity 或机器公钥标识"
+              },
+              "auth_provider_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                "$name": "Uuid"
+              }
+            },
+            "$name": "AuditActor"
+          },
+          "action": {
+            "type": "string",
+            "description": "例如 workspace.create、certificate.renew、node.remove"
+          },
+          "resource_type": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "同一个 HTTP/协议请求及其后台任务的关联 ID"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure"
+            ],
+            "$name": "AuditOutcome"
+          },
+          "error_code": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "已脱敏上下文；不会包含 token、密码、凭据、私钥或证书正文。"
+          }
+        },
+        "$name": "AuditEvent"
+      }
+    },
     "getServer": {
       "id": "getServer",
       "method": "GET",
       "path": "/server",
       "tag": "server",
       "summary": "服务端信息",
-      "description": "对应 `agentserver key show`。agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。",
+      "description": "agentserver 自己的公钥只用于 relay 会话，节点不需要知道它。",
       "pathParams": [],
       "query": [],
       "bodyRequired": false,
@@ -49,7 +2596,79 @@ export const meta: Meta = {
           },
           "domain": {
             "type": "string",
-            "description": "agentserver 的域名，也是 workspace 基础域名的默认父域"
+            "deprecated": true,
+            "description": "兼容字段；instance 的完整域名配置见 GET /instance.domains"
+          },
+          "domains": {
+            "type": "array",
+            "readOnly": true,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "domain",
+                "default"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid",
+                  "readOnly": true
+                },
+                "domain": {
+                  "type": "string",
+                  "format": "hostname",
+                  "description": "instance 管理的域名或域名后缀，统一小写且不带末尾点。"
+                },
+                "default": {
+                  "type": "boolean",
+                  "description": "是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "active",
+                    "disabled",
+                    "failed",
+                    "deleted"
+                  ],
+                  "description": "agentserver 对该域名配置和证书/DNS 准备情况的状态。",
+                  "$name": "DomainStatus",
+                  "readOnly": true
+                },
+                "last_error": {
+                  "type": "string",
+                  "readOnly": true,
+                  "description": "status=failed 时的最近错误。"
+                },
+                "verified_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "readOnly": true,
+                  "description": "域名最近一次验证或成功配置的时间。"
+                },
+                "dns_provider_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid"
+                },
+                "certificate_issuer_id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "为该域名签发证书的 CertificateIssuer.id。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid"
+                }
+              },
+              "$name": "InstanceDomain"
+            },
+            "description": "instance 当前管理的全部域名。"
           }
         },
         "$name": "ServerInfo"
@@ -94,13 +2713,431 @@ export const meta: Meta = {
         "$name": "Status"
       }
     },
+    "listCertificates": {
+      "id": "listCertificates",
+      "method": "GET",
+      "path": "/certificates",
+      "tag": "certificates",
+      "summary": "列出 instance 的全部证书",
+      "description": "返回 workspace wildcard、relay 和 agentserver 自身证书的统一生命周期视图。私钥和证书链正文不在此接口返回。",
+      "pathParams": [],
+      "query": [
+        {
+          "name": "workspace",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          }
+        },
+        {
+          "name": "state",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "renewing",
+              "expired",
+              "revoked",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateState"
+          }
+        },
+        {
+          "name": "kind",
+          "description": "",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "workspace_wildcard",
+              "relay",
+              "agentserver"
+            ],
+            "$name": "CertificateKind"
+          }
+        }
+      ],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "kind",
+            "state",
+            "issuer"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "workspace_wildcard",
+                "relay",
+                "agentserver"
+              ],
+              "$name": "CertificateKind"
+            },
+            "workspace_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "relay_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "subject": {
+              "type": "string",
+              "description": "证书的 DNS names 或控制面身份"
+            },
+            "issuer": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "ready",
+                "renewing",
+                "expired",
+                "revoked",
+                "failed",
+                "deleted"
+              ],
+              "$name": "CertificateState"
+            },
+            "not_before": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "not_after": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "renew_before": {
+              "type": "string",
+              "description": "剩余多久进入自动续期窗口"
+            },
+            "revoked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "revocation_reason": {
+              "type": "string"
+            },
+            "last_error": {
+              "type": "string"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "$name": "Certificate"
+        }
+      }
+    },
+    "issueCertificate": {
+      "id": "issueCertificate",
+      "method": "POST",
+      "path": "/certificates",
+      "tag": "certificates",
+      "summary": "签发或重新签发证书",
+      "description": "为 workspace 或其他受支持的证书对象启动签发。吊销后的证书必须通过此 operation 重新签发， 生成新的 certificateId；已有 ready 证书不会被隐式覆盖。",
+      "pathParams": [],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "kind",
+          "workspace_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workspace_wildcard",
+              "relay",
+              "agentserver"
+            ],
+            "$name": "CertificateKind"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "CertificateIssue"
+      },
+      "bodyRequired": true
+    },
+    "getCertificate": {
+      "id": "getCertificate",
+      "method": "GET",
+      "path": "/certificates/{certificateId}",
+      "tag": "certificates",
+      "summary": "查看证书生命周期状态",
+      "description": "",
+      "pathParams": [
+        "certificateId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "issuer"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workspace_wildcard",
+              "relay",
+              "agentserver"
+            ],
+            "$name": "CertificateKind"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "relay_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "subject": {
+            "type": "string",
+            "description": "证书的 DNS names 或控制面身份"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "renewing",
+              "expired",
+              "revoked",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateState"
+          },
+          "not_before": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "not_after": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "renew_before": {
+            "type": "string",
+            "description": "剩余多久进入自动续期窗口"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revocation_reason": {
+            "type": "string"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "Certificate"
+      }
+    },
+    "renewCertificate": {
+      "id": "renewCertificate",
+      "method": "POST",
+      "path": "/certificates/{certificateId}/renew",
+      "tag": "certificates",
+      "summary": "立即续期证书",
+      "description": "异步触发续期；证书进入 renewing，成功后回到 ready，失败保留旧证书并记录 last_error。 已 revoked 的证书不能自动续期，需先重新签发。",
+      "pathParams": [
+        "certificateId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "revokeCertificate": {
+      "id": "revokeCertificate",
+      "method": "POST",
+      "path": "/certificates/{certificateId}/revoke",
+      "tag": "certificates",
+      "summary": "吊销证书",
+      "description": "立即将证书标记为 revoked，停止向 relay 下发，并向配置的 certificate issuer 执行吊销（issuer 支持时）。 吊销不可逆；需要新证书时使用 issue/reissue 流程生成新的 certificateId。",
+      "pathParams": [
+        "certificateId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "$name": "CertificateRevoke"
+      },
+      "bodyRequired": false,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "issuer"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workspace_wildcard",
+              "relay",
+              "agentserver"
+            ],
+            "$name": "CertificateKind"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "relay_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "subject": {
+            "type": "string",
+            "description": "证书的 DNS names 或控制面身份"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "renewing",
+              "expired",
+              "revoked",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateState"
+          },
+          "not_before": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "not_after": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "renew_before": {
+            "type": "string",
+            "description": "剩余多久进入自动续期窗口"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revocation_reason": {
+            "type": "string"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "Certificate"
+      }
+    },
     "listWorkspaces": {
       "id": "listWorkspaces",
       "method": "GET",
       "path": "/workspaces",
       "tag": "workspaces",
       "summary": "列出 workspace",
-      "description": "",
+      "description": "返回 instance 中的全部 workspace。普通用户的 membership 列表使用普通用户 API 的 `GET /api/v1/workspaces`，不调用此 admin operation。",
       "pathParams": [],
       "query": [],
       "bodyRequired": false,
@@ -109,22 +3146,39 @@ export const meta: Meta = {
         "items": {
           "type": "object",
           "required": [
+            "id",
             "name",
+            "domain_id",
             "base_domain",
             "public_key",
-            "relay",
+            "status",
             "created_at"
           ],
           "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
             "name": {
               "type": "string",
               "description": "RFC 1123 label，小写，≤ 63 字符",
               "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
               "$name": "Label"
             },
+            "domain_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "创建 workspace 时选择的 instance domain。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
             "base_domain": {
               "type": "string",
-              "description": "基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`"
+              "readOnly": true,
+              "description": "agentserver 根据 workspace name 和 domain_id 生成的最终基础域名；服务域名是 `<服务名>.<base_domain>`。"
             },
             "public_key": {
               "type": "string",
@@ -132,81 +3186,29 @@ export const meta: Meta = {
               "pattern": "^[A-Za-z0-9_-]{43}$",
               "$name": "PublicKey"
             },
-            "uri": {
+            "status": {
               "type": "string",
-              "description": "名字形式 `agentd://<base_domain>/`，代表这把公钥"
-            },
-            "relay": {
-              "type": "string",
-              "description": "指派的 relay 名；MVP 每个 workspace 一个"
-            },
-            "dns_provider": {
-              "type": "string",
-              "readOnly": true,
-              "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
-            },
-            "publish_dns": {
-              "type": "boolean",
-              "description": "是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问"
-            },
-            "cert": {
-              "type": "object",
-              "required": [
-                "workspace",
-                "domain",
-                "state"
+              "enum": [
+                "provisioning",
+                "active",
+                "disabled",
+                "failed",
+                "deleting",
+                "deleted"
               ],
-              "properties": {
-                "workspace": {
-                  "type": "string",
-                  "description": "RFC 1123 label，小写，≤ 63 字符",
-                  "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-                  "$name": "Label"
-                },
-                "domain": {
-                  "type": "string",
-                  "description": "通配名，如 `*.home.agentsrv.example.com`"
-                },
-                "state": {
-                  "type": "string",
-                  "enum": [
-                    "pending",
-                    "ready",
-                    "renewing",
-                    "failed"
-                  ]
-                },
-                "not_before": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "not_after": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "issuer": {
-                  "type": "string",
-                  "description": "CA 名"
-                },
-                "last_error": {
-                  "type": "string",
-                  "description": "state 为 failed 时的 ACME 错误"
-                },
-                "relays": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "已持有该证书的 relay 名"
-                }
-              },
-              "$name": "Cert"
+              "$name": "WorkspaceStatus"
             },
             "members": {
-              "type": "integer"
+              "type": "integer",
+              "description": "workspace 用户成员数，来自 workspace_members"
             },
-            "members_online": {
-              "type": "integer"
+            "nodes": {
+              "type": "integer",
+              "description": "workspace 中 agentd 节点总数"
+            },
+            "nodes_online": {
+              "type": "integer",
+              "description": "当前与 relay 保持在线会话的 agentd 节点数"
             },
             "routes_version": {
               "type": "integer"
@@ -229,14 +3231,13 @@ export const meta: Meta = {
       "path": "/workspaces",
       "tag": "workspaces",
       "summary": "创建 workspace",
-      "description": "对应 `agentserver workspace create`。生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，\n完成前服务处于 cert_pending），用 workspace 密钥给被指派 relay 签发 relay 证书。\n",
+      "description": "生成 workspace 密钥对（公钥是成员唯一的信任根），申请通配证书（ACME DNS-01，完成前服务处于 cert_pending）。\nworkspace 不绑定 relay；agentd 收到 Welcome 的 relay 候选后自行选择最合适的 relay，并可在运行中切换。\n",
       "pathParams": [],
       "query": [],
       "body": {
         "type": "object",
         "required": [
-          "name",
-          "relay"
+          "name"
         ],
         "properties": {
           "name": {
@@ -245,17 +3246,12 @@ export const meta: Meta = {
             "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
             "$name": "Label"
           },
-          "base_domain": {
+          "domain_id": {
             "type": "string",
-            "description": "省略则用 `<name>.<agentserver 域名>`；通配证书由基础域名所在 zone 的 DNS 提供方签发"
-          },
-          "publish_dns": {
-            "type": "boolean",
-            "default": false
-          },
-          "relay": {
-            "type": "string",
-            "description": "指派的 relay 名"
+            "format": "uuid",
+            "description": "可选的 instance domain；省略使用 instance 的默认 domain。不能直接提交 base_domain。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
           }
         },
         "$name": "WorkspaceCreate"
@@ -264,22 +3260,39 @@ export const meta: Meta = {
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
+          "domain_id",
           "base_domain",
           "public_key",
-          "relay",
+          "status",
           "created_at"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
             "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
             "$name": "Label"
           },
+          "domain_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "创建 workspace 时选择的 instance domain。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "base_domain": {
             "type": "string",
-            "description": "基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`"
+            "readOnly": true,
+            "description": "agentserver 根据 workspace name 和 domain_id 生成的最终基础域名；服务域名是 `<服务名>.<base_domain>`。"
           },
           "public_key": {
             "type": "string",
@@ -287,81 +3300,29 @@ export const meta: Meta = {
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
           },
-          "uri": {
+          "status": {
             "type": "string",
-            "description": "名字形式 `agentd://<base_domain>/`，代表这把公钥"
-          },
-          "relay": {
-            "type": "string",
-            "description": "指派的 relay 名；MVP 每个 workspace 一个"
-          },
-          "dns_provider": {
-            "type": "string",
-            "readOnly": true,
-            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
-          },
-          "publish_dns": {
-            "type": "boolean",
-            "description": "是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问"
-          },
-          "cert": {
-            "type": "object",
-            "required": [
-              "workspace",
-              "domain",
-              "state"
+            "enum": [
+              "provisioning",
+              "active",
+              "disabled",
+              "failed",
+              "deleting",
+              "deleted"
             ],
-            "properties": {
-              "workspace": {
-                "type": "string",
-                "description": "RFC 1123 label，小写，≤ 63 字符",
-                "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-                "$name": "Label"
-              },
-              "domain": {
-                "type": "string",
-                "description": "通配名，如 `*.home.agentsrv.example.com`"
-              },
-              "state": {
-                "type": "string",
-                "enum": [
-                  "pending",
-                  "ready",
-                  "renewing",
-                  "failed"
-                ]
-              },
-              "not_before": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "not_after": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "issuer": {
-                "type": "string",
-                "description": "CA 名"
-              },
-              "last_error": {
-                "type": "string",
-                "description": "state 为 failed 时的 ACME 错误"
-              },
-              "relays": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "已持有该证书的 relay 名"
-              }
-            },
-            "$name": "Cert"
+            "$name": "WorkspaceStatus"
           },
           "members": {
-            "type": "integer"
+            "type": "integer",
+            "description": "workspace 用户成员数，来自 workspace_members"
           },
-          "members_online": {
-            "type": "integer"
+          "nodes": {
+            "type": "integer",
+            "description": "workspace 中 agentd 节点总数"
+          },
+          "nodes_online": {
+            "type": "integer",
+            "description": "当前与 relay 保持在线会话的 agentd 节点数"
           },
           "routes_version": {
             "type": "integer"
@@ -380,34 +3341,51 @@ export const meta: Meta = {
     "getWorkspace": {
       "id": "getWorkspace",
       "method": "GET",
-      "path": "/workspaces/{ws}",
+      "path": "/workspaces/{workspaceId}",
       "tag": "workspaces",
-      "summary": "查看 workspace（含公钥、证书状态、指派的 relay）",
-      "description": "`public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`；对应 `agentserver workspace key`。",
+      "summary": "查看 workspace（公钥、基础域名、状态和证书）",
+      "description": "`public_key` 就是加入链接里的 `key` 与成员配置里的 `workspace.public_key`。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "bodyRequired": false,
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
+          "domain_id",
           "base_domain",
           "public_key",
-          "relay",
+          "status",
           "created_at"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
             "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
             "$name": "Label"
           },
+          "domain_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "创建 workspace 时选择的 instance domain。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "base_domain": {
             "type": "string",
-            "description": "基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`"
+            "readOnly": true,
+            "description": "agentserver 根据 workspace name 和 domain_id 生成的最终基础域名；服务域名是 `<服务名>.<base_domain>`。"
           },
           "public_key": {
             "type": "string",
@@ -415,221 +3393,29 @@ export const meta: Meta = {
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
           },
-          "uri": {
+          "status": {
             "type": "string",
-            "description": "名字形式 `agentd://<base_domain>/`，代表这把公钥"
-          },
-          "relay": {
-            "type": "string",
-            "description": "指派的 relay 名；MVP 每个 workspace 一个"
-          },
-          "dns_provider": {
-            "type": "string",
-            "readOnly": true,
-            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
-          },
-          "publish_dns": {
-            "type": "boolean",
-            "description": "是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问"
-          },
-          "cert": {
-            "type": "object",
-            "required": [
-              "workspace",
-              "domain",
-              "state"
+            "enum": [
+              "provisioning",
+              "active",
+              "disabled",
+              "failed",
+              "deleting",
+              "deleted"
             ],
-            "properties": {
-              "workspace": {
-                "type": "string",
-                "description": "RFC 1123 label，小写，≤ 63 字符",
-                "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-                "$name": "Label"
-              },
-              "domain": {
-                "type": "string",
-                "description": "通配名，如 `*.home.agentsrv.example.com`"
-              },
-              "state": {
-                "type": "string",
-                "enum": [
-                  "pending",
-                  "ready",
-                  "renewing",
-                  "failed"
-                ]
-              },
-              "not_before": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "not_after": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "issuer": {
-                "type": "string",
-                "description": "CA 名"
-              },
-              "last_error": {
-                "type": "string",
-                "description": "state 为 failed 时的 ACME 错误"
-              },
-              "relays": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "已持有该证书的 relay 名"
-              }
-            },
-            "$name": "Cert"
+            "$name": "WorkspaceStatus"
           },
           "members": {
-            "type": "integer"
+            "type": "integer",
+            "description": "workspace 用户成员数，来自 workspace_members"
           },
-          "members_online": {
-            "type": "integer"
+          "nodes": {
+            "type": "integer",
+            "description": "workspace 中 agentd 节点总数"
           },
-          "routes_version": {
-            "type": "integer"
-          },
-          "directory_version": {
-            "type": "integer"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "$name": "Workspace"
-      }
-    },
-    "updateWorkspace": {
-      "id": "updateWorkspace",
-      "method": "PATCH",
-      "path": "/workspaces/{ws}",
-      "tag": "workspaces",
-      "summary": "修改 relay 指派、公网 DNS 发布或 DNS 凭据",
-      "description": "对应 `agentserver workspace set-relay`。改派后成员收到签名的 `Update.assigned_relay`，关闭当前会话、连新 relay；新 relay 先拿到该 workspace 的 relay 证书与服务证书。",
-      "pathParams": [
-        "ws"
-      ],
-      "query": [],
-      "body": {
-        "type": "object",
-        "properties": {
-          "relay": {
-            "type": "string"
-          },
-          "publish_dns": {
-            "type": "boolean"
-          }
-        },
-        "$name": "WorkspacePatch"
-      },
-      "bodyRequired": true,
-      "response": {
-        "type": "object",
-        "required": [
-          "name",
-          "base_domain",
-          "public_key",
-          "relay",
-          "created_at"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "RFC 1123 label，小写，≤ 63 字符",
-            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-            "$name": "Label"
-          },
-          "base_domain": {
-            "type": "string",
-            "description": "基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`"
-          },
-          "public_key": {
-            "type": "string",
-            "description": "workspace 公钥，成员唯一钉住的信任根；加入链接的 `key`",
-            "pattern": "^[A-Za-z0-9_-]{43}$",
-            "$name": "PublicKey"
-          },
-          "uri": {
-            "type": "string",
-            "description": "名字形式 `agentd://<base_domain>/`，代表这把公钥"
-          },
-          "relay": {
-            "type": "string",
-            "description": "指派的 relay 名；MVP 每个 workspace 一个"
-          },
-          "dns_provider": {
-            "type": "string",
-            "readOnly": true,
-            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
-          },
-          "publish_dns": {
-            "type": "boolean",
-            "description": "是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问"
-          },
-          "cert": {
-            "type": "object",
-            "required": [
-              "workspace",
-              "domain",
-              "state"
-            ],
-            "properties": {
-              "workspace": {
-                "type": "string",
-                "description": "RFC 1123 label，小写，≤ 63 字符",
-                "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-                "$name": "Label"
-              },
-              "domain": {
-                "type": "string",
-                "description": "通配名，如 `*.home.agentsrv.example.com`"
-              },
-              "state": {
-                "type": "string",
-                "enum": [
-                  "pending",
-                  "ready",
-                  "renewing",
-                  "failed"
-                ]
-              },
-              "not_before": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "not_after": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "issuer": {
-                "type": "string",
-                "description": "CA 名"
-              },
-              "last_error": {
-                "type": "string",
-                "description": "state 为 failed 时的 ACME 错误"
-              },
-              "relays": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "已持有该证书的 relay 名"
-              }
-            },
-            "$name": "Cert"
-          },
-          "members": {
-            "type": "integer"
-          },
-          "members_online": {
-            "type": "integer"
+          "nodes_online": {
+            "type": "integer",
+            "description": "当前与 relay 保持在线会话的 agentd 节点数"
           },
           "routes_version": {
             "type": "integer"
@@ -648,12 +3434,12 @@ export const meta: Meta = {
     "deleteWorkspace": {
       "id": "deleteWorkspace",
       "method": "DELETE",
-      "path": "/workspaces/{ws}",
+      "path": "/workspaces/{workspaceId}",
       "tag": "workspaces",
       "summary": "删除 workspace",
-      "description": "向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书与 DNS 记录；成员的密钥文件不受影响。",
+      "description": "向全部成员发 `Notice{REMOVED}`，吊销成员证书，通知 relay 关闭会话，删除证书；成员的密钥文件不受影响。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [
         {
@@ -670,12 +3456,12 @@ export const meta: Meta = {
     "listTokens": {
       "id": "listTokens",
       "method": "GET",
-      "path": "/workspaces/{ws}/tokens",
+      "path": "/workspaces/{workspaceId}/tokens",
       "tag": "tokens",
       "summary": "列出未使用的加入令牌",
-      "description": "对应 `agentserver token list`。服务端只存令牌的 SHA-256，列表里没有令牌本身。",
+      "description": "服务端只存令牌的 SHA-256，列表里没有令牌本身。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "bodyRequired": false,
@@ -686,13 +3472,17 @@ export const meta: Meta = {
           "required": [
             "id",
             "roles",
+            "status",
             "expires_at",
             "created_at"
           ],
           "properties": {
             "id": {
               "type": "string",
-              "description": "令牌记录的标识，不是令牌本身"
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
             },
             "name": {
               "type": "string",
@@ -722,6 +3512,17 @@ export const meta: Meta = {
             "created_at": {
               "type": "string",
               "format": "date-time"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "used",
+                "expired",
+                "revoked",
+                "deleted"
+              ],
+              "$name": "JoinTokenStatus"
             }
           },
           "$name": "Token"
@@ -731,12 +3532,12 @@ export const meta: Meta = {
     "createToken": {
       "id": "createToken",
       "method": "POST",
-      "path": "/workspaces/{ws}/tokens",
+      "path": "/workspaces/{workspaceId}/tokens",
       "tag": "tokens",
       "summary": "签发加入令牌并返回加入链接",
-      "description": "对应 `agentserver token create`。令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。\n返回的 `join_link` 形如 `agentd://home.agentsrv.example.com/dorm?relay=<被指派 relay 的 URL>&key=<workspace 公钥>&token=<令牌>`，\n令牌明文只在这次响应里出现一次。\n",
+      "description": "令牌 16 字节随机数、一次性、默认 24 小时；绑定 workspace、可选的实例名与角色上限。\nagentserver 只返回一次性的 `join_token`。agentd 拿到 token 后先向 machine join API 查询 relay candidates，\n再选择一个 relay 提交 token；创建 token 的响应不携带 candidates，也不绑定单个 relay。\n令牌明文只在这次响应里出现一次。\n",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "body": {
@@ -776,7 +3577,10 @@ export const meta: Meta = {
         "properties": {
           "id": {
             "type": "string",
-            "description": "令牌记录的标识，不是令牌本身"
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
           },
           "name": {
             "type": "string",
@@ -807,18 +3611,35 @@ export const meta: Meta = {
             "type": "string",
             "format": "date-time"
           },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "used",
+              "expired",
+              "revoked",
+              "deleted"
+            ],
+            "$name": "JoinTokenStatus"
+          },
+          "join_token": {
+            "type": "string",
+            "description": "一次性 join token；只返回这一次，agentd 用它向 machine join API 查询 candidates 并完成加入。"
+          },
           "join_link": {
             "type": "string",
-            "description": "完整的加入链接，带 relay、key（workspace 公钥）、token；只返回这一次",
-            "example": "agentd://home.agentsrv.example.com/dorm?relay=https://relay-hk.agentsrv.example.com&key=Rt7aB…&token=Qm9…"
+            "deprecated": true,
+            "description": "完整的加入链接，带 bootstrap relay、key（workspace 公钥）、token；只返回这一次",
+            "example": "agentd://home.agentsrv.example.com/dorm?key=Rt7aB…&token=Qm9…"
           }
         },
         "required": [
           "id",
           "roles",
+          "status",
           "expires_at",
           "created_at",
-          "join_link"
+          "join_token"
         ],
         "$name": "TokenCreated"
       }
@@ -826,13 +3647,193 @@ export const meta: Meta = {
     "revokeToken": {
       "id": "revokeToken",
       "method": "DELETE",
-      "path": "/workspaces/{ws}/tokens/{tokenId}",
+      "path": "/workspaces/{workspaceId}/tokens/{tokenId}",
       "tag": "tokens",
       "summary": "作废未使用的令牌",
-      "description": "对应 `agentserver token revoke`。",
+      "description": "",
       "pathParams": [
-        "ws",
+        "workspaceId",
         "tokenId"
+      ],
+      "query": [],
+      "bodyRequired": false
+    },
+    "listWorkspaceMembers": {
+      "id": "listWorkspaceMembers",
+      "method": "GET",
+      "path": "/workspaces/{workspaceId}/members",
+      "tag": "members",
+      "summary": "列出 workspace 成员",
+      "description": "",
+      "pathParams": [
+        "workspaceId"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "user_id",
+            "role",
+            "created_at",
+            "updated_at"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "user_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "owner",
+                "maintainer",
+                "member"
+              ],
+              "description": "workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。",
+              "$name": "WorkspaceRole"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "suspended",
+                "revoked",
+                "deleted"
+              ],
+              "$name": "WorkspaceMemberStatus"
+            }
+          },
+          "$name": "WorkspaceMember"
+        }
+      }
+    },
+    "upsertWorkspaceMember": {
+      "id": "upsertWorkspaceMember",
+      "method": "POST",
+      "path": "/workspaces/{workspaceId}/members",
+      "tag": "members",
+      "summary": "添加或调整 用户角色",
+      "description": "",
+      "pathParams": [
+        "workspaceId"
+      ],
+      "query": [],
+      "body": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "role"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "maintainer",
+              "member"
+            ],
+            "description": "workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。",
+            "$name": "WorkspaceRole"
+          }
+        },
+        "$name": "WorkspaceMemberWrite"
+      },
+      "bodyRequired": true,
+      "response": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "role",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "maintainer",
+              "member"
+            ],
+            "description": "workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。",
+            "$name": "WorkspaceRole"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "revoked",
+              "deleted"
+            ],
+            "$name": "WorkspaceMemberStatus"
+          }
+        },
+        "$name": "WorkspaceMember"
+      }
+    },
+    "removeWorkspaceMember": {
+      "id": "removeWorkspaceMember",
+      "method": "DELETE",
+      "path": "/workspaces/{workspaceId}/members/{memberId}",
+      "tag": "members",
+      "summary": "移除 workspace 成员",
+      "description": "",
+      "pathParams": [
+        "workspaceId",
+        "memberId"
       ],
       "query": [],
       "bodyRequired": false
@@ -840,12 +3841,12 @@ export const meta: Meta = {
     "listNodes": {
       "id": "listNodes",
       "method": "GET",
-      "path": "/workspaces/{ws}/nodes",
+      "path": "/workspaces/{workspaceId}/nodes",
       "tag": "nodes",
       "summary": "列出成员",
-      "description": "对应 `agentserver node list`。在线状态与所连 relay 来自 relay 的 `RelayPresence`。",
+      "description": "在线状态与所连 relay 来自 relay 的 `RelayPresence`。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [
         {
@@ -862,13 +3863,22 @@ export const meta: Meta = {
         "items": {
           "type": "object",
           "required": [
+            "id",
             "name",
             "public_key",
             "role_caps",
+            "status",
             "online",
             "joined_at"
           ],
           "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
             "name": {
               "type": "string",
               "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -880,14 +3890,6 @@ export const meta: Meta = {
               "description": "Ed25519 公钥，base64url 无填充，43 字符",
               "pattern": "^[A-Za-z0-9_-]{43}$",
               "$name": "PublicKey"
-            },
-            "uri_key": {
-              "type": "string",
-              "description": "`agentd://<公钥>`"
-            },
-            "uri_name": {
-              "type": "string",
-              "description": "`agentd://<base_domain>/<name>`"
             },
             "role_caps": {
               "type": "array",
@@ -906,9 +3908,24 @@ export const meta: Meta = {
             "online": {
               "type": "boolean"
             },
-            "relay": {
+            "status": {
               "type": "string",
-              "description": "当前所连 relay 名；离线时为空"
+              "enum": [
+                "joining",
+                "active",
+                "disabled",
+                "failed",
+                "removed",
+                "deleted"
+              ],
+              "$name": "NodeStatus"
+            },
+            "relay_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "当前所连 relay 实体 UUID；离线时为空",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
             },
             "last_seen": {
               "type": "string",
@@ -981,26 +3998,35 @@ export const meta: Meta = {
     "getNode": {
       "id": "getNode",
       "method": "GET",
-      "path": "/workspaces/{ws}/nodes/{node}",
+      "path": "/workspaces/{workspaceId}/nodes/{nodeId}",
       "tag": "nodes",
       "summary": "查看成员",
       "description": "",
       "pathParams": [
-        "ws",
-        "node"
+        "workspaceId",
+        "nodeId"
       ],
       "query": [],
       "bodyRequired": false,
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
           "role_caps",
+          "status",
           "online",
           "joined_at"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -1012,14 +4038,6 @@ export const meta: Meta = {
             "description": "Ed25519 公钥，base64url 无填充，43 字符",
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
-          },
-          "uri_key": {
-            "type": "string",
-            "description": "`agentd://<公钥>`"
-          },
-          "uri_name": {
-            "type": "string",
-            "description": "`agentd://<base_domain>/<name>`"
           },
           "role_caps": {
             "type": "array",
@@ -1038,9 +4056,24 @@ export const meta: Meta = {
           "online": {
             "type": "boolean"
           },
-          "relay": {
+          "status": {
             "type": "string",
-            "description": "当前所连 relay 名；离线时为空"
+            "enum": [
+              "joining",
+              "active",
+              "disabled",
+              "failed",
+              "removed",
+              "deleted"
+            ],
+            "$name": "NodeStatus"
+          },
+          "relay_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "当前所连 relay 实体 UUID；离线时为空",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
           },
           "last_seen": {
             "type": "string",
@@ -1112,13 +4145,13 @@ export const meta: Meta = {
     "updateNode": {
       "id": "updateNode",
       "method": "PATCH",
-      "path": "/workspaces/{ws}/nodes/{node}",
+      "path": "/workspaces/{workspaceId}/nodes/{nodeId}",
       "tag": "nodes",
       "summary": "改名或调整角色上限",
-      "description": "对应 `agentserver node rename` 与 `node set-roles`。改名只改目录，其他节点规则里写的是公钥，不受影响；\n调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。\n",
+      "description": "改名只改目录，其他节点规则里写的是公钥，不受影响；\n调整角色上限后超出上限的 Advertise 与开流立即被拒。节点收到签名的 `Notice{RENAMED / ROLES_CHANGED}`。\n",
       "pathParams": [
-        "ws",
-        "node"
+        "workspaceId",
+        "nodeId"
       ],
       "query": [],
       "body": {
@@ -1151,13 +4184,22 @@ export const meta: Meta = {
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
           "role_caps",
+          "status",
           "online",
           "joined_at"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -1169,14 +4211,6 @@ export const meta: Meta = {
             "description": "Ed25519 公钥，base64url 无填充，43 字符",
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
-          },
-          "uri_key": {
-            "type": "string",
-            "description": "`agentd://<公钥>`"
-          },
-          "uri_name": {
-            "type": "string",
-            "description": "`agentd://<base_domain>/<name>`"
           },
           "role_caps": {
             "type": "array",
@@ -1195,9 +4229,24 @@ export const meta: Meta = {
           "online": {
             "type": "boolean"
           },
-          "relay": {
+          "status": {
             "type": "string",
-            "description": "当前所连 relay 名；离线时为空"
+            "enum": [
+              "joining",
+              "active",
+              "disabled",
+              "failed",
+              "removed",
+              "deleted"
+            ],
+            "$name": "NodeStatus"
+          },
+          "relay_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "当前所连 relay 实体 UUID；离线时为空",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
           },
           "last_seen": {
             "type": "string",
@@ -1269,13 +4318,13 @@ export const meta: Meta = {
     "removeNode": {
       "id": "removeNode",
       "method": "DELETE",
-      "path": "/workspaces/{ws}/nodes/{node}",
+      "path": "/workspaces/{workspaceId}/nodes/{nodeId}",
       "tag": "nodes",
       "summary": "移除成员",
-      "description": "对应 `agentserver node remove`。目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，\n向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。\n换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。\n",
+      "description": "目录移除并推送 `Update.removed_members`，停止续发成员证书并推吊销，\n向 relay 推 `RelayInvalidate{removed}` 关闭其会话。其他节点规则里写的这把公钥仍在，但目录里查不到，`agentd status` 会告警。\n换设备就是 remove 后用同一个名字重新签令牌、在新设备 join。\n",
       "pathParams": [
-        "ws",
-        "node"
+        "workspaceId",
+        "nodeId"
       ],
       "query": [],
       "bodyRequired": false
@@ -1283,12 +4332,12 @@ export const meta: Meta = {
     "listGroups": {
       "id": "listGroups",
       "method": "GET",
-      "path": "/workspaces/{ws}/groups",
+      "path": "/workspaces/{workspaceId}/groups",
       "tag": "groups",
       "summary": "列出组",
       "description": "",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "bodyRequired": false,
@@ -1297,11 +4346,20 @@ export const meta: Meta = {
         "items": {
           "type": "object",
           "required": [
+            "id",
             "name",
             "public_key",
+            "status",
             "members"
           ],
           "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
             "name": {
               "type": "string",
               "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -1310,9 +4368,18 @@ export const meta: Meta = {
             },
             "public_key": {
               "type": "string",
-              "description": "组公钥；节点规则里写它，持有该组成员证书的节点即命中",
+              "description": "组公钥；节点规则里写它，持有该组 membership 证书的 node 即命中",
               "pattern": "^[A-Za-z0-9_-]{43}$",
               "$name": "PublicKey"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "disabled",
+                "deleted"
+              ],
+              "$name": "GroupStatus"
             },
             "uri": {
               "type": "string",
@@ -1335,12 +4402,12 @@ export const meta: Meta = {
     "createGroup": {
       "id": "createGroup",
       "method": "POST",
-      "path": "/workspaces/{ws}/groups",
+      "path": "/workspaces/{workspaceId}/groups",
       "tag": "groups",
       "summary": "创建组",
-      "description": "对应 `agentserver group create`。生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。",
+      "description": "生成组密钥对；返回的 `public_key` 可以直接写进节点规则的 `public_key`，名字形式是 `agentd://<ws 域名>/group/<name>`。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "body": {
@@ -1371,11 +4438,20 @@ export const meta: Meta = {
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
+          "status",
           "members"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -1384,9 +4460,18 @@ export const meta: Meta = {
           },
           "public_key": {
             "type": "string",
-            "description": "组公钥；节点规则里写它，持有该组成员证书的节点即命中",
+            "description": "组公钥；节点规则里写它，持有该组 membership 证书的 node 即命中",
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "GroupStatus"
           },
           "uri": {
             "type": "string",
@@ -1408,24 +4493,33 @@ export const meta: Meta = {
     "getGroup": {
       "id": "getGroup",
       "method": "GET",
-      "path": "/workspaces/{ws}/groups/{group}",
+      "path": "/workspaces/{workspaceId}/groups/{groupId}",
       "tag": "groups",
       "summary": "查看组",
       "description": "",
       "pathParams": [
-        "ws",
-        "group"
+        "workspaceId",
+        "groupId"
       ],
       "query": [],
       "bodyRequired": false,
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
+          "status",
           "members"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -1434,9 +4528,18 @@ export const meta: Meta = {
           },
           "public_key": {
             "type": "string",
-            "description": "组公钥；节点规则里写它，持有该组成员证书的节点即命中",
+            "description": "组公钥；节点规则里写它，持有该组 membership 证书的 node 即命中",
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "GroupStatus"
           },
           "uri": {
             "type": "string",
@@ -1458,43 +4561,43 @@ export const meta: Meta = {
     "deleteGroup": {
       "id": "deleteGroup",
       "method": "DELETE",
-      "path": "/workspaces/{ws}/groups/{group}",
+      "path": "/workspaces/{workspaceId}/groups/{groupId}",
       "tag": "groups",
       "summary": "删除组",
-      "description": "对应 `agentserver group delete`。向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。",
+      "description": "向全部节点推送该组公钥的吊销（issuer 维度），引用它的中央策略条目失效并重渲染。",
       "pathParams": [
-        "ws",
-        "group"
+        "workspaceId",
+        "groupId"
       ],
       "query": [],
       "bodyRequired": false
     },
-    "addGroupMember": {
-      "id": "addGroupMember",
+    "addGroupNode": {
+      "id": "addGroupNode",
       "method": "PUT",
-      "path": "/workspaces/{ws}/groups/{group}/members/{node}",
+      "path": "/workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId}",
       "tag": "groups",
-      "summary": "把成员加入组",
-      "description": "对应 `agentserver group add`。给该成员签发组成员证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。",
+      "summary": "把 node 加入组",
+      "description": "给该 node 签发 group-node membership 证书（1 小时，过半续发），经签名的 `Update.memberships` 送达；不触发策略重渲染，因为规则里只有组公钥。",
       "pathParams": [
-        "ws",
-        "group",
-        "node"
+        "workspaceId",
+        "groupId",
+        "nodeId"
       ],
       "query": [],
       "bodyRequired": false
     },
-    "removeGroupMember": {
-      "id": "removeGroupMember",
+    "removeGroupNode": {
+      "id": "removeGroupNode",
       "method": "DELETE",
-      "path": "/workspaces/{ws}/groups/{group}/members/{node}",
+      "path": "/workspaces/{workspaceId}/groups/{groupId}/nodes/{nodeId}",
       "tag": "groups",
-      "summary": "把成员移出组",
-      "description": "对应 `agentserver group remove`。停止续发并推送吊销记录 `(member, issuer, until)`。",
+      "summary": "把 node 移出组",
+      "description": "停止续发并推送吊销记录 `(member, issuer, until)`。",
       "pathParams": [
-        "ws",
-        "group",
-        "node"
+        "workspaceId",
+        "groupId",
+        "nodeId"
       ],
       "query": [],
       "bodyRequired": false
@@ -1502,12 +4605,12 @@ export const meta: Meta = {
     "getRouteTable": {
       "id": "getRouteTable",
       "method": "GET",
-      "path": "/workspaces/{ws}/routes",
+      "path": "/workspaces/{workspaceId}/routes",
       "tag": "routes",
       "summary": "查看路由表",
       "description": "路由表只在 agentserver 上；节点收到的是按节点渲染、去掉目的的分流表。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "bodyRequired": false,
@@ -1532,11 +4635,25 @@ export const meta: Meta = {
                 "from",
                 "proto",
                 "domains",
-                "to"
+                "to",
+                "status"
               ],
               "properties": {
                 "id": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "disabled",
+                    "deleted"
+                  ],
+                  "$name": "RouteStatus"
                 },
                 "from": {
                   "type": "string",
@@ -1610,12 +4727,12 @@ export const meta: Meta = {
     "addRoute": {
       "id": "addRoute",
       "method": "POST",
-      "path": "/workspaces/{ws}/routes",
+      "path": "/workspaces/{workspaceId}/routes",
       "tag": "routes",
       "summary": "追加一条路由",
-      "description": "对应 `agentserver route add`。追加到末尾；同等具体时书写顺序靠前的优先。",
+      "description": "追加到末尾；同等具体时书写顺序靠前的优先。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "body": {
@@ -1688,11 +4805,25 @@ export const meta: Meta = {
           "from",
           "proto",
           "domains",
-          "to"
+          "to",
+          "status"
         ],
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "RouteStatus"
           },
           "from": {
             "type": "string",
@@ -1754,12 +4885,12 @@ export const meta: Meta = {
     "replaceRouteTable": {
       "id": "replaceRouteTable",
       "method": "PUT",
-      "path": "/workspaces/{ws}/routes",
+      "path": "/workspaces/{workspaceId}/routes",
       "tag": "routes",
       "summary": "整体替换路由表",
       "description": "版本号加一，重新渲染并推送所有 ingress 节点的分流表，向 relay 推 `RelayInvalidate`。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "body": {
@@ -1866,11 +4997,25 @@ export const meta: Meta = {
                 "from",
                 "proto",
                 "domains",
-                "to"
+                "to",
+                "status"
               ],
               "properties": {
                 "id": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                  "$name": "Uuid"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "disabled",
+                    "deleted"
+                  ],
+                  "$name": "RouteStatus"
                 },
                 "from": {
                   "type": "string",
@@ -1944,12 +5089,12 @@ export const meta: Meta = {
     "deleteRoute": {
       "id": "deleteRoute",
       "method": "DELETE",
-      "path": "/workspaces/{ws}/routes/{routeId}",
+      "path": "/workspaces/{workspaceId}/routes/{routeId}",
       "tag": "routes",
       "summary": "删除一条路由",
-      "description": "对应 `agentserver route remove`。",
+      "description": "",
       "pathParams": [
-        "ws",
+        "workspaceId",
         "routeId"
       ],
       "query": [],
@@ -1958,12 +5103,12 @@ export const meta: Meta = {
     "listPolicies": {
       "id": "listPolicies",
       "method": "GET",
-      "path": "/workspaces/{ws}/policies",
+      "path": "/workspaces/{workspaceId}/policies",
       "tag": "policies",
       "summary": "列出中央策略语句",
       "description": "",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "bodyRequired": false,
@@ -2190,12 +5335,26 @@ export const meta: Meta = {
               "type": "string"
             },
             "id": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "disabled",
+                "deleted"
+              ],
+              "$name": "PolicyStatus"
             }
           },
           "required": [
             "subjects",
-            "id"
+            "id",
+            "status"
           ],
           "$name": "PolicyStatement",
           "description": "一条中央策略语句：若干主体对若干 target 的 allow 与 deny。渲染时每个主体换成公钥（`public` 换成 `*`），按目的角色拆成 (public_key, action, target) 规则"
@@ -2205,12 +5364,12 @@ export const meta: Meta = {
     "addPolicy": {
       "id": "addPolicy",
       "method": "POST",
-      "path": "/workspaces/{ws}/policies",
+      "path": "/workspaces/{workspaceId}/policies",
       "tag": "policies",
       "summary": "追加一条策略语句",
       "description": "",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "body": {
@@ -2689,12 +5848,26 @@ export const meta: Meta = {
             "type": "string"
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "PolicyStatus"
           }
         },
         "required": [
           "subjects",
-          "id"
+          "id",
+          "status"
         ],
         "$name": "PolicyStatement",
         "description": "一条中央策略语句：若干主体对若干 target 的 allow 与 deny。渲染时每个主体换成公钥（`public` 换成 `*`），按目的角色拆成 (public_key, action, target) 规则"
@@ -2703,12 +5876,12 @@ export const meta: Meta = {
     "replacePolicies": {
       "id": "replacePolicies",
       "method": "PUT",
-      "path": "/workspaces/{ws}/policies",
+      "path": "/workspaces/{workspaceId}/policies",
       "tag": "policies",
       "summary": "整体替换中央策略",
       "description": "按设计文档 6.8 重新渲染：每个 `policy_source: server` 的提供侧角色得到一份 (public_key, action, target) 列表，经签名的 `PolicyUpdate` 下发并等待 `PolicyApplied`；向 relay 推 `RelayInvalidate`。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "body": {
@@ -3192,12 +6365,26 @@ export const meta: Meta = {
               "type": "string"
             },
             "id": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "disabled",
+                "deleted"
+              ],
+              "$name": "PolicyStatus"
             }
           },
           "required": [
             "subjects",
-            "id"
+            "id",
+            "status"
           ],
           "$name": "PolicyStatement",
           "description": "一条中央策略语句：若干主体对若干 target 的 allow 与 deny。渲染时每个主体换成公钥（`public` 换成 `*`），按目的角色拆成 (public_key, action, target) 规则"
@@ -3207,12 +6394,12 @@ export const meta: Meta = {
     "deletePolicy": {
       "id": "deletePolicy",
       "method": "DELETE",
-      "path": "/workspaces/{ws}/policies/{policyId}",
+      "path": "/workspaces/{workspaceId}/policies/{policyId}",
       "tag": "policies",
       "summary": "删除一条策略语句",
       "description": "",
       "pathParams": [
-        "ws",
+        "workspaceId",
         "policyId"
       ],
       "query": [],
@@ -3221,12 +6408,12 @@ export const meta: Meta = {
     "listServices": {
       "id": "listServices",
       "method": "GET",
-      "path": "/workspaces/{ws}/services",
+      "path": "/workspaces/{workspaceId}/services",
       "tag": "services",
       "summary": "列出已注册的服务",
       "description": "服务由节点在 `Advertise` 里注册，这里只读；状态 `cert_pending` 表示 workspace 的通配证书还没签下来。",
       "pathParams": [
-        "ws"
+        "workspaceId"
       ],
       "query": [],
       "bodyRequired": false,
@@ -3235,13 +6422,33 @@ export const meta: Meta = {
         "items": {
           "type": "object",
           "required": [
+            "id",
             "name",
             "fqdn",
             "proto",
             "node",
-            "state"
+            "state",
+            "status"
           ],
           "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "ready",
+                "failed",
+                "disabled",
+                "deleted"
+              ],
+              "$name": "ServiceStatus"
+            },
             "name": {
               "type": "string",
               "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -3258,11 +6465,12 @@ export const meta: Meta = {
                 "ssh"
               ]
             },
-            "node": {
+            "node_id": {
               "type": "string",
-              "description": "所在节点",
-              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-              "$name": "Label"
+              "format": "uuid",
+              "description": "所在节点实体 UUID",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
             },
             "node_online": {
               "type": "boolean"
@@ -3287,95 +6495,13 @@ export const meta: Meta = {
         }
       }
     },
-    "listCerts": {
-      "id": "listCerts",
-      "method": "GET",
-      "path": "/workspaces/{ws}/certs",
-      "tag": "certs",
-      "summary": "查看通配证书",
-      "description": "对应 `agentserver cert list`。只有公开信息；私钥加密存放，只经 relay 会话下发到 relay 内存。",
-      "pathParams": [
-        "ws"
-      ],
-      "query": [],
-      "bodyRequired": false,
-      "response": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": [
-            "workspace",
-            "domain",
-            "state"
-          ],
-          "properties": {
-            "workspace": {
-              "type": "string",
-              "description": "RFC 1123 label，小写，≤ 63 字符",
-              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-              "$name": "Label"
-            },
-            "domain": {
-              "type": "string",
-              "description": "通配名，如 `*.home.agentsrv.example.com`"
-            },
-            "state": {
-              "type": "string",
-              "enum": [
-                "pending",
-                "ready",
-                "renewing",
-                "failed"
-              ]
-            },
-            "not_before": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "not_after": {
-              "type": "string",
-              "format": "date-time"
-            },
-            "issuer": {
-              "type": "string",
-              "description": "CA 名"
-            },
-            "last_error": {
-              "type": "string",
-              "description": "state 为 failed 时的 ACME 错误"
-            },
-            "relays": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "已持有该证书的 relay 名"
-            }
-          },
-          "$name": "Cert"
-        }
-      }
-    },
-    "renewCert": {
-      "id": "renewCert",
-      "method": "POST",
-      "path": "/workspaces/{ws}/certs/renew",
-      "tag": "certs",
-      "summary": "立即续期",
-      "description": "对应 `agentserver cert renew`。异步执行，返回当时的证书状态；完成后推 `WorkspaceCerts` 给 relay。",
-      "pathParams": [
-        "ws"
-      ],
-      "query": [],
-      "bodyRequired": false
-    },
     "listRelays": {
       "id": "listRelays",
       "method": "GET",
       "path": "/relays",
       "tag": "relays",
       "summary": "列出 relay",
-      "description": "对应 `agentserver relay list`。`connected` 表示 relay 会话当前在线。",
+      "description": "`connected` 表示 relay 会话当前在线。",
       "pathParams": [],
       "query": [],
       "bodyRequired": false,
@@ -3384,12 +6510,33 @@ export const meta: Meta = {
         "items": {
           "type": "object",
           "required": [
+            "id",
             "name",
             "public_key",
             "url",
+            "status",
             "connected"
           ],
           "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "registering",
+                "active",
+                "draining",
+                "disabled",
+                "failed",
+                "deleted"
+              ],
+              "$name": "RelayStatus"
+            },
             "name": {
               "type": "string",
               "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -3430,16 +6577,6 @@ export const meta: Meta = {
               "type": "string",
               "format": "date-time"
             },
-            "workspaces": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "description": "RFC 1123 label，小写，≤ 63 字符",
-                "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-                "$name": "Label"
-              },
-              "description": "指派给它的 workspace"
-            },
             "nodes_online": {
               "type": "integer"
             }
@@ -3454,7 +6591,7 @@ export const meta: Meta = {
       "path": "/relays",
       "tag": "relays",
       "summary": "注册 relay",
-      "description": "对应 `agentserver relay add`。登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。\nrelay 证书不在这里签：把它指派给某个 workspace（`PATCH /workspaces/{ws}`）时，用该 workspace 的密钥为它签一张，经 relay 会话推送。\n",
+      "description": "登记 relay 的公钥、transport 端点与 STUN 地址；之后该 relay 用这把密钥建立 relay 会话。\nrelay 证书按需由 workspace 密钥签发；agentd 选择 relay 后，relay 通过控制会话取得对应证书。\n",
       "pathParams": [],
       "query": [],
       "body": {
@@ -3497,12 +6634,33 @@ export const meta: Meta = {
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
           "url",
+          "status",
           "connected"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "registering",
+              "active",
+              "draining",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "RelayStatus"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -3542,16 +6700,6 @@ export const meta: Meta = {
           "connected_since": {
             "type": "string",
             "format": "date-time"
-          },
-          "workspaces": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "description": "RFC 1123 label，小写，≤ 63 字符",
-              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-              "$name": "Label"
-            },
-            "description": "指派给它的 workspace"
           },
           "nodes_online": {
             "type": "integer"
@@ -3576,12 +6724,28 @@ export const meta: Meta = {
           "type": "object",
           "required": [
             "id",
+            "status",
             "expires_at",
             "created_at"
           ],
           "properties": {
             "id": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "active",
+                "used",
+                "expired",
+                "revoked",
+                "deleted"
+              ],
+              "$name": "RelayTokenStatus"
             },
             "expires_at": {
               "type": "string",
@@ -3602,7 +6766,7 @@ export const meta: Meta = {
       "path": "/relays/tokens",
       "tag": "relays",
       "summary": "签发 relay 注册令牌",
-      "description": "对应 `agentserver relay token create`。relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。",
+      "description": "relay 首次连接时在握手载荷里带上这个令牌和自己的名字、URL、STUN 地址， agentserver 用它的公钥自动登记（不必手工复制公钥）。令牌一次性，明文只在这次响应里出现。 AgentserverConfiguration 的 `relay_join_token_env` 还可以给出一个长期有效的引导令牌（helm chart 用它）。",
       "pathParams": [],
       "query": [],
       "body": {
@@ -3620,7 +6784,22 @@ export const meta: Meta = {
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "used",
+              "expired",
+              "revoked",
+              "deleted"
+            ],
+            "$name": "RelayTokenStatus"
           },
           "expires_at": {
             "type": "string",
@@ -3637,6 +6816,7 @@ export const meta: Meta = {
         },
         "required": [
           "id",
+          "status",
           "expires_at",
           "created_at",
           "token"
@@ -3660,24 +6840,45 @@ export const meta: Meta = {
     "getRelay": {
       "id": "getRelay",
       "method": "GET",
-      "path": "/relays/{relay}",
+      "path": "/relays/{relayId}",
       "tag": "relays",
       "summary": "查看 relay",
       "description": "",
       "pathParams": [
-        "relay"
+        "relayId"
       ],
       "query": [],
       "bodyRequired": false,
       "response": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
           "url",
+          "status",
           "connected"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "registering",
+              "active",
+              "draining",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "RelayStatus"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -3718,16 +6919,6 @@ export const meta: Meta = {
             "type": "string",
             "format": "date-time"
           },
-          "workspaces": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "description": "RFC 1123 label，小写，≤ 63 字符",
-              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-              "$name": "Label"
-            },
-            "description": "指派给它的 workspace"
-          },
           "nodes_online": {
             "type": "integer"
           }
@@ -3738,12 +6929,12 @@ export const meta: Meta = {
     "removeRelay": {
       "id": "removeRelay",
       "method": "DELETE",
-      "path": "/relays/{relay}",
+      "path": "/relays/{relayId}",
       "tag": "relays",
       "summary": "注销 relay",
-      "description": "对应 `agentserver relay remove`。仍被 workspace 指派时返回 409，先改派；注销后不再续签它的证书，关闭 relay 会话。",
+      "description": "relay 进入 deleted 后不再作为 agentd 候选，关闭 relay 会话；已存在证书按生命周期处理。",
       "pathParams": [
-        "relay"
+        "relayId"
       ],
       "query": [],
       "bodyRequired": false
@@ -3751,12 +6942,12 @@ export const meta: Meta = {
     "listRelayCerts": {
       "id": "listRelayCerts",
       "method": "GET",
-      "path": "/relays/{relay}/certs",
+      "path": "/relays/{relayId}/certs",
       "tag": "relays",
-      "summary": "查看该 relay 在各 workspace 的 relay 证书",
-      "description": "每个被指派的 workspace 一张，由该 workspace 的密钥签；与 relay 在 `/.well-known/agentd?workspace=…` 上公布的相同，供排查。",
+      "summary": "查看该 relay 持有的 relay 证书",
+      "description": "relay 按需缓存 workspace 证书；证书由 workspace 密钥签发，与 `/.well-known/agentd?workspace=…` 公布的内容一致。",
       "pathParams": [
-        "relay"
+        "relayId"
       ],
       "query": [],
       "bodyRequired": false,
@@ -3765,24 +6956,48 @@ export const meta: Meta = {
         "items": {
           "type": "object",
           "required": [
-            "workspace",
-            "relay",
+            "id",
+            "workspace_id",
+            "relay_id",
+            "state",
             "issued_at",
             "expires_at",
             "cert"
           ],
           "properties": {
-            "workspace": {
+            "id": {
               "type": "string",
-              "description": "RFC 1123 label，小写，≤ 63 字符",
-              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-              "$name": "Label"
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
             },
-            "relay": {
+            "state": {
               "type": "string",
-              "description": "RFC 1123 label，小写，≤ 63 字符",
-              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-              "$name": "Label"
+              "enum": [
+                "pending",
+                "ready",
+                "renewing",
+                "expired",
+                "revoked",
+                "failed",
+                "deleted"
+              ],
+              "$name": "CertificateState"
+            },
+            "workspace_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
+            },
+            "relay_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+              "$name": "Uuid"
             },
             "issued_at": {
               "type": "string",
@@ -3804,30 +7019,777 @@ export const meta: Meta = {
   },
   "resources": [
     {
-      "key": "workspaces",
-      "tag": "workspaces",
-      "title": "workspace 的创建、域名、relay 指派与密钥",
+      "key": "domains",
+      "tag": "domains",
+      "title": "instance 级域名配置（仅 instance admin）",
       "scope": "global",
-      "list": "listWorkspaces",
+      "list": "listInstanceDomains",
       "item": {
         "type": "object",
         "required": [
-          "name",
-          "base_domain",
-          "public_key",
-          "relay",
-          "created_at"
+          "id",
+          "domain",
+          "default"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "domain": {
+            "type": "string",
+            "format": "hostname",
+            "description": "instance 管理的域名或域名后缀，统一小写且不带末尾点。"
+          },
+          "default": {
+            "type": "boolean",
+            "description": "是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "description": "agentserver 对该域名配置和证书/DNS 准备情况的状态。",
+            "$name": "DomainStatus",
+            "readOnly": true
+          },
+          "last_error": {
+            "type": "string",
+            "readOnly": true,
+            "description": "status=failed 时的最近错误。"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true,
+            "description": "域名最近一次验证或成功配置的时间。"
+          },
+          "dns_provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "certificate_issuer_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "为该域名签发证书的 CertificateIssuer.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "InstanceDomain"
+      },
+      "idField": "id",
+      "idParam": "domainId",
+      "create": "createInstanceDomain",
+      "get": "getInstanceDomain",
+      "remove": "deleteInstanceDomain",
+      "itemActions": [
+        "updateInstanceDomain"
+      ],
+      "collectionActions": [],
+      "label": "domains"
+    },
+    {
+      "key": "dns-providers",
+      "tag": "dns-providers",
+      "title": "instance 级 DNS provider 配置（仅 instance admin）",
+      "scope": "global",
+      "list": "listDNSProviders",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "zones"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
             "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
             "$name": "Label"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dnspod",
+              "cloudflare"
+            ]
+          },
+          "zones": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "format": "hostname"
+            },
+            "description": "该账号允许操作的 DNS zone；域名按最长后缀匹配。"
+          },
+          "credentials": {
+            "type": "object",
+            "writeOnly": true,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "写入时提交的 provider 凭据（Cloudflare 可用 api_token，DNSPod 可用 secret_id / secret_key）；API 响应不返回它。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "DNSProviderStatus"
+          }
+        },
+        "$name": "DNSProvider"
+      },
+      "idField": "id",
+      "idParam": "providerId",
+      "create": "createDNSProvider",
+      "get": "getDNSProvider",
+      "remove": "deleteDNSProvider",
+      "itemActions": [
+        "updateDNSProvider"
+      ],
+      "collectionActions": [],
+      "label": "dns-providers"
+    },
+    {
+      "key": "certificate-issuers",
+      "tag": "certificate-issuers",
+      "title": "instance 级证书签发方配置（仅 instance admin）",
+      "scope": "global",
+      "list": "listCertificateIssuers",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "directory"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "lets_encrypt",
+              "google_trust_services"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "format": "uri",
+            "description": "ACME directory；LE 或 GTS 的预置默认地址，也允许 instance admin 显式覆盖。"
+          },
+          "eab_key_id": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB key id，不返回。"
+          },
+          "eab_hmac_key": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 EAB HMAC secret，不返回。"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "account_status": {
+            "type": "string",
+            "enum": [
+              "not_created",
+              "creating",
+              "ready",
+              "failed"
+            ],
+            "description": "ACME account 由 agentserver 生成和持久化的状态。",
+            "$name": "IssuerAccountStatus",
+            "readOnly": true
+          },
+          "account_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateIssuerStatus"
+          }
+        },
+        "$name": "CertificateIssuer"
+      },
+      "idField": "id",
+      "idParam": "issuerId",
+      "create": "createCertificateIssuer",
+      "get": "getCertificateIssuer",
+      "remove": "deleteCertificateIssuer",
+      "itemActions": [
+        "updateCertificateIssuer"
+      ],
+      "collectionActions": [],
+      "label": "certificate-issuers"
+    },
+    {
+      "key": "auth-providers",
+      "tag": "auth-providers",
+      "title": "instance 级认证服务配置（仅 instance admin）",
+      "scope": "global",
+      "list": "listAuthProviders",
+      "item": {
+        "type": "object",
+        "description": "可扩展的认证服务配置。第一期支持 `kind: oidc`；后续增加认证类型时扩展 kind 和对应字段， 不改变 auth_providers 集合的资源模型。",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "issuer",
+          "client_id"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "oidc"
+            ],
+            "description": "第一期开启的认证类型；保留为可扩展 discriminator。"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri",
+            "description": "OIDC issuer URL；必须通过 discovery 找到授权、token、jwks 端点。"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "写入时提交的 OIDC client secret，不返回明文。"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "openid",
+              "profile",
+              "email"
+            ]
+          },
+          "claim_mapping": {
+            "type": "object",
+            "description": "将 OIDC claims 映射到 subject、email、name、picture；subject 必须稳定且不可变。",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "AuthProviderStatus"
+          }
+        },
+        "$name": "AuthProvider"
+      },
+      "idField": "id",
+      "idParam": "providerId",
+      "create": "createAuthProvider",
+      "get": "getAuthProvider",
+      "remove": "deleteAuthProvider",
+      "itemActions": [
+        "updateAuthProvider"
+      ],
+      "collectionActions": [],
+      "label": "auth-providers"
+    },
+    {
+      "key": "users",
+      "tag": "users",
+      "title": "instance 级 用户目录（仅 instance admin）",
+      "scope": "global",
+      "list": "listUsers",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "归并用户的 canonical email；来自已验证的外部 identity。"
+          },
+          "name": {
+            "type": "string",
+            "readOnly": true,
+            "description": "与 OIDC name claim 同步的用户名称。"
+          },
+          "picture": {
+            "type": "string",
+            "format": "uri",
+            "readOnly": true,
+            "description": "与 OIDC picture claim 同步的头像 URL。"
+          },
+          "instance_admin": {
+            "type": "boolean",
+            "readOnly": true,
+            "description": "是否拥有 instance 级管理员权限；只能通过 instance-admin operation 修改。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "UserStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "User"
+      },
+      "idField": "id",
+      "idParam": "userId",
+      "create": "upsertUser",
+      "get": "getUser",
+      "remove": "deleteUser",
+      "itemActions": [
+        "setUserInstanceAdmin",
+        "listUserIdentities",
+        "linkUserIdentity",
+        "unlinkUserIdentity"
+      ],
+      "collectionActions": [],
+      "label": "users"
+    },
+    {
+      "key": "audit-events",
+      "tag": "audit",
+      "title": "不可变写入审计记录（instance admin 全局可见）",
+      "scope": "global",
+      "list": "listAuditEvents",
+      "listField": "items",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "occurred_at",
+          "actor",
+          "action",
+          "resource_type",
+          "outcome",
+          "request_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actor": {
+            "type": "object",
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "instance_admin",
+                  "user",
+                  "agentd",
+                  "relay",
+                  "system"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "description": "actor UUID、external identity 或机器公钥标识"
+              },
+              "auth_provider_id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                "$name": "Uuid"
+              }
+            },
+            "$name": "AuditActor"
+          },
+          "action": {
+            "type": "string",
+            "description": "例如 workspace.create、certificate.renew、node.remove"
+          },
+          "resource_type": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "同一个 HTTP/协议请求及其后台任务的关联 ID"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure"
+            ],
+            "$name": "AuditOutcome"
+          },
+          "error_code": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "已脱敏上下文；不会包含 token、密码、凭据、私钥或证书正文。"
+          }
+        },
+        "$name": "AuditEvent"
+      },
+      "idField": "id",
+      "idParam": "eventId",
+      "get": "getAuditEvent",
+      "itemActions": [],
+      "collectionActions": [],
+      "label": "events"
+    },
+    {
+      "key": "server",
+      "tag": "server",
+      "title": "服务端自身",
+      "scope": "global",
+      "list": "getServer",
+      "listField": "domains",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "domain",
+          "default"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid",
+            "readOnly": true
+          },
+          "domain": {
+            "type": "string",
+            "format": "hostname",
+            "description": "instance 管理的域名或域名后缀，统一小写且不带末尾点。"
+          },
+          "default": {
+            "type": "boolean",
+            "description": "是否作为 workspace 未指定 base_domain 时的默认父域名；最多一个。"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "description": "agentserver 对该域名配置和证书/DNS 准备情况的状态。",
+            "$name": "DomainStatus",
+            "readOnly": true
+          },
+          "last_error": {
+            "type": "string",
+            "readOnly": true,
+            "description": "status=failed 时的最近错误。"
+          },
+          "verified_at": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true,
+            "description": "域名最近一次验证或成功配置的时间。"
+          },
+          "dns_provider_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "负责该域名 DNS-01 与可选公网记录的 DNSProvider.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "certificate_issuer_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "为该域名签发证书的 CertificateIssuer.id。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          }
+        },
+        "$name": "InstanceDomain"
+      },
+      "idField": "id",
+      "itemActions": [],
+      "collectionActions": [],
+      "label": "server"
+    },
+    {
+      "key": "certificates",
+      "tag": "certificates",
+      "title": "instance 级全部证书及其签发、续期、吊销生命周期（仅 instance admin）",
+      "scope": "global",
+      "list": "listCertificates",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "issuer"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workspace_wildcard",
+              "relay",
+              "agentserver"
+            ],
+            "$name": "CertificateKind"
+          },
+          "workspace_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "relay_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "subject": {
+            "type": "string",
+            "description": "证书的 DNS names 或控制面身份"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "renewing",
+              "expired",
+              "revoked",
+              "failed",
+              "deleted"
+            ],
+            "$name": "CertificateState"
+          },
+          "not_before": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "not_after": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "renew_before": {
+            "type": "string",
+            "description": "剩余多久进入自动续期窗口"
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revocation_reason": {
+            "type": "string"
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "$name": "Certificate"
+      },
+      "idField": "id",
+      "idParam": "certificateId",
+      "create": "issueCertificate",
+      "get": "getCertificate",
+      "itemActions": [
+        "renewCertificate",
+        "revokeCertificate"
+      ],
+      "collectionActions": [],
+      "label": "certificates"
+    },
+    {
+      "key": "workspaces",
+      "tag": "workspaces",
+      "title": "workspace 的创建、域名与密钥；relay 由 agentd 动态选择",
+      "scope": "global",
+      "list": "listWorkspaces",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "domain_id",
+          "base_domain",
+          "public_key",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "RFC 1123 label，小写，≤ 63 字符",
+            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
+            "$name": "Label"
+          },
+          "domain_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "创建 workspace 时选择的 instance domain。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "base_domain": {
             "type": "string",
-            "description": "基础域名，默认 `<name>.<agentserver 域名>`；服务域名是 `<服务名>.<base_domain>`"
+            "readOnly": true,
+            "description": "agentserver 根据 workspace name 和 domain_id 生成的最终基础域名；服务域名是 `<服务名>.<base_domain>`。"
           },
           "public_key": {
             "type": "string",
@@ -3835,81 +7797,29 @@ export const meta: Meta = {
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
           },
-          "uri": {
+          "status": {
             "type": "string",
-            "description": "名字形式 `agentd://<base_domain>/`，代表这把公钥"
-          },
-          "relay": {
-            "type": "string",
-            "description": "指派的 relay 名；MVP 每个 workspace 一个"
-          },
-          "dns_provider": {
-            "type": "string",
-            "readOnly": true,
-            "description": "签发通配证书的 DNS 提供方（AgentserverConfiguration.dns_providers 的名字）：基础域名落在哪个提供方的 zones 里就用哪个，取最长的 zone；都不在时用 default_dns_provider"
-          },
-          "publish_dns": {
-            "type": "boolean",
-            "description": "是否把 `*.<base_domain>` 的公网记录指向 relay，供策略对 `*` 开放的 HTTP 服务公开访问"
-          },
-          "cert": {
-            "type": "object",
-            "required": [
-              "workspace",
-              "domain",
-              "state"
+            "enum": [
+              "provisioning",
+              "active",
+              "disabled",
+              "failed",
+              "deleting",
+              "deleted"
             ],
-            "properties": {
-              "workspace": {
-                "type": "string",
-                "description": "RFC 1123 label，小写，≤ 63 字符",
-                "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-                "$name": "Label"
-              },
-              "domain": {
-                "type": "string",
-                "description": "通配名，如 `*.home.agentsrv.example.com`"
-              },
-              "state": {
-                "type": "string",
-                "enum": [
-                  "pending",
-                  "ready",
-                  "renewing",
-                  "failed"
-                ]
-              },
-              "not_before": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "not_after": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "issuer": {
-                "type": "string",
-                "description": "CA 名"
-              },
-              "last_error": {
-                "type": "string",
-                "description": "state 为 failed 时的 ACME 错误"
-              },
-              "relays": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "已持有该证书的 relay 名"
-              }
-            },
-            "$name": "Cert"
+            "$name": "WorkspaceStatus"
           },
           "members": {
-            "type": "integer"
+            "type": "integer",
+            "description": "workspace 用户成员数，来自 workspace_members"
           },
-          "members_online": {
-            "type": "integer"
+          "nodes": {
+            "type": "integer",
+            "description": "workspace 中 agentd 节点总数"
+          },
+          "nodes_online": {
+            "type": "integer",
+            "description": "当前与 relay 保持在线会话的 agentd 节点数"
           },
           "routes_version": {
             "type": "integer"
@@ -3924,11 +7834,10 @@ export const meta: Meta = {
         },
         "$name": "Workspace"
       },
-      "idField": "name",
-      "idParam": "ws",
+      "idField": "id",
+      "idParam": "workspaceId",
       "create": "createWorkspace",
       "get": "getWorkspace",
-      "update": "updateWorkspace",
       "remove": "deleteWorkspace",
       "itemActions": [],
       "collectionActions": [],
@@ -3945,13 +7854,17 @@ export const meta: Meta = {
         "required": [
           "id",
           "roles",
+          "status",
           "expires_at",
           "created_at"
         ],
         "properties": {
           "id": {
             "type": "string",
-            "description": "令牌记录的标识，不是令牌本身"
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
           },
           "name": {
             "type": "string",
@@ -3981,6 +7894,17 @@ export const meta: Meta = {
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "used",
+              "expired",
+              "revoked",
+              "deleted"
+            ],
+            "$name": "JoinTokenStatus"
           }
         },
         "$name": "Token"
@@ -3994,6 +7918,75 @@ export const meta: Meta = {
       "label": "tokens"
     },
     {
+      "key": "members",
+      "tag": "members",
+      "title": "workspace 成员与 owner / maintainer / member 角色",
+      "scope": "workspace",
+      "list": "listWorkspaceMembers",
+      "item": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "role",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "maintainer",
+              "member"
+            ],
+            "description": "workspace 内 用户角色；owner 管理成员与 workspace，maintainer 管理运行配置，member 只读。",
+            "$name": "WorkspaceRole"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "revoked",
+              "deleted"
+            ],
+            "$name": "WorkspaceMemberStatus"
+          }
+        },
+        "$name": "WorkspaceMember"
+      },
+      "idField": "id",
+      "idParam": "memberId",
+      "create": "upsertWorkspaceMember",
+      "remove": "removeWorkspaceMember",
+      "itemActions": [],
+      "collectionActions": [],
+      "label": "members"
+    },
+    {
       "key": "nodes",
       "tag": "nodes",
       "title": "目录里的成员",
@@ -4002,13 +7995,22 @@ export const meta: Meta = {
       "item": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
           "role_caps",
+          "status",
           "online",
           "joined_at"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -4020,14 +8022,6 @@ export const meta: Meta = {
             "description": "Ed25519 公钥，base64url 无填充，43 字符",
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
-          },
-          "uri_key": {
-            "type": "string",
-            "description": "`agentd://<公钥>`"
-          },
-          "uri_name": {
-            "type": "string",
-            "description": "`agentd://<base_domain>/<name>`"
           },
           "role_caps": {
             "type": "array",
@@ -4046,9 +8040,24 @@ export const meta: Meta = {
           "online": {
             "type": "boolean"
           },
-          "relay": {
+          "status": {
             "type": "string",
-            "description": "当前所连 relay 名；离线时为空"
+            "enum": [
+              "joining",
+              "active",
+              "disabled",
+              "failed",
+              "removed",
+              "deleted"
+            ],
+            "$name": "NodeStatus"
+          },
+          "relay_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "当前所连 relay 实体 UUID；离线时为空",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
           },
           "last_seen": {
             "type": "string",
@@ -4116,8 +8125,8 @@ export const meta: Meta = {
         },
         "$name": "Node"
       },
-      "idField": "name",
-      "idParam": "node",
+      "idField": "id",
+      "idParam": "nodeId",
       "get": "getNode",
       "update": "updateNode",
       "remove": "removeNode",
@@ -4134,11 +8143,20 @@ export const meta: Meta = {
       "item": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
+          "status",
           "members"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -4147,9 +8165,18 @@ export const meta: Meta = {
           },
           "public_key": {
             "type": "string",
-            "description": "组公钥；节点规则里写它，持有该组成员证书的节点即命中",
+            "description": "组公钥；节点规则里写它，持有该组 membership 证书的 node 即命中",
             "pattern": "^[A-Za-z0-9_-]{43}$",
             "$name": "PublicKey"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "GroupStatus"
           },
           "uri": {
             "type": "string",
@@ -4167,14 +8194,14 @@ export const meta: Meta = {
         },
         "$name": "Group"
       },
-      "idField": "name",
-      "idParam": "group",
+      "idField": "id",
+      "idParam": "groupId",
       "create": "createGroup",
       "get": "getGroup",
       "remove": "deleteGroup",
       "itemActions": [
-        "addGroupMember",
-        "removeGroupMember"
+        "addGroupNode",
+        "removeGroupNode"
       ],
       "collectionActions": [],
       "label": "groups"
@@ -4193,11 +8220,25 @@ export const meta: Meta = {
           "from",
           "proto",
           "domains",
-          "to"
+          "to",
+          "status"
         ],
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "RouteStatus"
           },
           "from": {
             "type": "string",
@@ -4491,12 +8532,26 @@ export const meta: Meta = {
             "type": "string"
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "PolicyStatus"
           }
         },
         "required": [
           "subjects",
-          "id"
+          "id",
+          "status"
         ],
         "$name": "PolicyStatement",
         "description": "一条中央策略语句：若干主体对若干 target 的 allow 与 deny。渲染时每个主体换成公钥（`public` 换成 `*`），按目的角色拆成 (public_key, action, target) 规则"
@@ -4519,13 +8574,33 @@ export const meta: Meta = {
       "item": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "fqdn",
           "proto",
           "node",
-          "state"
+          "state",
+          "status"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed",
+              "disabled",
+              "deleted"
+            ],
+            "$name": "ServiceStatus"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -4542,11 +8617,12 @@ export const meta: Meta = {
               "ssh"
             ]
           },
-          "node": {
+          "node_id": {
             "type": "string",
-            "description": "所在节点",
-            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-            "$name": "Label"
+            "format": "uuid",
+            "description": "所在节点实体 UUID",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
           },
           "node_online": {
             "type": "boolean"
@@ -4569,92 +8645,47 @@ export const meta: Meta = {
         },
         "$name": "Service"
       },
-      "idField": "name",
+      "idField": "id",
       "itemActions": [],
       "collectionActions": [],
       "label": "services"
     },
     {
-      "key": "certs",
-      "tag": "certs",
-      "title": "workspace 的通配证书",
-      "scope": "workspace",
-      "list": "listCerts",
-      "item": {
-        "type": "object",
-        "required": [
-          "workspace",
-          "domain",
-          "state"
-        ],
-        "properties": {
-          "workspace": {
-            "type": "string",
-            "description": "RFC 1123 label，小写，≤ 63 字符",
-            "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-            "$name": "Label"
-          },
-          "domain": {
-            "type": "string",
-            "description": "通配名，如 `*.home.agentsrv.example.com`"
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "ready",
-              "renewing",
-              "failed"
-            ]
-          },
-          "not_before": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "not_after": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "issuer": {
-            "type": "string",
-            "description": "CA 名"
-          },
-          "last_error": {
-            "type": "string",
-            "description": "state 为 failed 时的 ACME 错误"
-          },
-          "relays": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "已持有该证书的 relay 名"
-          }
-        },
-        "$name": "Cert"
-      },
-      "idField": "name",
-      "itemActions": [],
-      "collectionActions": [
-        "renewCert"
-      ],
-      "label": "certs"
-    },
-    {
       "key": "relays",
       "tag": "relays",
-      "title": "relay 注册、证书与指派",
+      "title": "relay 注册、候选池、证书与状态",
       "scope": "global",
       "list": "listRelays",
       "item": {
         "type": "object",
         "required": [
+          "id",
           "name",
           "public_key",
           "url",
+          "status",
           "connected"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "registering",
+              "active",
+              "draining",
+              "disabled",
+              "failed",
+              "deleted"
+            ],
+            "$name": "RelayStatus"
+          },
           "name": {
             "type": "string",
             "description": "RFC 1123 label，小写，≤ 63 字符",
@@ -4695,24 +8726,14 @@ export const meta: Meta = {
             "type": "string",
             "format": "date-time"
           },
-          "workspaces": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "description": "RFC 1123 label，小写，≤ 63 字符",
-              "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$",
-              "$name": "Label"
-            },
-            "description": "指派给它的 workspace"
-          },
           "nodes_online": {
             "type": "integer"
           }
         },
         "$name": "Relay"
       },
-      "idField": "name",
-      "idParam": "relay",
+      "idField": "id",
+      "idParam": "relayId",
       "create": "registerRelay",
       "get": "getRelay",
       "remove": "removeRelay",
@@ -4725,19 +8746,35 @@ export const meta: Meta = {
     {
       "key": "relays-tokens",
       "tag": "relays",
-      "title": "relay 注册、证书与指派",
+      "title": "relay 注册、候选池、证书与状态",
       "scope": "global",
       "list": "listRelayTokens",
       "item": {
         "type": "object",
         "required": [
           "id",
+          "status",
           "expires_at",
           "created_at"
         ],
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "持久化实体的稳定 UUID；name、subject 和 path 参数不是实体主键。",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "$name": "Uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "used",
+              "expired",
+              "revoked",
+              "deleted"
+            ],
+            "$name": "RelayTokenStatus"
           },
           "expires_at": {
             "type": "string",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { serverInfo, status, ApiError } from "../api/client";
 import { copy } from "./format";
+import { Card } from "./ui/card";
 
 type Info = Awaited<ReturnType<typeof serverInfo>>;
 type Stat = Awaited<ReturnType<typeof status>>;
@@ -49,10 +50,10 @@ export function Dashboard() {
       {error && <div className="error">{error}</div>}
       <div className="cards">
         {cards.map(([k, v]) => (
-          <div key={k} className="card">
+          <Card key={k}>
             <div className="card-value">{v ?? "—"}</div>
             <div className="card-label">{k}</div>
-          </div>
+          </Card>
         ))}
       </div>
       {info && (
@@ -66,7 +67,7 @@ export function Dashboard() {
         <h2>getting started</h2>
         <ol className="steps">
           <li>Register a relay under <b>relays</b> (or start agentrelay with a relay token from <b>relay tokens</b>).</li>
-          <li>Create a workspace and assign the relay.</li>
+          <li>Create a workspace; agentd selects a relay candidate automatically.</li>
           <li>Create a join token under <b>tokens</b> and run <code>agentd join '&lt;link&gt;'</code> on each machine.</li>
           <li>Add routes and policies; nodes pick them up immediately.</li>
         </ol>

@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: agentserver agentd join discovery API
+  version: v1
+  description: |
+    agentd 使用一次性 join token 查询 workspace 与 relay candidates 的 machine API。
+
+    该查询只验证 token 并返回候选，不消费 token。agentd 在本地探测 candidates 后，
+    只向选中的 relay 提交一次 join token；token 的实际消费发生在 relay 转发 join 请求时，
+    由 agentserver 原子完成。
+servers:
+  - url: http://127.0.0.1:7800/api/v1/join
+    description: 本机 join discovery 端点（默认）
+x-api-surface: agentd_join
+x-audit:
+  candidate_probe: no event (read-only, non-consuming)
+  token_consumption: required event when the selected relay submits the join request
+security:
+  - JoinTokenBearer: []
+paths:
+  /candidates:
+    get:
+      operationId: discoverJoinCandidates
+      x-audience: [agentd]
+      x-authorization:
+        scope: join_token
+        consume: false
+      summary: 查询 join relay candidates
+      responses:
+        "200":
+          description: candidates 查询成功；此时 token 仍未消费
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JoinCandidates" }
+        "400": { $ref: "./agentserver-openapi.yaml#/components/responses/BadRequest" }
+        "401": { $ref: "./agentserver-openapi.yaml#/components/responses/Forbidden" }
+        "410":
+          description: token 已使用、已过期或已撤销（code TOKEN_USED / TOKEN_EXPIRED / TOKEN_REVOKED）
+          content:
+            application/json:
+              schema: { $ref: "./agentserver-openapi.yaml#/components/schemas/Error" }
+
+components:
+  securitySchemes:
+    JoinTokenBearer:
+      type: http
+      scheme: bearer
+      description: 一次性 join token；GET 查询只校验不消费，正式加入时由选中的 relay 提交并原子消费。
+  schemas:
+    JoinCandidates:
+      type: object
+      required: [workspace_id, workspace_domain, workspace_public_key, candidates, expires_at]
+      properties:
+        workspace_id: { $ref: "./agentserver-openapi.yaml#/components/schemas/Uuid" }
+        workspace_domain: { type: string, format: hostname }
+        workspace_public_key: { $ref: "./agentserver-openapi.yaml#/components/schemas/PublicKey" }
+        name: { $ref: "./agentserver-openapi.yaml#/components/schemas/Label" }
+        roles:
+          type: array
+          items: { $ref: "./agentserver-openapi.yaml#/components/schemas/Role" }
+        candidates:
+          type: array
+          minItems: 1
+          items: { $ref: "./agentserver-openapi.yaml#/components/schemas/RelayCandidate" }
+        expires_at: { type: string, format: date-time }
