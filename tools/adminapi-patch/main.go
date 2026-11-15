@@ -14,7 +14,9 @@ const file = "internal/adminapi/api.gen.go"
 
 func main() {
 	b, err := os.ReadFile(file)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	s := string(b)
 	s = strings.Replace(s, "type Uuid = openapi_types.UUID", "type Uuid = string", 1)
 	s = strings.Replace(s, "JoinLink *string `json:\"join_link,omitempty\"`", "JoinLink string `json:\"join_link,omitempty\"`", 1)
@@ -27,20 +29,32 @@ func main() {
 	s = addField(s, "type WorkspaceMemberWrite struct {", "\n\tSubject string `json:\"subject,omitempty\"`", "\n\tUserId Uuid `json:\"user_id\"`")
 
 	out, err := format.Source([]byte(s))
-	if err != nil { panic(fmt.Errorf("format generated admin API: %w", err)) }
-	if err := os.WriteFile(file, out, 0o644); err != nil { panic(err) }
+	if err != nil {
+		panic(fmt.Errorf("format generated admin API: %w", err))
+	}
+	if err := os.WriteFile(file, out, 0o644); err != nil {
+		panic(err)
+	}
 }
 
 func addField(s, typeDecl, field, after string) string {
 	start := strings.Index(s, typeDecl)
-	if start < 0 { return s }
+	if start < 0 {
+		return s
+	}
 	end := strings.Index(s[start:], "\n}")
-	if end < 0 { return s }
+	if end < 0 {
+		return s
+	}
 	end += start
 	block := s[start:end]
-	if strings.Contains(block, strings.TrimSpace(field)) { return s }
+	if strings.Contains(block, strings.TrimSpace(field)) {
+		return s
+	}
 	i := strings.Index(block, after)
-	if i < 0 { return s }
+	if i < 0 {
+		return s
+	}
 	i += start + len(after)
 	return s[:i] + field + s[i:]
 }
